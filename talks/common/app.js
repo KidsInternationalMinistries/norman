@@ -447,7 +447,7 @@ async function edit(){
   function hlStep(){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (!esub || atEnd) return;
     const c = document.querySelectorAll("#m .rich .vchip")[esub - 1]; if (c) { c.classList.add("on"); const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16;
       window.scrollTo({top: Math.max(0, c.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) } }
-  function updStep(){ const f = findPt(D, sel.id); if (!f) return; const ps = $("#prevs"), pc = $("#pcap"); if (ps) ps.innerHTML = smallHTML(f.p); if (pc) pc.innerHTML = capHTML(f.p); hlStep() }
+  function updStep(){ const f = findPt(D, sel.id); if (!f) return; const ps = $("#prevs"), pc = $("#pcap"); if (ps) ps.innerHTML = smallHTML(f.p); if (pc) pc.innerHTML = capHTML(f.p); hlStep(); if (!esub || atEnd) window.scrollTo({top: 0, behavior: "smooth"}) }
   function record(p, i){ if (i <= 0) return; const t = Math.max(1, Math.round((Date.now() - arrive) / 1000)); op({t: "pt", pid: p.id, f: "seconds", v: t});
     op({t: "talk", f: "lastPractice", v: {date: new Date().toISOString(), total: talkSecs(D)}}); lastRec = S()[i].label + " " + mmss(t) }
   function enext(){ if (sel.k !== "pt" || atEnd) return; const f = findPt(D, sel.id); if (!f) return; const p = f.p;
@@ -595,8 +595,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=18"><link rel="stylesheet" href="../common/countdown.css?v=18"><link rel="stylesheet" href="../common/gate.css?v=18"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=18"></script><script src="../common/countdown.js?v=18"></script><script src="../common/gate.js?v=18"></script><script src="../common/app.js?v=18"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=19"><link rel="stylesheet" href="../common/countdown.css?v=19"><link rel="stylesheet" href="../common/gate.css?v=19"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=19"></script><script src="../common/countdown.js?v=19"></script><script src="../common/gate.js?v=19"></script><script src="../common/app.js?v=19"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
