@@ -226,7 +226,7 @@ async function present(){
   // (or keeps it on this computer if it can't reach GitHub). The first point (1.a) isn't timed, like the countdown.
   var PRUN = "pres-practice-" + FOLDER, PBASE = "pres-practice-base-" + FOLDER, PARR = "pres-arrive-" + FOLDER;
   function ls(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)) } catch (e) { return null } }
-  let run = !!ls(PRUN), arrive = ls(PARR) || Date.now(), pmsg = "", lastRec = "", queue = {}, saveT = null, saving = false;
+  let run = false, arrive = ls(PARR) || Date.now(), pmsg = "", lastRec = "", queue = {}, saveT = null, saving = false;
   const planned = p => { const l = ls(PBASE); return l && l.times[p.id] != null ? l.times[p.id] : ptSecs(p) };
   const hasPlan = () => S.some(p => planned(p) > 0);
   function moved(){ arrive = Date.now(); ls(PARR, arrive); pmsg = "" }
@@ -244,7 +244,7 @@ async function present(){
       local(); pmsg = "Couldn't reach GitHub; times kept on this computer.";
     } finally { saving = false; pace() } }
   function pace(){ const el = $("#pace"); if (!el) return; const b = hasPlan(), atStart = cur <= first;
-    let h = `<label class="pchk" title="${run ? "Untick to stop practicing" : "Time each point: press Next when you finish a point"}"><input type="checkbox" id="pchk"${run ? " checked" : ""}> Practice</label>`;
+    let h = "";
     if (run) h += `<span class="pst rec">● ${atEnd ? "End. Last point timed" : atStart ? "Practicing · timing starts at 1.b" : "Practicing · " + mmss((Date.now() - arrive) / 1000) + " on this point" + (planned(S[cur]) ? " (last " + mmss(planned(S[cur])) + ")" : "")}</span>${lastRec ? `<span class="pst">Saved ${E(lastRec)}</span>` : ""}${pmsg ? `<span class="pst">${E(pmsg)}</span>` : ""}`;
     else if (pmsg) h += `<span class="pst">${E(pmsg)}</span>`;
     else if (b && !atStart && TIMER.elapsed() != null) { let exp = 0; for (let j = first + 1; j < cur; j++) exp += planned(S[j]);
@@ -360,12 +360,14 @@ async function edit(){
     } else {
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
+      if (p.id !== curPid) { curPid = p.id; esub = nextSub || 0; nextSub = 0; atEnd = false; arrive = Date.now() }
       const vt = (p.verses || []).map((v, vi) => v && v.ref ? `<button type="button" data-ve="${vi}">${E(v.ref)}</button>` : "").join("");
       e += `<div class="cuerow"><span class="lbl">${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue">
           <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
         <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div>
         <div class="ptgrid"><div class="kpl"><div class="ed-l"><span class="tag">Key points</span><span class="note" style="font-size:12px">One per line · type / for a tag</span></div><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="keyPoints" role="textbox" aria-multiline="true" aria-label="Key points">${richHTML(p, (p.keyPoints || []).join("\n"))}</div></div>
-          <div class="picside"><button type="button" class="prev small" id="prevs" data-act="sedit" title="Edit the slide">${prevHTML(p)}</button><button type="button" class="linkbtn" data-act="sedit">Edit slide</button></div></div>
+          <div class="picside"><div class="prev small" id="prevs">${smallHTML(p)}</div><div class="pcap" id="pcap">${capHTML(p)}</div>
+            <div class="stepbar"><button type="button" class="btn small" data-act="eprev" title="Back (Page Up)">&larr; Back</button><button type="button" class="btn small pri" data-act="enext" title="Next (Page Down)">Next &rarr;</button></div></div></div>
         <div class="ed-l"><span class="tag">What I'll say</span> ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / for a verse, stop or main-slide tag</span></div>
         <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say">${richHTML(p)}</div>
         <dialog class="sdlg" id="sdlg"><div class="ed"><div class="pgh"><b>Slide for ${E(lb)}</b><button type="button" class="btn small pri" data-act="sdone">Done</button></div>
@@ -383,8 +385,8 @@ async function edit(){
           <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
         <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div>`;
     }
-    $("#m").innerHTML = e + `</div>`; autoAll();
-    const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; const ps = $("#prevs"), f = findPt(D, sel.id); if (ps && f) ps.innerHTML = prevHTML(f.p) }); if (slideOpen) openSlide() }
+    $("#m").innerHTML = e + `</div>`; autoAll(); hlStep();
+    const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; const ps = $("#prevs"), f = findPt(D, sel.id); if (ps && f) { ps.innerHTML = smallHTML(f.p); $("#pcap").innerHTML = capHTML(f.p) } }); if (slideOpen) openSlide() }
   }
   // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
   // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
@@ -433,6 +435,34 @@ async function edit(){
   function autoAll(){ document.querySelectorAll("#m textarea.auto").forEach(autoSize) }
   addEventListener("resize", () => autoAll());
   let slideOpen = false;
+  // ---- Step through slides like Stage (Back / Next, Page Up / Page Down), and practice timing ----
+  let esub = 0, nextSub = 0, curPid = null, atEnd = false, run = false, arrive = Date.now(), lastRec = "";
+  function smallHTML(p){ if (atEnd) return '<div class="slide blank"></div>'; const L = S(), i = L.findIndex(x => x.id === p.id); return i < 0 ? prevHTML(p) : stepHTML(L, i, esub, D) }
+  function capHTML(p){ if (atEnd) return "End: blank slide"; const L = S(), i = L.findIndex(x => x.id === p.id), n = subCount(p);
+    if (esub > 0) { const v = verseRefsIn(p)[esub - 1]; return `Step ${esub} of ${n}${v ? " · " + E(tagLabel(v)) : ""}` }
+    if (hasSlide(p)) return `<button type="button" class="linkbtn" data-act="sedit">Edit slide</button>`;
+    const k = heldIdx(L, i); return (k >= 0 ? "Slide from " + E(L[k].label) + " stays up" : "No slide yet") + ` · <button type="button" class="linkbtn" data-act="sedit">Add a slide here</button>` }
+  function hlStep(){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (!esub || atEnd) return;
+    const c = document.querySelectorAll("#m .rich .vchip")[esub - 1]; if (c) { c.classList.add("on"); c.scrollIntoView({block: "center", behavior: "smooth"}) } }
+  function updStep(){ const f = findPt(D, sel.id); if (!f) return; const ps = $("#prevs"), pc = $("#pcap"); if (ps) ps.innerHTML = smallHTML(f.p); if (pc) pc.innerHTML = capHTML(f.p); hlStep() }
+  function record(p, i){ if (i <= 0) return; const t = Math.max(1, Math.round((Date.now() - arrive) / 1000)); op({t: "pt", pid: p.id, f: "seconds", v: t});
+    op({t: "talk", f: "lastPractice", v: {date: new Date().toISOString(), total: talkSecs(D)}}); lastRec = S()[i].label + " " + mmss(t) }
+  function enext(){ if (sel.k !== "pt" || atEnd) return; const f = findPt(D, sel.id); if (!f) return; const p = f.p;
+    if (esub < subCount(p)) { esub++; return updStep() }
+    const L = S(), i = L.findIndex(x => x.id === p.id); if (run) record(p, i);
+    if (L[i + 1]) { sel = {k: "pt", id: L[i + 1].id}; render(); window.scrollTo(0, 0) } else if (run) { atEnd = true; updStep() } }
+  function eprev(){ if (sel.k !== "pt") return; if (atEnd) { atEnd = false; return updStep() } if (esub > 0) { esub--; return updStep() }
+    const L = S(), i = L.findIndex(x => x.id === sel.id); if (L[i - 1]) { nextSub = subCount(L[i - 1]); sel = {k: "pt", id: L[i - 1].id}; render() } }
+  document.addEventListener("keydown", e => { const t = e.target; if (t.closest && (t.closest("input,textarea,select,[contenteditable='true'],dialog"))) return;
+    if (["PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); enext() } else if (["PageUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); eprev() } });
+  $("#save").insertAdjacentHTML("afterend", `<label class="pchk" title="Time each point: press Next when you finish a point. Jumping in the list doesn't record."><input type="checkbox" id="epchk"> Practice</label><span id="eprac" class="pst"></span>`);
+  $("#epchk").onchange = e => { run = e.target.checked; lastRec = ""; arrive = Date.now(); if (!run && atEnd) { atEnd = false; updStep() } pst() };
+  function pst(){ const el = $("#eprac"); if (!el) return; let h = "";
+    if (run) { const f = sel.k === "pt" && findPt(D, sel.id), L = S(), i = f ? L.findIndex(x => x.id === f.p.id) : -1;
+      h = atEnd ? "● End. Last point timed" : !f ? "● Pick a point to start" : i <= 0 ? "● Timing starts at the next point" : `● ${mmss((Date.now() - arrive) / 1000)} on ${E(L[i].label)}${ptSecs(f.p) ? " (last " + mmss(ptSecs(f.p)) + ")" : ""}`;
+      if (lastRec) h += ` · saved ${E(lastRec)}` }
+    if (el.innerHTML !== h) el.innerHTML = h; el.classList.toggle("rec", run) }
+  setInterval(pst, 500);
   function openSlide(){ const dl = $("#sdlg"); if (!dl) return; slideOpen = true; if (!dl.open) try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } autoAll(); const f = findPt(D, sel.id); if (f) fixPos(f.p) }
   // The verse box's bold/underline become **…** and __…__ in the saved text.
   function verseText(el){ let out = "";
@@ -485,7 +515,7 @@ async function edit(){
   // Sliders of lines still in the block show where they sit now.
   function fixPos(p){ for (const [k] of LINES) { if (elPos(p, k)) continue; const m = measure(k); if (!m) continue;
     for (const a of ["X", "Y", "W"]) { const i = $(`#pos-${CSS.escape(p.id)} input[data-f="${k + a}"]`); if (i) { i.value = m[a]; i.parentElement.querySelector("output").textContent = Math.round(m[a]) + "%" } } } }
-  function refreshSlide(id){ const f = findPt(D, id); if (!f) return; const pv = $("#prev"), ps = $("#prevs"), pp = $("#pos-" + CSS.escape(id)); if (pv) pv.innerHTML = prevHTML(f.p); if (ps) ps.innerHTML = prevHTML(f.p); if (pp) pp.outerHTML = posHTML(f.p); fixPos(f.p) }
+  function refreshSlide(id){ const f = findPt(D, id); if (!f) return; const pv = $("#prev"), ps = $("#prevs"), pp = $("#pos-" + CSS.escape(id)); if (pv) pv.innerHTML = prevHTML(f.p); if (ps) { ps.innerHTML = smallHTML(f.p); $("#pcap").innerHTML = capHTML(f.p) } if (pp) pp.outerHTML = posHTML(f.p); fixPos(f.p) }
   const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align", "Color"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", ...POSF];
   const isLXYW = f => /^(eb|tt|sb)[XYW]$/.test(f);
   document.addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("pos")) posOpen = ev.target.open }, true);
@@ -514,6 +544,7 @@ async function edit(){
     const s = ev.target.closest("[data-sel]"); if (s) { sel = {k: s.dataset.sel, id: s.dataset.id}; render(); if (matchMedia("(max-width:820px)").matches) $("#m").scrollIntoView(); else window.scrollTo(0, 0); return }
     const v = ev.target.closest(".vtags [data-ve]"); if (v && sel.k === "pt") { verseEdit(sel.id, v.dataset.ve); return }
     if (ev.target.closest('[data-act="sedit"]')) { openSlide(); return }
+    if (ev.target.closest('[data-act="enext"]')) { enext(); return } if (ev.target.closest('[data-act="eprev"]')) { eprev(); return }
     if (ev.target.closest('[data-act="sdone"]')) { const dl = $("#sdlg"); if (dl) dl.close(); slideOpen = false; return }
     const b = ev.target.closest("[data-act]"); if (!b) return;
     const a = b.dataset.act, id = b.dataset.id;
@@ -561,8 +592,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=16"><link rel="stylesheet" href="../common/countdown.css?v=16"><link rel="stylesheet" href="../common/gate.css?v=16"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=16"></script><script src="../common/countdown.js?v=16"></script><script src="../common/gate.js?v=16"></script><script src="../common/app.js?v=16"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=17"><link rel="stylesheet" href="../common/countdown.css?v=17"><link rel="stylesheet" href="../common/gate.css?v=17"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=17"></script><script src="../common/countdown.js?v=17"></script><script src="../common/gate.js?v=17"></script><script src="../common/app.js?v=17"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
