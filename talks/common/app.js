@@ -349,7 +349,8 @@ async function edit(){
         <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div>
         <div class="ptgrid"><label class="kpl">Key points<textarea class="kp auto" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints" placeholder="One short phrase per line">${E((p.keyPoints || []).join("\n"))}</textarea></label>
           <div class="picside"><button type="button" class="prev small" id="prevs" data-act="sedit" title="Edit the slide">${prevHTML(p)}</button><button type="button" class="linkbtn" data-act="sedit">Edit slide</button></div></div>
-        <label>What I'll say ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<textarea class="big auto" data-t="pt" data-id="${E(p.id)}" data-f="script">${E(p.script)}</textarea></label>
+        <div class="ed-l"><span class="tag">What I'll say</span> ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / to add a verse slide</span></div>
+        <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say">${richHTML(p)}</div>
         <dialog class="sdlg" id="sdlg"><div class="ed"><div class="pgh"><b>Slide for ${E(lb)}</b><button type="button" class="btn small pri" data-act="sdone">Done</button></div>
         <div class="prev" id="prev">${prevHTML(p)}</div>
         <div class="slideed" id="slideed">
@@ -368,27 +369,46 @@ async function edit(){
     $("#m").innerHTML = e + `</div>`; autoAll();
     const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; const ps = $("#prevs"), f = findPt(D, sel.id); if (ps && f) ps.innerHTML = prevHTML(f.p) }); if (slideOpen) openSlide() }
   }
-  // Typing "/" in the full text lists this point's verses; picking one puts its tag, like [Acts 1:8], in the text.
+  // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
+  // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
+  const chip = ref => `<span class="vchip" contenteditable="false" data-ref="${E(ref)}">${E(ref)}</span>`;
+  function richHTML(p){ let h = "", last = 0; const t = p.script || "";
+    for (const m of t.matchAll(TAG)) { const v = (p.verses || []).find(x => x && x.ref && x.ref.trim() === m[1].trim()); if (!v) continue; h += E(t.slice(last, m.index)) + chip(v.ref); last = m.index + m[0].length }
+    return h + E(t.slice(last)) }
+  function richText(el){ let out = "";
+    const walk = n => { for (const c of n.childNodes) {
+      if (c.nodeType === 3) out += c.nodeValue.replace(/​/g, "");
+      else if (c.nodeType === 1) { if (c.classList.contains("vchip")) out += "[" + c.dataset.ref + "]"; else if (c.tagName === "BR") out += "\n";
+        else { const blk = /^(DIV|P)$/.test(c.tagName); if (blk && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } };
+    walk(el); return out.replace(/\n$/, "") }
+  let richT = null;
+  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return; const v = richText(el); if (v === (f.p.script || "")) return;
+    op({t: "pt", pid: el.dataset.id, f: "script", v}); const d = el.previousElementSibling && el.previousElementSibling.querySelector(".draft"); if (d) d.remove() }
+  document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
+  document.addEventListener("focusout", e => { const el = e.target.closest && e.target.closest(".rich"); if (el) saveRich(el) });
+  document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain")) });
   let vmenu = null;
-  function caretXY(ta, pos){ const m = document.createElement("div"), cs = getComputedStyle(ta);
-    for (const k of ["fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "padding", "border", "boxSizing", "whiteSpace", "wordWrap", "width"]) m.style[k] = cs[k];
-    Object.assign(m.style, {position: "absolute", visibility: "hidden", whiteSpace: "pre-wrap", wordWrap: "break-word", top: "0", left: "-9999px"});
-    m.textContent = ta.value.slice(0, pos); const sp = document.createElement("span"); sp.textContent = "\u200b"; m.appendChild(sp); document.body.appendChild(m);
-    const r = ta.getBoundingClientRect(), x = r.left + sp.offsetLeft - ta.scrollLeft, y = r.top + sp.offsetTop - ta.scrollTop + parseFloat(cs.lineHeight || 24); m.remove(); return {x, y} }
   function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
-  function openVmenu(ta, at){ const f = findPt(D, ta.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; if (!vs.length) return;
-    closeVmenu(); const el = document.createElement("div"); el.className = "vmenu"; el.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}"${i ? "" : ' class="on"'}>${E(v.ref)}</button>`).join("");
-    document.body.appendChild(el); const p = caretXY(ta, at); el.style.left = Math.min(p.x, innerWidth - 240) + "px"; el.style.top = Math.min(p.y, innerHeight - el.offsetHeight - 8) + "px";
-    vmenu = {el, ta, at, vs, k: 0}; el.onmousedown = e => e.preventDefault(); el.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
-  function pickV(k){ const {ta, at, vs} = vmenu, tag = "[" + vs[k].ref + "]"; closeVmenu();
-    if (ta.value[at] !== "/") return; ta.value = ta.value.slice(0, at) + tag + ta.value.slice(at + 1); const c = at + tag.length; ta.focus(); ta.setSelectionRange(c, c); autoSize(ta);
-    ta.dispatchEvent(new Event("change", {bubbles: true})) }
-  document.addEventListener("keydown", e => { const ta = e.target;
+  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; if (!vs.length) return;
+    const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
+    if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
+    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}"${i ? "" : ' class="on"'}>${E(v.ref)}</button>`).join("");
+    document.body.appendChild(m); const rr = r.getBoundingClientRect(), x = rr.left || el.getBoundingClientRect().left, y = (rr.bottom || el.getBoundingClientRect().top) + 4;
+    m.style.left = Math.min(x, innerWidth - 240) + "px"; m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
+    vmenu = {el: m, box: el, node, off, vs, k: 0}; m.onmousedown = e => e.preventDefault(); m.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
+  function pickV(k){ const {box, node, off, vs} = vmenu; closeVmenu(); if (!node.isConnected || node.nodeValue[off - 1] !== "/") return;
+    const after = node.splitText(off); node.nodeValue = node.nodeValue.slice(0, -1);
+    const t = document.createElement("template"); t.innerHTML = chip(vs[k].ref); const c = t.content.firstChild; after.parentNode.insertBefore(c, after);
+    if (!after.nodeValue.startsWith(" ")) after.nodeValue = "​" + after.nodeValue;
+    const r = document.createRange(); r.setStart(after, after.nodeValue.startsWith("​") ? 1 : 0); r.collapse(true); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); box.focus(); saveRich(box) }
+  document.addEventListener("keydown", e => {
     if (vmenu) { const n = vmenu.vs.length;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); vmenu.k = (vmenu.k + (e.key === "ArrowDown" ? 1 : n - 1)) % n; vmenu.el.querySelectorAll("[data-k]").forEach((b, i) => b.classList.toggle("on", i === vmenu.k)); return }
       if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pickV(vmenu.k); return }
       closeVmenu(); if (e.key === "Escape") { e.preventDefault(); return } }
-    if (e.key === "/" && ta.matches && ta.matches('textarea[data-f="script"]')) { const at = ta.selectionStart; setTimeout(() => openVmenu(ta, at), 0) } }, true);
+    const el = e.target.closest && e.target.closest(".rich"); if (!el) return;
+    if (e.key === "/") setTimeout(() => openVmenu(el), 0);
+    else if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak") } }, true);
   document.addEventListener("mousedown", e => { if (vmenu && !vmenu.el.contains(e.target)) closeVmenu() });
   // Text boxes grow to fit their text (they can still be dragged bigger).
   const autoSize = t => { t.style.height = "auto"; t.style.height = (t.scrollHeight + 4) + "px" };
@@ -512,8 +532,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=11"><link rel="stylesheet" href="../common/countdown.css?v=11"><link rel="stylesheet" href="../common/gate.css?v=11"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=11"></script><script src="../common/countdown.js?v=11"></script><script src="../common/gate.js?v=11"></script><script src="../common/app.js?v=11"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=12"><link rel="stylesheet" href="../common/countdown.css?v=12"><link rel="stylesheet" href="../common/gate.css?v=12"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=12"></script><script src="../common/countdown.js?v=12"></script><script src="../common/gate.js?v=12"></script><script src="../common/app.js?v=12"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

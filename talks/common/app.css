@@ -188,3 +188,7 @@ nav.cues .it:not(.cur) .dots b{opacity:1}
 .vmenu button{border:0;background:none;text-align:left;padding:7px 10px;border-radius:7px;font-size:15px}
 .vmenu button.on,.vmenu button:hover{background:var(--cue);color:var(--cue-ink)}
 .slide.blank{background:#000}
+.ed-l{display:flex;gap:8px;align-items:center}
+.ed .rich{width:100%;min-height:120px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:Georgia,serif;font-size:17px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;resize:vertical;overflow:auto;outline:none}
+.ed .rich:focus{border-color:var(--accent)}
+.vchip{display:inline-block;border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:0 10px;font:700 14px/1.55 system-ui,sans-serif;margin:0 2px;vertical-align:1px;user-select:all;cursor:default}
