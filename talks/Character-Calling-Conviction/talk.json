@@ -7,8 +7,8 @@
  "event": "",
  "bigIdea": "His power isn't about how we change ourselves. It's about what He makes us into.",
  "timerMinutes": "45",
- "coverImage": "slides/cover.jpg",
- "titleImage": "slides/title.jpg",
+ "coverImage": "",
+ "titleImage": "",
  "relayTopic": "kim-talk-ccc-52631d90c22f43e7",
  "sections": [
   {
@@ -19,8 +19,11 @@
     {
      "id": "p1a",
      "cue": "Joke",
+     "eyebrow": "Conference theme",
+     "slideTitle": "Character, Calling & Conviction",
      "slide": "",
-     "image": "",
+     "layout": "center",
+     "image": "slides/bg/cover.jpg",
      "keyPoints": [
       "Theme was going to be \"Nothing\"",
       "Got ready: a whole talk on nothing",
@@ -35,7 +38,10 @@
     {
      "id": "p1b",
      "cue": "The turn - Nothing",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Funny thing: it actually fits",
@@ -50,7 +56,10 @@
     {
      "id": "p1c",
      "cue": "Vine, branches, fruit",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "John 15:5: apart from me, nothing",
@@ -72,8 +81,11 @@
     {
      "id": "p1d",
      "cue": "They are fruit",
-     "slide": "Character, calling, conviction are fruit. Apart from Him, we cannot produce them.",
-     "image": "slides/p1d.jpg",
+     "eyebrow": "",
+     "slideTitle": "Character, calling, conviction are fruit.",
+     "slide": "Apart from Him, we cannot produce them.",
+     "layout": "left",
+     "image": "slides/bg/p1d.jpg",
      "keyPoints": [
       "🔑 \"Character, calling, conviction are fruit. Apart from Him, we cannot produce them.\"",
       "We try to manufacture fruit",
@@ -95,7 +107,10 @@
     {
      "id": "p1e",
      "cue": "Disciples?",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "How did the disciples get theirs?",
@@ -111,7 +126,10 @@
     {
      "id": "p1f",
      "cue": "Lack before Jesus died",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Not before the resurrection",
@@ -144,7 +162,10 @@
     {
      "id": "p1g",
      "cue": "The last thing He said",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Jesus rose; 40 days with them",
@@ -172,7 +193,10 @@
     {
      "id": "p2a",
      "cue": "Acts 1:6–8",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Read Acts 1:6–8",
@@ -197,7 +221,10 @@
     {
      "id": "p2b",
      "cue": "The Power piece",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Read the Power piece",
@@ -222,8 +249,11 @@
     {
      "id": "p2c",
      "cue": "Don't expect different",
-     "slide": "The disciples received power, and it brought prison, conflict and weakness. Don't expect it to look any different.",
-     "image": "slides/p2c.jpg",
+     "eyebrow": "",
+     "slideTitle": "The disciples received power, and it brought prison, conflict and weakness.",
+     "slide": "Don't expect it to look any different.",
+     "layout": "left",
+     "image": "slides/bg/p2c.jpg",
      "keyPoints": [
       "Acts 4: Peter and John in jail",
       "Acts 5: flogged, and they rejoiced",
@@ -253,8 +283,11 @@
     {
      "id": "p2d",
      "cue": "Refrain",
-     "slide": "Character, calling, conviction. They didn't make them. His power produced them.",
-     "image": "slides/p2d.jpg",
+     "eyebrow": "",
+     "slideTitle": "Character, calling, conviction.",
+     "slide": "They didn't make them. His power produced them.",
+     "layout": "left",
+     "image": "slides/bg/p2d.jpg",
      "keyPoints": [
       "Same Peter: servant girl → Sanhedrin",
       "\"Unschooled, ordinary men... had been with Jesus\"",
@@ -281,8 +314,11 @@
     {
      "id": "p3a",
      "cue": "Makes us into",
-     "slide": "His power isn't about how we change ourselves. It's about what He makes us into.",
-     "image": "slides/p3a.jpg",
+     "eyebrow": "",
+     "slideTitle": "His power isn't about how we change ourselves.",
+     "slide": "It's about what He makes us into.",
+     "layout": "left",
+     "image": "slides/bg/p3a.jpg",
      "keyPoints": [
       "We argue about what the power looks like",
       "Miracles vs. \"God doesn't work that way now\"",
@@ -305,7 +341,10 @@
     {
      "id": "p3b",
      "cue": "Dynamis",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Acts 1:8 power = dynamis",
@@ -328,7 +367,10 @@
     {
      "id": "p3c",
      "cue": "Peter, broken",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Peter the strong one: first to speak, out of the boat, the sword",
@@ -361,8 +403,11 @@
     {
      "id": "p3d",
      "cue": "Strong vs. weak",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "We spend our whole lives striving to be strong, when God is calling us to be weak.",
-     "image": "slides/p3d.jpg",
+     "layout": "left",
+     "image": "slides/bg/p3d.jpg",
      "keyPoints": [
       "Hard part for leaders",
       "We got here by being strong",
@@ -379,7 +424,10 @@
     {
      "id": "p3e",
      "cue": "Dad",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Dad, Gene: ~30 yrs Navigators in PH",
@@ -407,8 +455,11 @@
     {
      "id": "p3f",
      "cue": "Are you broken?",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "Are you broken?",
-     "image": "slides/p3f.jpg",
+     "layout": "left",
+     "image": "slides/bg/p3f.jpg",
      "keyPoints": [
       "Slide up, silence",
       "Maybe you came here broken",
@@ -425,8 +476,11 @@
     {
      "id": "p3g",
      "cue": "Refrain",
-     "slide": "Character, calling, conviction. We don't make them. His power makes them in our weakness.",
-     "image": "slides/p3g.jpg",
+     "eyebrow": "",
+     "slideTitle": "Character, calling, conviction.",
+     "slide": "We don't make them. His power makes them in our weakness.",
+     "layout": "left",
+     "image": "slides/bg/p3g.jpg",
      "keyPoints": [
       "Kintsugi: broken bowl repaired with gold",
       "Worth more than before it broke",
@@ -454,7 +508,10 @@
     {
      "id": "p4a",
      "cue": "My own strength",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "2017: came to KIDS, ministry hurting",
@@ -481,7 +538,10 @@
     {
      "id": "p4b",
      "cue": "Everything stopped",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "2020: everything stopped",
@@ -497,8 +557,11 @@
     {
      "id": "p4c",
      "cue": "Feeding",
-     "slide": "3,000 to 250,000 meals a week",
-     "image": "slides/p4c.jpg",
+     "eyebrow": "",
+     "slideTitle": "3,000 to 250,000",
+     "slide": "meals a week",
+     "layout": "left",
+     "image": "slides/bg/p4c.jpg",
      "keyPoints": [
       "Hungry families at our gate",
       "Cooking at the market",
@@ -516,7 +579,10 @@
     {
      "id": "p4d",
      "cue": "The $50,000 text",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "At the table: time to stop the feeding",
@@ -534,8 +600,11 @@
     {
      "id": "p4e",
      "cue": "4am to 11pm",
-     "slide": "When I strive in my strength, I burn out. When I strive in His, I'm refreshed.",
-     "image": "slides/p4e.jpg",
+     "eyebrow": "",
+     "slideTitle": "When I strive in my strength, I burn out.",
+     "slide": "When I strive in His, I'm refreshed.",
+     "layout": "left",
+     "image": "slides/bg/p4e.jpg",
      "keyPoints": [
       "The leaders came, the ones I prayed for",
       "Pastor Art: partner in the feedings",
@@ -561,8 +630,11 @@
     {
      "id": "p4f",
      "cue": "Faith",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "If I can do it myself, it isn't faith.",
-     "image": "slides/p4f.jpg",
+     "layout": "left",
+     "image": "slides/bg/p4f.jpg",
      "keyPoints": [
       "Building a high school, poor community",
       "Still not finished: more floors, an auditorium",
@@ -584,7 +656,10 @@
     {
      "id": "p4g",
      "cue": "Loss (optional)",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "(Optional, judgment call on the day)",
@@ -600,7 +675,10 @@
     {
      "id": "p4h",
      "cue": "Refrain",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "I'm not the strong one; I never was",
@@ -627,8 +705,11 @@
     {
      "id": "p5a",
      "cue": "Not tidy",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "Ministry is messy, and there's beauty in the mess.",
-     "image": "slides/p5a.jpg",
+     "layout": "left",
+     "image": "slides/bg/p5a.jpg",
      "keyPoints": [
       "CCC sound tidy: in a box, checked off",
       "The opposite is true",
@@ -645,7 +726,10 @@
     {
      "id": "p5b",
      "cue": "Not in control",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Mess teaches humility",
@@ -662,8 +746,11 @@
     {
      "id": "p5c",
      "cue": "Join Him",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "I find God's voice in the doing, not just the waiting.",
-     "image": "slides/p5c.jpg",
+     "layout": "left",
+     "image": "slides/bg/p5c.jpg",
      "keyPoints": [
       "Blackaby: find where God is working, join Him",
       "Jesus: \"My Father is always at work\"",
@@ -688,7 +775,10 @@
     {
      "id": "p5d",
      "cue": "Bring order",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Balance: don't go looking for mess",
@@ -714,8 +804,11 @@
     {
      "id": "p5e",
      "cue": "The whole journey",
-     "slide": "God doesn't see a point in time. He sees the whole journey.",
-     "image": "slides/p5e.jpg",
+     "eyebrow": "",
+     "slideTitle": "God doesn't see a point in time.",
+     "slide": "He sees the whole journey.",
+     "layout": "left",
+     "image": "slides/bg/p5e.jpg",
      "keyPoints": [
       "In the middle of the mess, remember:",
       "Dad's circus story: knothole vs. up in the tree",
@@ -737,8 +830,11 @@
     {
      "id": "p5f",
      "cue": "Refrain",
-     "slide": "Character, calling, conviction. We don't make them. His power makes them in the mess.",
-     "image": "slides/p5f.jpg",
+     "eyebrow": "",
+     "slideTitle": "Character, calling, conviction.",
+     "slide": "We don't make them. His power makes them in the mess.",
+     "layout": "left",
+     "image": "slides/bg/p5f.jpg",
      "keyPoints": [
       "Paul's best letters: from prison",
       "Philippians: joy, from a cell",
@@ -765,7 +861,10 @@
     {
      "id": "p6a",
      "cue": "Don't expect different (callback)",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Callback: \"Don't expect it to look any different\"",
@@ -779,8 +878,11 @@
     {
      "id": "p6b",
      "cue": "Where the power lives",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "The mess is where the power lives.",
-     "image": "slides/p6b.jpg",
+     "layout": "left",
+     "image": "slides/bg/p6b.jpg",
      "keyPoints": [
       "Started in a manger, ended at a cross",
       "Cross: biggest mess in history",
@@ -801,8 +903,11 @@
     {
      "id": "p6c",
      "cue": "Walk the line",
-     "slide": "There's a thin line between faith and insanity. Walk the line.",
-     "image": "slides/p6c.jpg",
+     "eyebrow": "",
+     "slideTitle": "There's a thin line between faith and insanity.",
+     "slide": "Walk the line.",
+     "layout": "left",
+     "image": "slides/bg/p6c.jpg",
      "keyPoints": [
       "High school: people thought I was crazy",
       "Sometimes I did too",
@@ -817,7 +922,10 @@
     {
      "id": "p6d",
      "cue": "Nothing after all",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "",
+     "layout": "left",
      "image": "",
      "keyPoints": [
       "Came to talk about nothing after all",
@@ -838,8 +946,11 @@
     {
      "id": "p6e",
      "cue": "Closing and hand-off",
+     "eyebrow": "",
+     "slideTitle": "",
      "slide": "Listen for what He's making you into.",
-     "image": "slides/p6e.jpg",
+     "layout": "left",
+     "image": "slides/bg/p6e.jpg",
      "keyPoints": [
       "Read the closing paragraph",
       "Kingdom → power → made them different",

@@ -41,20 +41,26 @@ async function loadTalk(fresh){
 const letter = i => String.fromCharCode(97 + i);
 function steps(d){
   const out = [];
-  if (d.coverImage) out.push({id: "cover", label: "", cue: "Opening slide", sec: "", image: d.coverImage, slide: "", keyPoints: [], verses: [], script: ""});
+  if (d.coverImage) out.push({id: "cover", label: "", cue: "Opening slide", sec: "", image: d.coverImage, slide: "", keyPoints: [], verses: [], script: ""});   // legacy
   d.sections.forEach((s, si) => s.points.forEach((p, pi) => out.push({...p, label: (si + 1) + "." + letter(pi), sec: (si + 1) + ". " + (s.title || ""), sid: s.id})));
   return out;
 }
-const hasSlide = p => !!(p && (p.image || p.slide));
+const hasSlide = p => !!(p && (p.image || p.slide || p.slideTitle || p.eyebrow));
 function heldIdx(S, i){ for (let k = i; k >= 0; k--) if (hasSlide(S[k])) return k; return -1 }
 const LOCALIMG = {};                                   // freshly uploaded images, shown before the site redeploys
 window.__imgFallback = el => { const p = el.dataset.p; if (p && !el.dataset.f) { el.dataset.f = 1; el.src = RAW + PATH + "/" + p } };
 function imgTag(p){ return `<img alt="" data-p="${E(p)}" src="${E(LOCALIMG[p] || p)}" onerror="__imgFallback(this)">` }
+// A slide = background image (no words in it) + live text on top: small eyebrow, title (gold), subtitle (white).
+// Sizes are in cqw (percent of the slide's width) so the same slide looks identical at any size.
+const fitSize = n => n <= 25 ? 7.5 : n <= 60 ? 5.8 : n <= 95 ? 4.8 : n <= 130 ? 4.2 : 3.5;
+function slideBox(p){
+  const c = p.layout === "center", tl = (p.slideTitle || "").trim(), sb = (p.slide || "").trim(), sz = c ? 7.5 : fitSize((tl + " " + sb).trim().length);
+  return `<div class="slide ${c ? "center" : "left"}">${p.image ? imgTag(p.image) : ""}<div class="tx">${p.eyebrow ? `<div class="eb">${E(p.eyebrow)}</div>` : ""}${tl ? `<div class="tt" style="font-size:${sz}cqw">${E(tl)}</div>` : ""}${sb ? `<div class="sb" style="font-size:${c ? 4.6 : sz}cqw">${E(sb)}</div>` : ""}</div></div>`;
+}
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
-  if (s && s.image) return imgTag(s.image);
-  if (s && s.slide) return `<div class="txt">${E(s.slide)}</div>`;
-  return d.titleImage ? imgTag(d.titleImage) : `<div class="txt">${E(d.title)}</div>`;
+  if (s) return slideBox(s);
+  return d.titleImage ? `<div class="slide">${imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d.title});
 }
 function preload(S, d){ [...new Set(S.map(s => s.image).concat([d.titleImage]).filter(Boolean))].forEach(u => { const im = new Image(); im.onerror = () => { im.onerror = null; im.src = RAW + PATH + "/" + u }; im.src = u }) }
 function kpHTML(list){ return list && list.length ? `<ul class="kp">${list.map(x => `<li${/^(🔑|🔁)/u.test(x) ? ' class="key"' : ""}>${E(x)}</li>`).join("")}</ul>` : "" }
@@ -132,8 +138,8 @@ async function present(){
     const n = $("#nav"); n.innerHTML = h; const c = n.querySelector(".cur"); if (c) { const top = c.offsetTop - n.clientHeight / 2; n.scrollTo({top, behavior: "smooth"}) } }
   function main(){ const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
     $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}
-      <div class="grid"><div>${kpHTML(s.keyPoints) || (s.id === "cover" ? '<p class="note">Opening slide. Press Next to begin; the timer starts at 1.b.</p>' : "")}</div>
-      <div class="scr-wrap"><div class="scr">${slideHTML(S, cur, D)}</div><div class="cap">${k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label || "the opening") + " stays up" : "Title slide"}</div></div></div>
+      <div class="grid"><div>${kpHTML(s.keyPoints) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}</div>
+      <div class="scr-wrap"><div class="scr">${slideHTML(S, cur, D)}</div><div class="cap">${k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
       ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${E(s.script)}</p></div>` : ""}
       ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}`;
     $("#pos").textContent = (cur + 1) + " of " + S.length }
@@ -182,7 +188,7 @@ function applyOp(d, o){
     case "vset": { const f = findPt(d, o.pid); if (f && f.p.verses && f.p.verses[o.i]) f.p.verses[o.i][o.f] = o.v; break }
     case "vadd": { const f = findPt(d, o.pid); if (f) (f.p.verses = f.p.verses || []).push({ref: "", text: "", version: "NIV"}); break }
     case "vdel": { const f = findPt(d, o.pid); if (f && f.p.verses) f.p.verses.splice(o.i, 1); break }
-    case "padd": { const s = d.sections.find(x => x.id === o.sid); if (s && !findPt(d, o.pid)) s.points.push({id: o.pid, cue: "New point", slide: "", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}); break }
+    case "padd": { const s = d.sections.find(x => x.id === o.sid); if (s && !findPt(d, o.pid)) s.points.push({id: o.pid, cue: "New point", eyebrow: "", slideTitle: "", slide: "", layout: "left", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}); break }
     case "pdel": { const f = findPt(d, o.pid); if (f) f.s.points.splice(f.i, 1); break }
     case "pmove": { const f = findPt(d, o.pid); if (!f) break; const j = f.i + o.d; if (j < 0 || j >= f.s.points.length) break; const a = f.s.points; [a[f.i], a[j]] = [a[j], a[f.i]]; break }
     case "sadd": if (!d.sections.some(x => x.id === o.sid)) d.sections.push({id: o.sid, title: "New movement", minutes: "", points: []}); break;
@@ -250,11 +256,15 @@ async function edit(){
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
       e += `<h2><span>${E(lb)}</span>${E(p.cue || "(no cue)")}</h2>${verseTags(p)}
-        <div class="prev"><div class="scr">${p.image ? imgTag(p.image) : p.slide ? `<div class="txt">${E(p.slide)}</div>` : '<div class="txt" style="opacity:.6;font-size:16px">No slide at this point</div>'}</div></div>
         <label>Cue (your memory phrase)<input data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}"></label>
-        <label>Slide text (shown when there's no image; leave empty for no slide)<textarea data-t="pt" data-id="${E(p.id)}" data-f="slide">${E(p.slide)}</textarea></label>
-        <div class="row"><span class="tag">Slide image</span>${p.image ? `<button class="btn small" type="button" data-act="imgdel" data-id="${E(p.id)}">Remove image</button>` : ""}
-          <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${p.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(p.id)}" hidden></label><span class="note" id="imgmsg"></span></div>
+        <div class="slideed"><span class="tag">Slide (leave all of it empty for no new slide at this point)</span>
+        <div class="prev" id="prev">${prevHTML(p)}</div>
+        <div class="row"><label style="flex:1 1 200px">Small line on top (optional)<input data-t="pt" data-id="${E(p.id)}" data-f="eyebrow" value="${E(p.eyebrow)}" placeholder="e.g. Conference theme"></label>
+          <label style="flex:0 1 200px">Layout<select data-t="pt" data-id="${E(p.id)}" data-f="layout"><option value="left"${p.layout !== "center" ? " selected" : ""}>Text on the left</option><option value="center"${p.layout === "center" ? " selected" : ""}>Centered</option></select></label></div>
+        <label>Title (gold)<textarea data-t="pt" data-id="${E(p.id)}" data-f="slideTitle" style="min-height:60px">${E(p.slideTitle)}</textarea></label>
+        <label>Subtitle (white)<textarea data-t="pt" data-id="${E(p.id)}" data-f="slide" style="min-height:60px">${E(p.slide)}</textarea></label>
+        <div class="row"><span class="tag">Background image (a picture with no words; the text goes on top)</span>${p.image ? `<button class="btn small" type="button" data-act="imgdel" data-id="${E(p.id)}">Remove image</button>` : ""}
+          <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${p.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(p.id)}" hidden></label><span class="note" id="imgmsg"></span></div></div>
         <label>Key points (one short phrase per line)<textarea class="kp" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints">${E((p.keyPoints || []).join("\n"))}</textarea></label>
         <div class="vedit"><span class="tag">Verses I may read (tags at the top; tap one to show it)</span>
           ${(p.verses || []).map((v, vi) => `<div class="vrow"><input data-t="v" data-id="${E(p.id)}" data-i="${vi}" data-f="ref" value="${E(v.ref)}" placeholder="Reference, e.g. John 15:5" aria-label="Verse reference">
@@ -269,6 +279,9 @@ async function edit(){
     $("#m").innerHTML = e + `</div>`;
   }
   function render(){ nav(); pane() }
+  function prevHTML(p){ return hasSlide(p) ? slideBox(p) : '<div class="slide"><div class="tx" style="justify-content:center;align-items:center;opacity:.6;font-size:16px;color:#fff">No slide at this point</div></div>' }
+  document.addEventListener("input", ev => { const el = ev.target; if (el.dataset.t !== "pt" || !["eyebrow", "slideTitle", "slide"].includes(el.dataset.f)) return;
+    const f = findPt(D, el.dataset.id), pv = $("#prev"); if (f && pv) pv.innerHTML = prevHTML({...f.p, [el.dataset.f]: el.value}) });
   document.addEventListener("click", ev => {
     const s = ev.target.closest("[data-sel]"); if (s) { sel = {k: s.dataset.sel, id: s.dataset.id}; render(); if (matchMedia("(max-width:820px)").matches) $("#m").scrollIntoView(); else window.scrollTo(0, 0); return }
     const v = ev.target.closest(".vtags [data-v]"); if (v && sel.k === "pt") { const f = findPt(D, sel.id); if (f) showVerse(f.p.verses[+v.dataset.v]); return }
@@ -297,7 +310,8 @@ async function edit(){
     if (t === "talk") op({t: "talk", f: el.dataset.f, v: el.dataset.f === "timerMinutes" ? v.trim() : v});
     else if (t === "sec") op({t: "sec", sid: el.dataset.id, f: el.dataset.f, v: el.dataset.f === "minutes" ? v.trim() : v});
     else if (t === "pt") { if (el.dataset.f === "keyPoints") v = v.split("\n").map(x => x.trim()).filter(Boolean); op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
-      if (el.dataset.f === "script") { const d = el.parentElement.querySelector(".draft"); if (d) d.remove() } if (el.dataset.f === "cue") { const h = $(".ed h2"); if (h) h.lastChild.textContent = v } }
+      if (el.dataset.f === "script") { const d = el.parentElement.querySelector(".draft"); if (d) d.remove() }
+      if (["eyebrow", "slideTitle", "slide", "layout"].includes(el.dataset.f)) { const f = findPt(D, el.dataset.id), pv = $("#prev"); if (f && pv) pv.innerHTML = prevHTML(f.p) } if (el.dataset.f === "cue") { const h = $(".ed h2"); if (h) h.lastChild.textContent = v } }
     else if (t === "v") { op({t: "vset", pid: el.dataset.id, i: +el.dataset.i, f: el.dataset.f, v: el.dataset.f === "text" ? v : v.trim()}); if (el.dataset.f === "ref") { const tags = document.querySelector(".ed .vtags"); const f = findPt(D, el.dataset.id); if (f) { const nt = verseTags(f.p); if (tags) tags.outerHTML = nt || ""; else if (nt) $(".ed h2").insertAdjacentHTML("afterend", nt) } } }
   });
   render();
@@ -329,7 +343,7 @@ async function index(){
     try { const base = C.root + "/" + folder;
       const talk = {format: "talk/1", id: folder.toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
         relayTopic: "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join(""),
-        sections: [{id: "s1", title: "Opening", minutes: "", points: [{id: "p1", cue: "First point", slide: "", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}]}]};
+        sections: [{id: "s1", title: "Opening", minutes: "", points: [{id: "p1", cue: "Opening slide", eyebrow: "", slideTitle: title, slide: "", layout: "center", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}]}]};
       await GH.put(base + "/talk.json", b64e(JSON.stringify(talk, null, 1) + "\n"), null, "New talk: " + title);
       for (const [f, m] of [["index.html", "monitor"], ["present.html", "present"], ["edit.html", "edit"]]) await GH.put(base + "/" + f, b64e(STUB(m)), null, "New talk: " + title);
       let sha = null, cur = []; try { const g = await GH.get(C.root + "/talks.json"); sha = g.sha; cur = JSON.parse(g.text) } catch (e) {}
