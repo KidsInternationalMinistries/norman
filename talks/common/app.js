@@ -194,13 +194,13 @@ async function present(){
     const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
     const st = {k: 0, sub};
     $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head"><div class="hc">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}</div>
-      <div class="grid"><div>${kpTagged(s, st) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}</div>
-      <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Step " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
+      <div class="grid"><div>${kpTagged(s, st) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}
       ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${taggedHTML(s.script || "", s, st)}</p></div>` : ""}
-      ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}`;
+      ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}</div>
+      <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Step " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>`;
     $("#pos").textContent = (cur + 1) + " of " + S.length; requestAnimationFrame(toStep) }
   // Keep the step you're on at the top, just under the sticky header (the page has room below to allow it).
-  function toStep(){ if (!sub) { window.scrollTo({top: 0}); return } const el = $(`#m [data-sub="${sub}"]`), hd = $("#m .head"), tb = $(".top"); if (!el) return;
+  function toStep(){ const tb0 = $(".top"), hd0 = $("#m .head"); document.body.style.setProperty("--stk", ((tb0 ? tb0.offsetHeight : 0) + (hd0 ? hd0.offsetHeight : 0) + 12) + "px"); if (!sub) { window.scrollTo({top: 0}); return } const el = $(`#m [data-sub="${sub}"]`), hd = $("#m .head"), tb = $(".top"); if (!el) return;
     const off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16, line = el.closest("li") || el;
     const y = el.getBoundingClientRect().top + scrollY - off - (line !== el ? 0 : 8); window.scrollTo({top: Math.max(0, y), behavior: "smooth"}) }
   const syncEl = $("#sync"), setSync = (ok, msg) => { syncEl.className = ok ? "ok" : "bad"; syncEl.lastChild.textContent = msg };
@@ -548,8 +548,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=14"><link rel="stylesheet" href="../common/countdown.css?v=14"><link rel="stylesheet" href="../common/gate.css?v=14"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=14"></script><script src="../common/countdown.js?v=14"></script><script src="../common/gate.js?v=14"></script><script src="../common/app.js?v=14"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=15"><link rel="stylesheet" href="../common/countdown.css?v=15"><link rel="stylesheet" href="../common/gate.css?v=15"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=15"></script><script src="../common/countdown.js?v=15"></script><script src="../common/gate.js?v=15"></script><script src="../common/app.js?v=15"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
