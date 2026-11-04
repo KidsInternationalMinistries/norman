@@ -70,7 +70,7 @@ function slideBox(p){
   const base = {eb: 2.5, tt: sz, sb: c ? 4.6 : sz}; let inner = "", out = "";
   for (const [k, f] of LINES) { const t = (p[f] || "").trim(); if (!t) continue;
     const al = ALIGNS.includes(p[k + "Align"]) ? p[k + "Align"] : "";
-    let st = `font-size:${+(base[k] * num(p[k + "Size"], 100) / 100).toFixed(3)}cqw`;
+    let st = `font-size:${+(base[k] * num(p[k + "Size"], 100) / 100).toFixed(3)}cqw`; if (/^#[0-9a-f]{6}$/i.test(p[k + "Color"] || "")) st += `;color:${p[k + "Color"]}`;
     if (elPos(p, k)) out += `<div class="${k} tx1" data-k="${k}" style="${st};left:${num(p[k + "X"], b.x)}%;top:${num(p[k + "Y"], 50)}%;width:${num(p[k + "W"], b.w)}%;text-align:${al || b.a}">${E(t)}</div>`;
     else inner += `<div class="${k}" data-k="${k}" style="${st}${al ? `;text-align:${al};align-self:${SELF[al]}` : ""}">${E(t)}</div>`;
   }
@@ -204,7 +204,7 @@ function applyOp(d, o){
   switch (o.t) {
     case "talk": d[o.f] = o.v; break;
     case "sec": { const s = d.sections.find(x => x.id === o.sid); if (s) s[o.f] = o.v; break }
-    case "pt": { const f = findPt(d, o.pid); if (!f) break; if (o.v === "" && /^(text[XYW]|align|(eb|tt|sb)(X|Y|W|Size|Align))$/.test(o.f)) delete f.p[o.f]; else f.p[o.f] = o.v; if (o.f === "script") f.p.scriptDraft = false; break }
+    case "pt": { const f = findPt(d, o.pid); if (!f) break; if (o.v === "" && /^(text[XYW]|align|(eb|tt|sb)(X|Y|W|Size|Align|Color))$/.test(o.f)) delete f.p[o.f]; else f.p[o.f] = o.v; if (o.f === "script") f.p.scriptDraft = false; break }
     case "vset": { const f = findPt(d, o.pid); if (f && f.p.verses && f.p.verses[o.i]) f.p.verses[o.i][o.f] = o.v; break }
     case "vadd": { const f = findPt(d, o.pid); if (f) (f.p.verses = f.p.verses || []).push({ref: "", text: "", version: "NIV"}); break }
     case "vdel": { const f = findPt(d, o.pid); if (f && f.p.verses) f.p.verses.splice(o.i, 1); break }
@@ -305,13 +305,14 @@ async function edit(){
   const alSel = (p, f, v, dflt) => `<label class="alg">Align<select data-t="pt" data-id="${E(p.id)}" data-f="${f}">${dflt ? `<option value=""${v ? "" : " selected"}>${dflt}</option>` : ""}${ALIGNS.map(a => `<option value="${a}"${v === a ? " selected" : ""}>${a[0].toUpperCase() + a.slice(1)}</option>`).join("")}</select></label>`;
   function posHTML(p){
     const b = textBox(p);
-    let h = `<details class="pos" id="pos-${E(p.id)}"${posOpen ? " open" : ""}><summary>Text size and width</summary><div class="pgh"><span class="note">Drag any line in the preview to move it.</span><button class="btn small" type="button" data-act="posreset" data-g="all" data-id="${E(p.id)}">Reset all</button></div>`;
+    let h = `<details class="pos" id="pos-${E(p.id)}"${posOpen ? " open" : ""}><summary>Text size, width and color</summary><div class="pgh"><span class="note">Drag any line in the preview to move it.</span><button class="btn small" type="button" data-act="posreset" data-g="all" data-id="${E(p.id)}">Reset all</button></div>`;
     for (const [k, f, lb] of LINES) { if (!(p[f] || "").trim()) continue;
       h += `<div class="pgrp"><div class="pgh"><b>${lb}</b><button class="btn small" type="button" data-act="posreset" data-g="${k}" data-id="${E(p.id)}">Reset</button></div><div class="row">
-        ${rng(p, k + "Size", "Size", num(p[k + "Size"], 100), 30, 300)}${rng(p, k + "W", "Width", num(p[k + "W"], b.w), 10, 100)}${alSel(p, k + "Align", p[k + "Align"] || "", "Default")}</div></div>`;
+        ${rng(p, k + "Size", "Size", num(p[k + "Size"], 100), 30, 300)}${rng(p, k + "W", "Width", num(p[k + "W"], b.w), 10, 100)}${alSel(p, k + "Align", p[k + "Align"] || "", "Default")}<label class="clr">Color<input type="color" value="${E(p[k + "Color"] || lineColor(p, k))}" data-t="pt" data-id="${E(p.id)}" data-f="${k}Color"></label></div></div>`;
     }
     return h + `</details>`;
   }
+  const lineColor = (p, k) => k === "eb" || (k === "tt") === (p.layout !== "center") ? "#e9b949" : "#ffffff";
   // Where a line sits right now in the preview, in % of the slide (a line in the block takes the block's left edge and width).
   function measure(k){
     const el = $(`#prev [data-k="${k}"]`); if (!el) return null; const sl = el.closest(".slide").getBoundingClientRect(), r = el.getBoundingClientRect(), bx = el.classList.contains("tx1") ? r : el.parentElement.getBoundingClientRect();
@@ -323,7 +324,7 @@ async function edit(){
   function fixPos(p){ for (const [k] of LINES) { if (elPos(p, k)) continue; const m = measure(k); if (!m) continue;
     for (const a of ["X", "Y", "W"]) { const i = $(`#pos-${CSS.escape(p.id)} input[data-f="${k + a}"]`); if (i) { i.value = m[a]; i.parentElement.querySelector("output").textContent = Math.round(m[a]) + "%" } } } }
   function refreshSlide(id){ const f = findPt(D, id); if (!f) return; const pv = $("#prev"), pp = $("#pos-" + CSS.escape(id)); if (pv) pv.innerHTML = prevHTML(f.p); if (pp) pp.outerHTML = posHTML(f.p); fixPos(f.p) }
-  const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", ...POSF];
+  const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align", "Color"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", ...POSF];
   const isLXYW = f => /^(eb|tt|sb)[XYW]$/.test(f);
   document.addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("pos")) posOpen = ev.target.open }, true);
   // Drag one line inside the preview to place it on its own.
@@ -355,7 +356,7 @@ async function edit(){
     if (a === "sadd") { const sid = newId("s"); op({t: "sadd", sid}); sel = {k: "sec", id: sid}; render(); return }
     if (a === "pmove" || a === "smove") { op({t: a, [a === "pmove" ? "pid" : "sid"]: id, d: +b.dataset.d}, true); return }
     if (a === "vadd") { op({t: "vadd", pid: id}, true); const ins = document.querySelectorAll(`[data-t="v"][data-id="${CSS.escape(id)}"][data-f="ref"]`); if (ins.length) ins[ins.length - 1].focus(); return }
-    if (a === "posreset") { const g = b.dataset.g, fs = g === "all" ? POSF : ["X", "Y", "W", "Size", "Align"].map(x => g + x);
+    if (a === "posreset") { const g = b.dataset.g, fs = g === "all" ? POSF : ["X", "Y", "W", "Size", "Align", "Color"].map(x => g + x);
       fs.forEach(k => op({t: "pt", pid: id, f: k, v: ""})); refreshSlide(id); return }
     if (a === "imgdel") { op({t: "pt", pid: id, f: "image", v: ""}, true); return }
     if (a === "vdel" || a === "pdel" || a === "sdel") {
@@ -394,8 +395,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=4"><link rel="stylesheet" href="../common/countdown.css?v=4"><link rel="stylesheet" href="../common/gate.css?v=4"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=4"></script><script src="../common/countdown.js?v=4"></script><script src="../common/gate.js?v=4"></script><script src="../common/app.js?v=4"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=5"><link rel="stylesheet" href="../common/countdown.css?v=5"><link rel="stylesheet" href="../common/gate.css?v=5"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=5"></script><script src="../common/countdown.js?v=5"></script><script src="../common/gate.js?v=5"></script><script src="../common/app.js?v=5"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

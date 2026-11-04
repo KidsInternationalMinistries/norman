@@ -136,3 +136,4 @@ details.pos[open]{display:grid;gap:10px}
 .ed label.rng{flex:1 1 160px}.ed label.alg{flex:0 1 150px}.rng output{font-weight:400;text-transform:none;letter-spacing:0}
 .ed input[type=range]{padding:0;border:0;background:none;accent-color:var(--accent)}
 .slide .eb,.slide .tt,.slide .sb{white-space:pre-line}
+.ed label.clr{flex:0 0 70px}.ed input[type=color]{padding:2px;height:40px;width:60px;cursor:pointer}
