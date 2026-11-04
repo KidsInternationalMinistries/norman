@@ -19,7 +19,7 @@
     {
      "id": "p1a",
      "cue": "Joke",
-     "eyebrow": "Conference theme",
+     "eyebrow": "",
      "slideTitle": "Character, Calling & Conviction",
      "slide": "\n",
      "layout": "center",
@@ -82,8 +82,8 @@
      "id": "p1d",
      "cue": "They are fruit",
      "eyebrow": "",
-     "slideTitle": "Character, calling, conviction are fruit.",
-     "slide": "Apart from Him, we cannot produce them.",
+     "slideTitle": "Character, calling, conviction...",
+     "slide": "They are fruit and we cannot produce fruit.",
      "layout": "left",
      "image": "slides/bg/p1d.jpg",
      "keyPoints": [
