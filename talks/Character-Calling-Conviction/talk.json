@@ -73,6 +73,19 @@
      "seconds": 11
     },
     {
+     "id": "pmw20axve9na",
+     "cue": "New point",
+     "eyebrow": "",
+     "slideTitle": "",
+     "slide": "",
+     "layout": "left",
+     "image": "",
+     "keyPoints": [],
+     "verses": [],
+     "script": "",
+     "scriptDraft": false
+    },
+    {
      "id": "p1f",
      "cue": "Disciples",
      "eyebrow": "",
@@ -114,19 +127,6 @@
      "sbY": 54.9,
      "sbW": 56,
      "seconds": 2
-    },
-    {
-     "id": "pmw20axve9na",
-     "cue": "New point",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [],
-     "verses": [],
-     "script": "",
-     "scriptDraft": false
     }
    ]
   },
