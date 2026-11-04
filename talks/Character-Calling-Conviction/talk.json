@@ -57,7 +57,9 @@
      "slide": "",
      "layout": "left",
      "image": "",
-     "keyPoints": [],
+     "keyPoints": [
+      "/"
+     ],
      "verses": [
       {
        "ref": "John 15:?",
