@@ -84,18 +84,21 @@ function slideBox(p){
 }
 // Verse slides: a tag like [Acts 1:8] in a point's full text (matching one of its verses) adds a slide with just that verse.
 const TAG = /\[([^\[\]\n]{1,60})\]/g;
-function verseRefsIn(p){ const out = []; if (!p || !p.script) return out; for (const m of p.script.matchAll(TAG)) { const v = (p.verses || []).find(x => x && x.ref && x.ref.trim() === m[1].trim()); if (v) out.push(v) } return out }
+// [Main slide] brings the point's own slide back between verse slides.
+const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true};
+function tagOf(p, t){ t = t.trim(); if (t.toLowerCase() === MAIN.toLowerCase()) return MAINTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || null }
+function verseRefsIn(p){ const out = []; if (!p || !p.script) return out; for (const m of p.script.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v) out.push(v) } return out }
 const subCount = p => verseRefsIn(p).length;
 function verseSlide(v){ const n = (v.text || "").length, sz = n <= 110 ? 4.8 : n <= 220 ? 4 : n <= 360 ? 3.3 : n <= 520 ? 2.8 : 2.3;
   return `<div class="slide verse-s"><div class="vs"><div class="vt" style="font-size:${sz}cqw">${E(v.text || "")}</div><div class="vr">${E(v.ref)}${v.version ? " (" + E(v.version) + ")" : ""}</div></div></div>` }
-function stepHTML(S, i, sub, d){ if (sub > 0) { const v = verseRefsIn(S[i])[sub - 1]; if (v) return verseSlide(v) } return slideHTML(S, i, d) }
+function stepHTML(S, i, sub, d){ if (sub > 0) { const v = verseRefsIn(S[i])[sub - 1]; if (v && !v.main) return verseSlide(v) } return slideHTML(S, i, d) }
 // One dot per slide on a point (its own slide, then each verse slide); "on" marks the one showing.
 function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + subCount(p); if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
 const dotOf = (p, sub) => sub > 0 ? sub - 1 + (hasSlide(p) ? 1 : 0) : hasSlide(p) ? 0 : -1;
 // Full text with the verse tags as buttons (data-sub = which verse slide).
 function scriptHTML(p, sub){ let h = "", last = 0, k = 0; const t = p.script || "";
-  for (const m of t.matchAll(TAG)) { const v = (p.verses || []).find(x => x && x.ref && x.ref.trim() === m[1].trim()); if (!v) continue;
-    k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${k === sub ? " on" : ""}" data-sub="${k}">${E(v.ref)}</button>`; last = m.index + m[0].length }
+  for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue;
+    k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${v.main ? " main" : ""}${k === sub ? " on" : ""}" data-sub="${k}">${v.main ? "↩ " : ""}${E(v.ref)}</button>`; last = m.index + m[0].length }
   return h + E(t.slice(last)) }
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
@@ -371,9 +374,9 @@ async function edit(){
   }
   // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
   // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
-  const chip = ref => `<span class="vchip" contenteditable="false" data-ref="${E(ref)}">${E(ref)}</span>`;
+  const chip = ref => ref === MAIN ? `<span class="vchip main" contenteditable="false" data-ref="${MAIN}">↩ ${MAIN}</span>` : `<span class="vchip" contenteditable="false" data-ref="${E(ref)}">${E(ref)}</span>`;
   function richHTML(p){ let h = "", last = 0; const t = p.script || "";
-    for (const m of t.matchAll(TAG)) { const v = (p.verses || []).find(x => x && x.ref && x.ref.trim() === m[1].trim()); if (!v) continue; h += E(t.slice(last, m.index)) + chip(v.ref); last = m.index + m[0].length }
+    for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; h += E(t.slice(last, m.index)) + chip(v.ref); last = m.index + m[0].length }
     return h + E(t.slice(last)) }
   function richText(el){ let out = "";
     const walk = n => { for (const c of n.childNodes) {
@@ -389,10 +392,10 @@ async function edit(){
   document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain")) });
   let vmenu = null;
   function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
-  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; if (!vs.length) return;
+  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; if (!vs.length) return; vs.push(MAINTAG);
     const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
     if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
-    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}"${i ? "" : ' class="on"'}>${E(v.ref)}</button>`).join("");
+    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.main ? " main" : ""}">${v.main ? "↩ Return to main slide" : E(v.ref)}</button>`).join("");
     document.body.appendChild(m); const rr = r.getBoundingClientRect(), x = rr.left || el.getBoundingClientRect().left, y = (rr.bottom || el.getBoundingClientRect().top) + 4;
     m.style.left = Math.min(x, innerWidth - 240) + "px"; m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
     vmenu = {el: m, box: el, node, off, vs, k: 0}; m.onmousedown = e => e.preventDefault(); m.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
@@ -532,8 +535,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=12"><link rel="stylesheet" href="../common/countdown.css?v=12"><link rel="stylesheet" href="../common/gate.css?v=12"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=12"></script><script src="../common/countdown.js?v=12"></script><script src="../common/gate.js?v=12"></script><script src="../common/app.js?v=12"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=13"><link rel="stylesheet" href="../common/countdown.css?v=13"><link rel="stylesheet" href="../common/gate.css?v=13"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=13"></script><script src="../common/countdown.js?v=13"></script><script src="../common/gate.js?v=13"></script><script src="../common/app.js?v=13"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
