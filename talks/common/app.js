@@ -82,24 +82,31 @@ function slideBox(p){
   const st = `left:${b.x}%;top:${b.y}%;width:${b.w}%;text-align:${b.a};align-items:${SELF[b.a]}`;
   return `<div class="slide ${c ? "center" : "left"}">${p.image ? imgTag(p.image) : ""}${inner ? `<div class="tx" style="${st}">${inner}</div>` : ""}${out}</div>`;
 }
-// Verse slides: a tag like [Acts 1:8] in a point's full text (matching one of its verses) adds a slide with just that verse.
+// Tags in a point's key points and full text are its steps on Stage (key points first, then full text):
+// [Acts 1:8] (one of its verses) shows that verse alone; [Main slide] brings its own slide back; [Stop] is a pause that keeps the slide.
 const TAG = /\[([^\[\]\n]{1,60})\]/g;
-// [Main slide] brings the point's own slide back between verse slides.
-const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true};
-function tagOf(p, t){ t = t.trim(); if (t.toLowerCase() === MAIN.toLowerCase()) return MAINTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || null }
-function verseRefsIn(p){ const out = []; if (!p || !p.script) return out; for (const m of p.script.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v) out.push(v) } return out }
+const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true}, STOP = "Stop", STOPTAG = {ref: STOP, stop: true};
+function tagOf(p, t){ t = t.trim(); const l = t.toLowerCase(); if (l === MAIN.toLowerCase()) return MAINTAG; if (l === STOP.toLowerCase()) return STOPTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || null }
+const tagSources = p => [...(p.keyPoints || []), p.script || ""];
+function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tagSources(p)) for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v) out.push(v) } return out }
 const subCount = p => verseRefsIn(p).length;
+// Which step's slide is showing at step sub (a Stop keeps the slide before it).
+function shownAt(p, sub){ const L = verseRefsIn(p); let k = sub; while (k > 0 && L[k - 1] && L[k - 1].stop) k--; return k }
 function verseSlide(v){ const n = (v.text || "").length, sz = n <= 110 ? 4.8 : n <= 220 ? 4 : n <= 360 ? 3.3 : n <= 520 ? 2.8 : 2.3;
   return `<div class="slide verse-s"><div class="vs"><div class="vt" style="font-size:${sz}cqw">${E(v.text || "")}</div><div class="vr">${E(v.ref)}${v.version ? " (" + E(v.version) + ")" : ""}</div></div></div>` }
-function stepHTML(S, i, sub, d){ if (sub > 0) { const v = verseRefsIn(S[i])[sub - 1]; if (v && !v.main) return verseSlide(v) } return slideHTML(S, i, d) }
-// One dot per slide on a point (its own slide, then each verse slide); "on" marks the one showing.
-function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + subCount(p); if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
-const dotOf = (p, sub) => sub > 0 ? sub - 1 + (hasSlide(p) ? 1 : 0) : hasSlide(p) ? 0 : -1;
-// Full text with the verse tags as buttons (data-sub = which verse slide).
-function scriptHTML(p, sub){ let h = "", last = 0, k = 0; const t = p.script || "";
+function stepHTML(S, i, sub, d){ const k = shownAt(S[i], sub); if (k > 0) { const v = verseRefsIn(S[i])[k - 1]; if (v && !v.main && !v.stop) return verseSlide(v) } return slideHTML(S, i, d) }
+// One dot per slide on a point (its own slide, then each verse / main-slide step; stops aren't slides); "on" marks the one showing.
+function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + verseRefsIn(p).filter(v => !v.stop).length; if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
+function dotOf(p, sub){ const k = shownAt(p, sub), own = hasSlide(p) ? 1 : 0; if (!k) return own ? 0 : -1; return own + verseRefsIn(p).slice(0, k).filter(v => !v.stop).length - 1 }
+const tagLabel = v => v.main ? "↩ " + MAIN : v.stop ? "■ " + STOP : v.ref;
+const tagCls = v => v.main ? " main" : v.stop ? " stop" : "";
+// Text with its tags as buttons; k counts steps across key points and full text.
+function taggedHTML(t, p, st){ let h = "", last = 0;
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue;
-    k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${v.main ? " main" : ""}${k === sub ? " on" : ""}" data-sub="${k}">${v.main ? "↩ " : ""}${E(v.ref)}</button>`; last = m.index + m[0].length }
+    st.k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${tagCls(v)}${st.k === st.sub ? " on" : ""}" data-sub="${st.k}">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
   return h + E(t.slice(last)) }
+function kpTagged(p, st){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map(x => `<li${/^(🔑|🔁)/u.test(x) ? ' class="key"' : ""}>${taggedHTML(x, p, st)}</li>`).join("")}</ul>` : "" }
+function scriptHTML(p, sub){ const st = {k: (p.keyPoints || []).reduce((a, x) => a + [...x.matchAll(TAG)].filter(m => tagOf(p, m[1])).length, 0), sub}; return taggedHTML(p.script || "", p, st) }
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
   if (s) return slideBox(s);
@@ -136,7 +143,7 @@ async function monitor(){
   const S = steps(D), idx = id => S.findIndex(s => s.id === id);
   preload(S, D);
   let pres = 0, psub = 0, local = 0, lsub = 0, follow = true, connected = false, bcSeen = false, lastAt = 0;
-  const items = []; S.forEach((s, i) => { if (hasSlide(s)) items.push([i, 0]); for (let k = 1; k <= subCount(s); k++) items.push([i, k]) });
+  const items = []; S.forEach((s, i) => { if (hasSlide(s)) items.push([i, 0]); verseRefsIn(s).forEach((v, k) => { if (!v.stop) items.push([i, k + 1]) }) });
   const st = $("#st");
   let pEnd = false;
   function show(){ const i = follow ? pres : local; $("#s").innerHTML = follow && pEnd ? '<div class="slide blank"></div>' : stepHTML(S, i, follow ? psub : lsub, D);
@@ -185,12 +192,17 @@ async function present(){
     const n = $("#nav"); n.innerHTML = h; const c = n.querySelector(".cur"); if (c) { const top = c.offsetTop - n.clientHeight / 2; n.scrollTo({top, behavior: "smooth"}) } }
   function main(){ if (atEnd) { $("#m").innerHTML = `<div class="head">End of the talk</div><div class="grid"><div><p class="note">The last point is timed. Untick Practice when you're done, or press Back.</p></div><div class="scr-wrap"><div class="scr"><div class="slide blank"></div></div><div class="cap">Blank slide</div></div></div>`; $("#pos").textContent = "End"; return }
     const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
-    $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}
-      <div class="grid"><div>${kpHTML(s.keyPoints) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}</div>
-      <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Verse slide " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
-      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${scriptHTML(s, sub)}</p></div>` : ""}
+    const st = {k: 0, sub};
+    $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head"><div class="hc">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}</div>
+      <div class="grid"><div>${kpTagged(s, st) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}</div>
+      <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Step " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
+      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${taggedHTML(s.script || "", s, st)}</p></div>` : ""}
       ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}`;
-    $("#pos").textContent = (cur + 1) + " of " + S.length }
+    $("#pos").textContent = (cur + 1) + " of " + S.length; requestAnimationFrame(toStep) }
+  // Keep the step you're on at the top, just under the sticky header (the page has room below to allow it).
+  function toStep(){ if (!sub) { window.scrollTo({top: 0}); return } const el = $(`#m [data-sub="${sub}"]`), hd = $("#m .head"), tb = $(".top"); if (!el) return;
+    const off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16, line = el.closest("li") || el;
+    const y = el.getBoundingClientRect().top + scrollY - off - (line !== el ? 0 : 8); window.scrollTo({top: Math.max(0, y), behavior: "smooth"}) }
   const syncEl = $("#sync"), setSync = (ok, msg) => { syncEl.className = ok ? "ok" : "bad"; syncEl.lastChild.textContent = msg };
   async function push(){ const m = {point: atEnd ? "__end" : S[cur].id, sub, at: Date.now()};
     try { localStorage.setItem("pres-" + FOLDER, cur); localStorage.setItem("pres-sub-" + FOLDER, sub) } catch (e) {}
@@ -198,7 +210,7 @@ async function present(){
     try { const r = await fetch(relayURL(), {method: "POST", body: JSON.stringify(m)}); setSync(r.ok, r.ok ? "Monitors following" : "Sync failed (" + r.status + ")") }
     catch (e) { setSync(false, "Offline: only the slides window follows") } }
   const locked = () => !!$("#gate");
-  function go(i, s){ if (locked()) return; const was = cur; atEnd = false; cur = Math.max(0, Math.min(S.length - 1, i)); sub = s || 0; if (cur !== was) moved(was); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
+  function go(i, s){ if (locked()) return; const was = cur; atEnd = false; cur = Math.max(0, Math.min(S.length - 1, i)); sub = s || 0; if (cur !== was) moved(was); if (!sub) window.scrollTo(0, 0); main(); nav(); push(); TIMER.at(cur <= first) }
   function setSub(k){ if (locked()) return; sub = Math.max(0, Math.min(subCount(S[cur]), k)); main(); nav(); push() }
   // Next (button, arrow or clicker) is the only thing that records a practice time; jumping in the list does not.
   function next(){ if (locked() || atEnd) return; if (sub < subCount(S[cur])) return setSub(sub + 1);
@@ -350,9 +362,9 @@ async function edit(){
       e += `<div class="cuerow"><span class="lbl">${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue">
           <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
         <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div>
-        <div class="ptgrid"><label class="kpl">Key points<textarea class="kp auto" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints" placeholder="One short phrase per line">${E((p.keyPoints || []).join("\n"))}</textarea></label>
+        <div class="ptgrid"><div class="kpl"><div class="ed-l"><span class="tag">Key points</span><span class="note" style="font-size:12px">One per line · type / for a tag</span></div><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="keyPoints" role="textbox" aria-multiline="true" aria-label="Key points">${richHTML(p, (p.keyPoints || []).join("\n"))}</div></div>
           <div class="picside"><button type="button" class="prev small" id="prevs" data-act="sedit" title="Edit the slide">${prevHTML(p)}</button><button type="button" class="linkbtn" data-act="sedit">Edit slide</button></div></div>
-        <div class="ed-l"><span class="tag">What I'll say</span> ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / to add a verse slide</span></div>
+        <div class="ed-l"><span class="tag">What I'll say</span> ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / for a verse, stop or main-slide tag</span></div>
         <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say">${richHTML(p)}</div>
         <dialog class="sdlg" id="sdlg"><div class="ed"><div class="pgh"><b>Slide for ${E(lb)}</b><button type="button" class="btn small pri" data-act="sdone">Done</button></div>
         <div class="prev" id="prev">${prevHTML(p)}</div>
@@ -374,8 +386,8 @@ async function edit(){
   }
   // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
   // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
-  const chip = ref => ref === MAIN ? `<span class="vchip main" contenteditable="false" data-ref="${MAIN}">↩ ${MAIN}</span>` : `<span class="vchip" contenteditable="false" data-ref="${E(ref)}">${E(ref)}</span>`;
-  function richHTML(p){ let h = "", last = 0; const t = p.script || "";
+  const chip = ref => { const v = tagOf({}, ref) || {ref}; return `<span class="vchip${tagCls(v)}" contenteditable="false" data-ref="${E(v.ref)}">${E(tagLabel(v))}</span>` };
+  function richHTML(p, text){ let h = "", last = 0; const t = text != null ? text : p.script || "";
     for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; h += E(t.slice(last, m.index)) + chip(v.ref); last = m.index + m[0].length }
     return h + E(t.slice(last)) }
   function richText(el){ let out = "";
@@ -385,17 +397,18 @@ async function edit(){
         else { const blk = /^(DIV|P)$/.test(c.tagName); if (blk && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } };
     walk(el); return out.replace(/\n$/, "") }
   let richT = null;
-  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return; const v = richText(el); if (v === (f.p.script || "")) return;
-    op({t: "pt", pid: el.dataset.id, f: "script", v}); const d = el.previousElementSibling && el.previousElementSibling.querySelector(".draft"); if (d) d.remove() }
+  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return; const kp = el.dataset.f === "keyPoints", txt = richText(el);
+    const v = kp ? txt.split("\n").map(x => x.trim()).filter(Boolean) : txt; if (JSON.stringify(v) === JSON.stringify(kp ? f.p.keyPoints || [] : f.p.script || "")) return;
+    op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v}); if (kp) return; const d = el.previousElementSibling && el.previousElementSibling.querySelector(".draft"); if (d) d.remove() }
   document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
   document.addEventListener("focusout", e => { const el = e.target.closest && e.target.closest(".rich"); if (el) saveRich(el) });
   document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain")) });
   let vmenu = null;
   function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
-  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; if (!vs.length) return; vs.push(MAINTAG);
+  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; vs.push(STOPTAG, MAINTAG);
     const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
     if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
-    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.main ? " main" : ""}">${v.main ? "↩ Return to main slide" : E(v.ref)}</button>`).join("");
+    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.main || v.stop ? " main" : ""}">${v.main ? "↩ Return to main slide" : v.stop ? "■ Stop (pause here)" : E(v.ref)}</button>`).join("");
     document.body.appendChild(m); const rr = r.getBoundingClientRect(), x = rr.left || el.getBoundingClientRect().left, y = (rr.bottom || el.getBoundingClientRect().top) + 4;
     m.style.left = Math.min(x, innerWidth - 240) + "px"; m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
     vmenu = {el: m, box: el, node, off, vs, k: 0}; m.onmousedown = e => e.preventDefault(); m.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
@@ -535,8 +548,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=13"><link rel="stylesheet" href="../common/countdown.css?v=13"><link rel="stylesheet" href="../common/gate.css?v=13"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=13"></script><script src="../common/countdown.js?v=13"></script><script src="../common/gate.js?v=13"></script><script src="../common/app.js?v=13"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=14"><link rel="stylesheet" href="../common/countdown.css?v=14"><link rel="stylesheet" href="../common/gate.css?v=14"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=14"></script><script src="../common/countdown.js?v=14"></script><script src="../common/gate.js?v=14"></script><script src="../common/app.js?v=14"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

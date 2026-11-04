@@ -194,3 +194,14 @@ nav.cues .it:not(.cur) .dots b{opacity:1}
 .vchip{display:inline-block;border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:0 10px;font:700 14px/1.55 system-ui,sans-serif;margin:0 2px;vertical-align:1px;user-select:all;cursor:default}
 .vchip.main,.script .vtag.main{border-style:dashed}
 .vmenu button.main{border-top:1px solid var(--line);border-radius:0 0 7px 7px}
+/* Stage: sticky header with the verse tags on the right; room to scroll the current step to the top */
+body[data-mode="present"] .head{position:sticky;top:57px;z-index:4;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 6px 10px -8px rgba(0,0,0,.25)}
+.head .hc{flex:1 1 auto;min-width:0}
+.head .vtags{margin:0;flex:0 0 auto;justify-content:flex-end}
+.head .vtags button{font-size:15px;padding:4px 13px}
+body[data-mode="present"] main.pane{padding-bottom:100vh}
+ul.kp .vtag{border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:0 10px;font:700 14px/1.6 system-ui,sans-serif;vertical-align:2px;margin:0 2px}
+ul.kp .vtag.on{background:var(--accent);color:#fff}
+.vchip.stop,.script .vtag.stop,ul.kp .vtag.stop{border-color:var(--muted);color:var(--muted)}
+.script .vtag.stop.on,ul.kp .vtag.stop.on{background:var(--muted);color:#fff}
+.ed .rich.kp{font-family:inherit;font-size:16px;line-height:1.5;min-height:60px;background:color-mix(in srgb,var(--cue) 35%,var(--surface))}
