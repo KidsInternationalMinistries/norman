@@ -53,17 +53,29 @@ function imgTag(p){ return `<img alt="" data-p="${E(p)}" src="${E(LOCALIMG[p] ||
 // A slide = background image (no words in it) + live text on top: small eyebrow, title (gold), subtitle (white).
 // Sizes are in cqw (percent of the slide's width) so the same slide looks identical at any size.
 const fitSize = n => n <= 25 ? 7.5 : n <= 60 ? 5.8 : n <= 95 ? 4.8 : n <= 130 ? 4.2 : 3.5;
-// Text box placement (all optional, in % of the slide): textX = left edge, textY = vertical middle, textW = width,
-// align = left|center|right; ebSize / ttSize / sbSize = size of the top line, title, subtitle (100 = normal). Empty means the style's default.
+// Text placement (all optional, % of the slide). The block: textX = left edge, textY = vertical middle, textW = width, align.
+// Each line k (eb = top line, tt = title, sb = subtitle) can also be placed on its own: kX, kY, kW, kAlign, and kSize (100 = normal).
+// A line with no kX/kY/kW stays in the block. Empty means the default.
 const num = (v, d) => v === "" || v == null || isNaN(+v) ? d : +v;
+const isSet = v => !(v === "" || v == null || isNaN(+v));
+const ALIGNS = ["left", "center", "right"], SELF = {left: "flex-start", center: "center", right: "flex-end"};
+const LINES = [["eb", "eyebrow", "Top line"], ["tt", "slideTitle", "Title"], ["sb", "slide", "Subtitle"]];
+const elPos = (p, k) => isSet(p[k + "X"]) || isSet(p[k + "Y"]) || isSet(p[k + "W"]);
 function textBox(p){
   const c = p.layout === "center";
-  return {x: num(p.textX, c ? 9 : 6.75), y: num(p.textY, 50), w: num(p.textW, c ? 82 : 56), a: ["left", "center", "right"].includes(p.align) ? p.align : (c ? "center" : "left"), e: num(p.ebSize, 100) / 100, t: num(p.ttSize, 100) / 100, s: num(p.sbSize, 100) / 100};
+  return {x: num(p.textX, c ? 9 : 6.75), y: num(p.textY, 50), w: num(p.textW, c ? 82 : 56), a: ALIGNS.includes(p.align) ? p.align : (c ? "center" : "left")};
 }
 function slideBox(p){
   const c = p.layout === "center", tl = (p.slideTitle || "").trim(), sb = (p.slide || "").trim(), b = textBox(p), sz = c ? 7.5 : fitSize((tl + " " + sb).trim().length);
-  const st = `left:${b.x}%;top:${b.y}%;width:${b.w}%;text-align:${b.a};align-items:${b.a === "center" ? "center" : b.a === "right" ? "flex-end" : "flex-start"}`;
-  return `<div class="slide ${c ? "center" : "left"}">${p.image ? imgTag(p.image) : ""}<div class="tx" style="${st}">${p.eyebrow ? `<div class="eb" style="font-size:${2.5 * b.e}cqw">${E(p.eyebrow)}</div>` : ""}${tl ? `<div class="tt" style="font-size:${sz * b.t}cqw">${E(tl)}</div>` : ""}${sb ? `<div class="sb" style="font-size:${(c ? 4.6 : sz) * b.s}cqw">${E(sb)}</div>` : ""}</div></div>`;
+  const base = {eb: 2.5, tt: sz, sb: c ? 4.6 : sz}; let inner = "", out = "";
+  for (const [k, f] of LINES) { const t = (p[f] || "").trim(); if (!t) continue;
+    const al = ALIGNS.includes(p[k + "Align"]) ? p[k + "Align"] : "";
+    let st = `font-size:${+(base[k] * num(p[k + "Size"], 100) / 100).toFixed(3)}cqw`;
+    if (elPos(p, k)) out += `<div class="${k} tx1" data-k="${k}" style="${st};left:${num(p[k + "X"], b.x)}%;top:${num(p[k + "Y"], 50)}%;width:${num(p[k + "W"], b.w)}%;text-align:${al || b.a}">${E(t)}</div>`;
+    else inner += `<div class="${k}" data-k="${k}" style="${st}${al ? `;text-align:${al};align-self:${SELF[al]}` : ""}">${E(t)}</div>`;
+  }
+  const st = `left:${b.x}%;top:${b.y}%;width:${b.w}%;text-align:${b.a};align-items:${SELF[b.a]}`;
+  return `<div class="slide ${c ? "center" : "left"}">${p.image ? imgTag(p.image) : ""}${inner ? `<div class="tx" style="${st}">${inner}</div>` : ""}${out}</div>`;
 }
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
@@ -192,7 +204,7 @@ function applyOp(d, o){
   switch (o.t) {
     case "talk": d[o.f] = o.v; break;
     case "sec": { const s = d.sections.find(x => x.id === o.sid); if (s) s[o.f] = o.v; break }
-    case "pt": { const f = findPt(d, o.pid); if (!f) break; f.p[o.f] = o.v; if (o.f === "script") f.p.scriptDraft = false; break }
+    case "pt": { const f = findPt(d, o.pid); if (!f) break; if (o.v === "" && /^(text[XYW]|align|(eb|tt|sb)(X|Y|W|Size|Align))$/.test(o.f)) delete f.p[o.f]; else f.p[o.f] = o.v; if (o.f === "script") f.p.scriptDraft = false; break }
     case "vset": { const f = findPt(d, o.pid); if (f && f.p.verses && f.p.verses[o.i]) f.p.verses[o.i][o.f] = o.v; break }
     case "vadd": { const f = findPt(d, o.pid); if (f) (f.p.verses = f.p.verses || []).push({ref: "", text: "", version: "NIV"}); break }
     case "vdel": { const f = findPt(d, o.pid); if (f && f.p.verses) f.p.verses.splice(o.i, 1); break }
@@ -288,28 +300,52 @@ async function edit(){
     $("#m").innerHTML = e + `</div>`;
   }
   function render(){ nav(); pane() }
+  let posOpen = false;
+  const rng = (p, f, lb, v, lo, hi) => `<label class="rng">${lb} <output>${Math.round(v)}%</output><input type="range" min="${lo}" max="${hi}" step="1" value="${v}" data-t="pt" data-id="${E(p.id)}" data-f="${f}"></label>`;
+  const alSel = (p, f, v, dflt) => `<label class="alg">Align<select data-t="pt" data-id="${E(p.id)}" data-f="${f}">${dflt ? `<option value=""${v ? "" : " selected"}>${dflt}</option>` : ""}${ALIGNS.map(a => `<option value="${a}"${v === a ? " selected" : ""}>${a[0].toUpperCase() + a.slice(1)}</option>`).join("")}</select></label>`;
   function posHTML(p){
-    const b = textBox(p), r = (f, lb, v, lo, hi) => `<label class="rng">${lb} <output>${Math.round(v)}%</output><input type="range" min="${lo}" max="${hi}" step="1" value="${v}" data-t="pt" data-id="${E(p.id)}" data-f="${f}"></label>`;
-    return `<div class="pos" id="pos-${E(p.id)}"><span class="tag">Text position and size (or drag the text in the preview)</span><div class="row">
-      ${r("textX", "From left", b.x, 0, 90)}${r("textY", "Up / down", b.y, 5, 95)}${r("textW", "Width", b.w, 15, 100)}<label style="flex:0 1 130px">Align<select data-t="pt" data-id="${E(p.id)}" data-f="align">${["left", "center", "right"].map(a => `<option value="${a}"${b.a === a ? " selected" : ""}>${a[0].toUpperCase() + a.slice(1)}</option>`).join("")}</select></label></div><div class="row">${r("ebSize", "Top line size", b.e * 100, 40, 250)}${r("ttSize", "Title size", b.t * 100, 40, 250)}${r("sbSize", "Subtitle size", b.s * 100, 40, 250)}
-      <button class="btn small" type="button" data-act="posreset" data-id="${E(p.id)}">Reset position</button></div></div>`;
+    const b = textBox(p);
+    let h = `<details class="pos" id="pos-${E(p.id)}"${posOpen ? " open" : ""}><summary>Text size and width</summary><div class="pgh"><span class="note">Drag any line in the preview to move it.</span><button class="btn small" type="button" data-act="posreset" data-g="all" data-id="${E(p.id)}">Reset all</button></div>`;
+    for (const [k, f, lb] of LINES) { if (!(p[f] || "").trim()) continue;
+      h += `<div class="pgrp"><div class="pgh"><b>${lb}</b><button class="btn small" type="button" data-act="posreset" data-g="${k}" data-id="${E(p.id)}">Reset</button></div><div class="row">
+        ${rng(p, k + "Size", "Size", num(p[k + "Size"], 100), 30, 300)}${rng(p, k + "W", "Width", num(p[k + "W"], b.w), 10, 100)}${alSel(p, k + "Align", p[k + "Align"] || "", "Default")}</div></div>`;
+    }
+    return h + `</details>`;
   }
-  const POSF = ["textX", "textY", "textW", "ebSize", "ttSize", "sbSize", "align"], SLF = ["eyebrow", "slideTitle", "slide", "layout", ...POSF];
-  // Drag the text box inside the preview to move it.
+  // Where a line sits right now in the preview, in % of the slide (a line in the block takes the block's left edge and width).
+  function measure(k){
+    const el = $(`#prev [data-k="${k}"]`); if (!el) return null; const sl = el.closest(".slide").getBoundingClientRect(), r = el.getBoundingClientRect(), bx = el.classList.contains("tx1") ? r : el.parentElement.getBoundingClientRect();
+    const q = v => Math.round(v * 10) / 10;
+    return {X: q((bx.left - sl.left) / sl.width * 100), Y: q((r.top + r.height / 2 - sl.top) / sl.height * 100), W: q(bx.width / sl.width * 100)};
+  }
+  function missing(p, k){ const m = measure(k), o = {}; if (m) for (const a of ["X", "Y", "W"]) if (!isSet(p[k + a])) o[k + a] = m[a]; return o }
+  // Sliders of lines still in the block show where they sit now.
+  function fixPos(p){ for (const [k] of LINES) { if (elPos(p, k)) continue; const m = measure(k); if (!m) continue;
+    for (const a of ["X", "Y", "W"]) { const i = $(`#pos-${CSS.escape(p.id)} input[data-f="${k + a}"]`); if (i) { i.value = m[a]; i.parentElement.querySelector("output").textContent = Math.round(m[a]) + "%" } } } }
+  function refreshSlide(id){ const f = findPt(D, id); if (!f) return; const pv = $("#prev"), pp = $("#pos-" + CSS.escape(id)); if (pv) pv.innerHTML = prevHTML(f.p); if (pp) pp.outerHTML = posHTML(f.p); fixPos(f.p) }
+  const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", ...POSF];
+  const isLXYW = f => /^(eb|tt|sb)[XYW]$/.test(f);
+  document.addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("pos")) posOpen = ev.target.open }, true);
+  // Drag one line inside the preview to place it on its own.
   document.addEventListener("pointerdown", ev => {
-    const tx = ev.target.closest("#prev .tx"); if (!tx || sel.k !== "pt") return; const f = findPt(D, sel.id); if (!f) return;
-    ev.preventDefault(); const box = tx.closest(".slide").getBoundingClientRect(), b0 = textBox(f.p), x0 = ev.clientX, y0 = ev.clientY; let nx = b0.x, ny = b0.y;
-    const mv = e => { nx = Math.max(0, Math.min(95, b0.x + (e.clientX - x0) / box.width * 100)); ny = Math.max(5, Math.min(95, b0.y + (e.clientY - y0) / box.height * 100));
-      tx.style.left = nx + "%"; tx.style.top = ny + "%" };
+    let el = ev.target.closest("#prev [data-k]"); if (!el || sel.k !== "pt") return; const f = findPt(D, sel.id); if (!f) return;
+    ev.preventDefault(); const k = el.dataset.k, add = missing(f.p, k), st = {...f.p, ...add};
+    if (Object.keys(add).length) { $("#prev").innerHTML = prevHTML(st); el = $(`#prev [data-k="${k}"]`) }
+    const box = el.closest(".slide").getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY, bx = num(st[k + "X"], 0), by = num(st[k + "Y"], 50); let nx = bx, ny = by;
+    el.classList.add("drag");
+    const mv = e => { nx = Math.round(Math.max(-20, Math.min(95, bx + (e.clientX - x0) / box.width * 100)) * 10) / 10; ny = Math.round(Math.max(0, Math.min(100, by + (e.clientY - y0) / box.height * 100)) * 10) / 10; el.style.left = nx + "%"; el.style.top = ny + "%" };
     const up = () => { removeEventListener("pointermove", mv); removeEventListener("pointerup", up);
-      if (nx === b0.x && ny === b0.y) return; op({t: "pt", pid: f.p.id, f: "textX", v: Math.round(nx * 10) / 10}); op({t: "pt", pid: f.p.id, f: "textY", v: Math.round(ny * 10) / 10});
-      const pp = $("#pos-" + CSS.escape(f.p.id)); if (pp) pp.outerHTML = posHTML(f.p) };
+      if (nx === bx && ny === by) { refreshSlide(f.p.id); return }
+      for (const [a, v] of Object.entries({...add, [k + "X"]: nx, [k + "Y"]: ny})) op({t: "pt", pid: f.p.id, f: a, v});
+      refreshSlide(f.p.id) };
     addEventListener("pointermove", mv); addEventListener("pointerup", up);
   });
   function prevHTML(p){ return hasSlide(p) ? slideBox(p) : '<div class="slide"><div class="tx" style="justify-content:center;align-items:center;opacity:.6;font-size:16px;color:#fff">No slide at this point</div></div>' }
   document.addEventListener("input", ev => { const el = ev.target; if (el.dataset.t !== "pt" || !SLF.includes(el.dataset.f)) return;
     if (el.type === "range") { const o = el.parentElement.querySelector("output"); if (o) o.textContent = el.value + "%" }
-    const f = findPt(D, el.dataset.id), pv = $("#prev"); if (f && pv) pv.innerHTML = prevHTML({...f.p, [el.dataset.f]: el.value}) });
+    const f = findPt(D, el.dataset.id), pv = $("#prev"); if (!f || !pv) return;
+    const add = isLXYW(el.dataset.f) ? missing(f.p, el.dataset.f.slice(0, 2)) : {};
+    pv.innerHTML = prevHTML({...f.p, ...add, [el.dataset.f]: el.value}); if (!isLXYW(el.dataset.f)) fixPos(f.p) });
   document.addEventListener("click", ev => {
     const s = ev.target.closest("[data-sel]"); if (s) { sel = {k: s.dataset.sel, id: s.dataset.id}; render(); if (matchMedia("(max-width:820px)").matches) $("#m").scrollIntoView(); else window.scrollTo(0, 0); return }
     const v = ev.target.closest(".vtags [data-v]"); if (v && sel.k === "pt") { const f = findPt(D, sel.id); if (f) showVerse(f.p.verses[+v.dataset.v]); return }
@@ -319,7 +355,8 @@ async function edit(){
     if (a === "sadd") { const sid = newId("s"); op({t: "sadd", sid}); sel = {k: "sec", id: sid}; render(); return }
     if (a === "pmove" || a === "smove") { op({t: a, [a === "pmove" ? "pid" : "sid"]: id, d: +b.dataset.d}, true); return }
     if (a === "vadd") { op({t: "vadd", pid: id}, true); const ins = document.querySelectorAll(`[data-t="v"][data-id="${CSS.escape(id)}"][data-f="ref"]`); if (ins.length) ins[ins.length - 1].focus(); return }
-    if (a === "posreset") { POSF.forEach((k, j) => op({t: "pt", pid: id, f: k, v: ""}, j === POSF.length - 1)); return }
+    if (a === "posreset") { const g = b.dataset.g, fs = g === "all" ? POSF : ["X", "Y", "W", "Size", "Align"].map(x => g + x);
+      fs.forEach(k => op({t: "pt", pid: id, f: k, v: ""})); refreshSlide(id); return }
     if (a === "imgdel") { op({t: "pt", pid: id, f: "image", v: ""}, true); return }
     if (a === "vdel" || a === "pdel" || a === "sdel") {
       if (a === "sdel") { const s = D.sections.find(x => x.id === id); if (s && s.points.length) { b.textContent = "Delete its points first"; return } }
@@ -338,9 +375,11 @@ async function edit(){
     const t = el.dataset.t; if (!t) return; let v = el.value;
     if (t === "talk") op({t: "talk", f: el.dataset.f, v: el.dataset.f === "timerMinutes" ? v.trim() : v});
     else if (t === "sec") op({t: "sec", sid: el.dataset.id, f: el.dataset.f, v: el.dataset.f === "minutes" ? v.trim() : v});
-    else if (t === "pt") { if (el.dataset.f === "keyPoints") v = v.split("\n").map(x => x.trim()).filter(Boolean); if (POSF.includes(el.dataset.f) && el.type === "range") v = +v; op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
+    else if (t === "pt") { if (el.dataset.f === "keyPoints") v = v.split("\n").map(x => x.trim()).filter(Boolean); if (POSF.includes(el.dataset.f) && el.type === "range") v = +v;
+      if (isLXYW(el.dataset.f)) { const f0 = findPt(D, el.dataset.id); if (f0 && !elPos(f0.p, el.dataset.f.slice(0, 2))) { const ad = missing(f0.p, el.dataset.f.slice(0, 2)); delete ad[el.dataset.f]; for (const [a, x] of Object.entries(ad)) op({t: "pt", pid: el.dataset.id, f: a, v: x}) } }
+      op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
       if (el.dataset.f === "script") { const d = el.parentElement.querySelector(".draft"); if (d) d.remove() }
-      if (SLF.includes(el.dataset.f)) { if (el.dataset.f === "layout") { const pp = $("#pos-" + CSS.escape(el.dataset.id)); const g = findPt(D, el.dataset.id); if (pp && g) pp.outerHTML = posHTML(g.p) } const f = findPt(D, el.dataset.id), pv = $("#prev"); if (f && pv) pv.innerHTML = prevHTML(f.p) } if (el.dataset.f === "cue") { const h = $(".ed h2"); if (h) h.lastChild.textContent = v } }
+      if (SLF.includes(el.dataset.f)) refreshSlide(el.dataset.id); if (el.dataset.f === "cue") { const h = $(".ed h2"); if (h) h.lastChild.textContent = v } }
     else if (t === "v") { op({t: "vset", pid: el.dataset.id, i: +el.dataset.i, f: el.dataset.f, v: el.dataset.f === "text" ? v : v.trim()}); if (el.dataset.f === "ref") { const tags = document.querySelector(".ed .vtags"); const f = findPt(D, el.dataset.id); if (f) { const nt = verseTags(f.p); if (tags) tags.outerHTML = nt || ""; else if (nt) $(".ed h2").insertAdjacentHTML("afterend", nt) } } }
   });
   render();
@@ -355,8 +394,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=3"><link rel="stylesheet" href="../common/countdown.css?v=3"><link rel="stylesheet" href="../common/gate.css?v=3"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=3"></script><script src="../common/countdown.js?v=3"></script><script src="../common/gate.js?v=3"></script><script src="../common/app.js?v=3"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=4"><link rel="stylesheet" href="../common/countdown.css?v=4"><link rel="stylesheet" href="../common/gate.css?v=4"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=4"></script><script src="../common/countdown.js?v=4"></script><script src="../common/gate.js?v=4"></script><script src="../common/app.js?v=4"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
