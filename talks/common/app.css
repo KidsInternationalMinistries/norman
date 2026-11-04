@@ -241,3 +241,6 @@ body[data-mode="edit"] .stagev .scr-wrap{position:sticky;top:var(--stk,150px);al
 .ed.stagev .rich:empty::before{content:attr(data-ph);color:var(--muted)}
 .ed.stagev .fulltext{margin-top:0}
 @media (max-width:820px){body[data-mode="edit"] .stagev .scr-wrap{position:static;order:-1}}
+/* Full-text tags are reference only: they open the verse but never change the slide */
+.script .vtag.ref,.rich.big .vchip{border-style:dotted;border-color:var(--muted);color:var(--muted);background:transparent}
+.script .vtag.ref:hover{border-color:var(--accent);color:var(--accent)}

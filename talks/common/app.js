@@ -87,7 +87,7 @@ function slideBox(p){
 const TAG = /\[([^\[\]\n]{1,60})\]/g;
 const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true}, STOP = "Stop", STOPTAG = {ref: STOP, stop: true};
 function tagOf(p, t){ t = t.trim(); const l = t.toLowerCase(); if (l === MAIN.toLowerCase()) return MAINTAG; if (l === STOP.toLowerCase()) return STOPTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || null }
-const tagSources = p => [...(p.keyPoints || []), p.script || ""];
+const tagSources = p => [...(p.keyPoints || [])];      // only key-point tags change slides; full-text tags are reference only
 function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tagSources(p)) for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v) out.push(v) } return out }
 const subCount = p => verseRefsIn(p).length;
 // Which step's slide is showing at step sub (a Stop keeps the slide before it).
@@ -116,7 +116,10 @@ function taggedHTML(t, p, st){ let h = "", last = 0;
     st.k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${tagCls(v)}${st.k === st.sub ? " on" : ""}" data-sub="${st.k}">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
   return h + E(t.slice(last)) }
 function kpTagged(p, st){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map(x => `<li${/^(🔑|🔁)/u.test(x) ? ' class="key"' : ""}>${taggedHTML(x, p, st)}</li>`).join("")}</ul>` : "" }
-function scriptHTML(p, sub){ const st = {k: (p.keyPoints || []).reduce((a, x) => a + [...x.matchAll(TAG)].filter(m => tagOf(p, m[1])).length, 0), sub}; return taggedHTML(p.script || "", p, st) }
+function scriptHTML(p){ const t = p.script || ""; let h = "", last = 0;      // tags here open the verse but don't step slides
+  for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; const vi = (p.verses || []).indexOf(v);
+    h += E(t.slice(last, m.index)) + `<button type="button" class="vtag ref${tagCls(v)}"${vi >= 0 ? ` data-v="${vi}"` : ""} title="Reference only. Doesn't change the slide">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
+  return h + E(t.slice(last)) }
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
   if (s) return slideBox(s);
@@ -217,7 +220,7 @@ async function present(){
     const st = {k: 0, sub};
     $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head"><div class="hc">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}</div>
       <div class="grid"><div>${kpTagged(s, st) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}
-      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${taggedHTML(s.script || "", s, st)}</p></div>` : ""}
+      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${scriptHTML(s)}</p></div>` : ""}
       ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}</div>
       <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Step " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>`;
     $("#pos").textContent = (cur + 1) + " of " + S.length; requestAnimationFrame(toStep) }
@@ -432,10 +435,10 @@ async function edit(){
   document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain")) });
   let vmenu = null;
   function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
-  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; vs.push(STOPTAG, MAINTAG);
+  function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; const inKp = el.classList.contains("kp"); if (inKp) vs.push(STOPTAG, MAINTAG);
     const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
     if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
-    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.main || v.stop ? " main" : ""}">${v.main ? "↩ Return to main slide" : v.stop ? "■ Stop (pause here)" : E(v.ref)}</button>`).join("");
+    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">${inKp ? "Verse slide" : "Verse reference (no slide)"}</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.main || v.stop ? " main" : ""}">${v.main ? "↩ Return to main slide" : v.stop ? "■ Stop (pause here)" : E(v.ref)}</button>`).join("");
     document.body.appendChild(m); const rr = r.getBoundingClientRect(), x = rr.left || el.getBoundingClientRect().left, y = (rr.bottom || el.getBoundingClientRect().top) + 4;
     m.style.left = Math.min(x, innerWidth - 240) + "px"; m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
     vmenu = {el: m, box: el, node, off, vs, k: 0}; m.onmousedown = e => e.preventDefault(); m.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
@@ -466,7 +469,7 @@ async function edit(){
     if (hasSlide(p)) return `<button type="button" class="linkbtn" data-act="sedit">Edit slide</button>`;
     const k = heldIdx(L, i); return (k >= 0 ? "Slide from " + E(L[k].label) + " stays up" : "No slide yet") + ` · <button type="button" class="linkbtn" data-act="sedit">Add a slide here</button>` }
   function hlStep(){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (!esub || atEnd) return;
-    const c = document.querySelectorAll("#m .rich .vchip")[esub - 1]; if (c) { c.classList.add("on"); const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16;
+    const c = document.querySelectorAll("#m .rich.kp .vchip")[esub - 1]; if (c) { c.classList.add("on"); const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16;
       window.scrollTo({top: Math.max(0, c.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) } }
   function updStep(){ const f = findPt(D, sel.id); if (!f) return; const ps = $("#prevs"), pc = $("#pcap"); if (ps) ps.innerHTML = smallHTML(f.p); if (pc) pc.innerHTML = capHTML(f.p); hlStep(); if (!esub || atEnd) window.scrollTo({top: 0, behavior: "smooth"}) }
   function record(p, i){ if (i <= 0) return; const t = Math.max(1, Math.round((Date.now() - arrive) / 1000)); op({t: "pt", pid: p.id, f: "seconds", v: t});
@@ -616,8 +619,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=21"><link rel="stylesheet" href="../common/countdown.css?v=21"><link rel="stylesheet" href="../common/gate.css?v=21"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=21"></script><script src="../common/countdown.js?v=21"></script><script src="../common/gate.js?v=21"></script><script src="../common/app.js?v=21"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=22"><link rel="stylesheet" href="../common/countdown.css?v=22"><link rel="stylesheet" href="../common/gate.css?v=22"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=22"></script><script src="../common/countdown.js?v=22"></script><script src="../common/gate.js?v=22"></script><script src="../common/app.js?v=22"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
