@@ -122,7 +122,19 @@ function slideHTML(S, i, d){
   if (s) return slideBox(s);
   return d.titleImage ? `<div class="slide">${imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d.title});
 }
-function preload(S, d){ [...new Set(S.map(s => s.image).concat([d.titleImage]).filter(Boolean))].forEach(u => { const im = new Image(); im.onerror = () => { im.onerror = null; im.src = RAW + PATH + "/" + u }; im.src = u }) }
+const KEEP = [];                                        // decoded images held in memory so slides appear instantly
+function preload(S, d){
+  const urls = [...new Set(S.map(s => s.image).concat([d.titleImage]).filter(Boolean))].filter(u => !LOCALIMG[u]);
+  const swap = (u, b) => document.querySelectorAll("img[data-p]").forEach(im => { if (im.dataset.p === u && !im.src.startsWith("data:")) im.src = b });
+  const get = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.blob() }).catch(() => fetch(RAW + PATH + "/" + u).then(r => { if (!r.ok) throw 0; return r.blob() }));
+  let i = 0;
+  const one = () => { const u = urls[i++]; if (!u) return;
+    get(u).then(b => { if (LOCALIMG[u]) return; const url = URL.createObjectURL(b), im = new Image(); im.src = url; KEEP.push(im);
+      return (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(() => { LOCALIMG[u] = url; swap(u, url) }) })
+      .catch(() => { const im = new Image(); im.onerror = () => { im.onerror = null; im.src = RAW + PATH + "/" + u }; im.src = u; KEEP.push(im) })
+      .then(one) };
+  for (let k = 0; k < 4; k++) one();                      // four downloads at a time
+}
 function kpHTML(list){ return list && list.length ? `<ul class="kp">${list.map(x => `<li${/^(🔑|🔁)/u.test(x) ? ' class="key"' : ""}>${E(x)}</li>`).join("")}</ul>` : "" }
 function verseTags(p){ const v = (p.verses || []).map((x, i) => [x, i]).filter(([x]) => x && x.ref); return v.length ? `<div class="vtags">${v.map(([x, i]) => `<button type="button" data-v="${i}">${E(x.ref)}</button>`).join("")}</div>` : "" }
 function verseDialog(){
@@ -315,6 +327,7 @@ async function edit(){
     if (e.status === 401 || e.status === 403) { try { localStorage.removeItem(tokenKey) } catch (_) {} tokenSetup(() => edit()); return }
     document.body.innerHTML = `<p class="status">Couldn't load this talk from GitHub (${E(e.message)}). Reload to try again.</p>`; return }
   document.title = D.title + " · Edit";
+  preload(steps(D), D);
   let sel = {k: "talk"}, pending = [], inflight = [], saving = false, timer = null;
   document.body.innerHTML = topBar("edit") + `<div class="lay"><nav class="cues" id="nav"></nav><main class="pane" id="m"></main></div>`;
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
@@ -603,8 +616,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=20"><link rel="stylesheet" href="../common/countdown.css?v=20"><link rel="stylesheet" href="../common/gate.css?v=20"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=20"></script><script src="../common/countdown.js?v=20"></script><script src="../common/gate.js?v=20"></script><script src="../common/app.js?v=20"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=21"><link rel="stylesheet" href="../common/countdown.css?v=21"><link rel="stylesheet" href="../common/gate.css?v=21"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=21"></script><script src="../common/countdown.js?v=21"></script><script src="../common/gate.js?v=21"></script><script src="../common/app.js?v=21"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
