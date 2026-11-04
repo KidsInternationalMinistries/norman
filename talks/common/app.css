@@ -208,3 +208,7 @@ ul.kp .vtag.on{background:var(--accent);color:#fff}
 .ed .rich.kp{font-family:inherit;font-size:16px;line-height:1.5;min-height:60px;background:color-mix(in srgb,var(--cue) 35%,var(--surface))}
 body[data-mode="present"] .scr-wrap{position:sticky;top:var(--stk,140px);align-self:start}
 @media (max-width:820px){body[data-mode="present"] .scr-wrap{position:static}}
+#vet{min-height:140px;max-height:50vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:Georgia,serif;font-size:17px;line-height:1.55;white-space:pre-wrap;outline:none}
+#vet:focus{border-color:var(--accent)}
+.fmt{padding:2px 10px;min-width:30px;justify-content:center}
+.slide .vt b{font-weight:800}

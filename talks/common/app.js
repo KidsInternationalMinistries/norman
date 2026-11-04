@@ -92,8 +92,10 @@ function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tag
 const subCount = p => verseRefsIn(p).length;
 // Which step's slide is showing at step sub (a Stop keeps the slide before it).
 function shownAt(p, sub){ const L = verseRefsIn(p); let k = sub; while (k > 0 && L[k - 1] && L[k - 1].stop) k--; return k }
-function verseSlide(v){ const n = (v.text || "").length, sz = n <= 110 ? 4.8 : n <= 220 ? 4 : n <= 360 ? 3.3 : n <= 520 ? 2.8 : 2.3;
-  return `<div class="slide verse-s"><div class="vs"><div class="vt" style="font-size:${sz}cqw">${E(v.text || "")}</div><div class="vr">${E(v.ref)}${v.version ? " (" + E(v.version) + ")" : ""}</div></div></div>` }
+// Verse text may mark **bold** and __underline__ (Ctrl+B / Ctrl+U in Edit's verse pop-up).
+const fmtVerse = t => E(t || "").replace(/\*\*([\s\S]+?)\*\*/g, "<b>$1</b>").replace(/__([\s\S]+?)__/g, "<u>$1</u>");
+function verseSlide(v){ const n = (v.text || "").replace(/\*\*|__/g, "").length, sz = n <= 110 ? 4.8 : n <= 220 ? 4 : n <= 360 ? 3.3 : n <= 520 ? 2.8 : 2.3;
+  return `<div class="slide verse-s"><div class="vs"><div class="vt" style="font-size:${sz}cqw">${fmtVerse(v.text)}</div><div class="vr">${E(v.ref)}${v.version ? " (" + E(v.version) + ")" : ""}</div></div></div>` }
 function stepHTML(S, i, sub, d){ const k = shownAt(S[i], sub); if (k > 0) { const v = verseRefsIn(S[i])[k - 1]; if (v && !v.main && !v.stop) return verseSlide(v) } return slideHTML(S, i, d) }
 // One dot per slide on a point (its own slide, then each verse / main-slide step; stops aren't slides); "on" marks the one showing.
 function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + verseRefsIn(p).filter(v => !v.stop).length; if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
@@ -122,7 +124,7 @@ function verseDialog(){
   d.addEventListener("click", e => { if (e.target !== d) return; const r = d.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close() });
   return d;
 }
-function showVerse(v){ const d = verseDialog(); $("#vr").textContent = v.ref + (v.version ? ` (${v.version})` : ""); $("#vx").textContent = v.text || "No text yet. Add it in Edit."; try { d.showModal() } catch (e) { d.setAttribute("open", "") } }
+function showVerse(v){ const d = verseDialog(); $("#vr").textContent = v.ref + (v.version ? ` (${v.version})` : ""); if (v.text) $("#vx").innerHTML = fmtVerse(v.text); else $("#vx").textContent = "No text yet. Add it in Edit."; try { d.showModal() } catch (e) { d.setAttribute("open", "") } }
 let bc = null; try { bc = new BroadcastChannel("talk-" + FOLDER) } catch (e) {}
 const relayURL = () => C.relay + "/" + D.relayTopic;
 function topBar(active){
@@ -432,21 +434,32 @@ async function edit(){
   addEventListener("resize", () => autoAll());
   let slideOpen = false;
   function openSlide(){ const dl = $("#sdlg"); if (!dl) return; slideOpen = true; if (!dl.open) try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } autoAll(); const f = findPt(D, sel.id); if (f) fixPos(f.p) }
+  // The verse box's bold/underline become **…** and __…__ in the saved text.
+  function verseText(el){ let out = "";
+    const walk = (n, b, u) => { for (const c of n.childNodes) {
+      if (c.nodeType === 3) { const t = c.nodeValue.replace(/\u200b/g, ""); if (!t) continue; out += (b ? "**" : "") + (u ? "__" : "") + t + (u ? "__" : "") + (b ? "**" : "") }
+      else if (c.nodeType === 1) { if (c.tagName === "BR") { out += "\n"; continue }
+        const cs = c.style || {}, nb = b || /^(B|STRONG)$/.test(c.tagName) || +cs.fontWeight >= 600 || cs.fontWeight === "bold", nu = u || c.tagName === "U" || /underline/.test(cs.textDecoration || "");
+        if (/^(DIV|P)$/.test(c.tagName) && out && !out.endsWith("\n")) out += "\n"; walk(c, nb, nu) } } };
+    walk(el, false, false); return out.replace(/\*\*\*\*|____/g, "").replace(/\n$/, "") }
   // Verse pop-up in Edit: change the reference, text and version, or remove it.
   function verseEdit(pid, i){
     const f = findPt(D, pid); if (!f) return; const isNew = i === "new", v = isNew ? {ref: "", text: "", version: "NIV"} : f.p.verses[+i];
     let d = $("#ved"); if (!d) { document.body.insertAdjacentHTML("beforeend", `<dialog class="verse ved" id="ved"><form method="dialog" class="ed">
-        <label>Reference<input id="ver" placeholder="e.g. John 15:5"></label><label>Text<textarea id="vet" class="auto" style="min-height:140px"></textarea></label>
+        <label>Reference<input id="ver" placeholder="e.g. John 15:5"></label><div class="ed-l"><span class="tag">Text</span><button type="button" class="btn small fmt" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" class="btn small fmt" data-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button><span class="note" style="font-size:12px">Select words, then Ctrl+B or Ctrl+U</span></div><div id="vet" class="vtext" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Verse text"></div>
         <div class="row"><label style="flex:0 1 140px">Version<input id="vev"></label><span style="flex:1"></span>
           <button class="btn small danger" type="button" id="vedel">Remove</button><button class="btn small" type="button" id="vecan">Cancel</button><button class="btn small pri" type="submit" id="vesave">Save</button></div></form></dialog>`); d = $("#ved");
-      $("#vecan").onclick = () => d.close(); $("#vet").addEventListener("input", e => autoSize(e.target)) }
-    $("#ver").value = v.ref || ""; $("#vet").value = v.text || ""; $("#vev").value = v.version || ""; $("#vedel").hidden = isNew; $("#vedel").textContent = "Remove"; delete $("#vedel").dataset.armed;
+      $("#vecan").onclick = () => d.close();
+      d.querySelectorAll(".fmt").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => { $("#vet").focus(); document.execCommand(b.dataset.cmd) } });
+      $("#vet").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak") } });
+      $("#vet").addEventListener("paste", e => { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")) }) }
+    $("#ver").value = v.ref || ""; $("#vet").innerHTML = fmtVerse(v.text).replace(/\n/g, "<br>"); $("#vev").value = v.version || ""; $("#vedel").hidden = isNew; $("#vedel").textContent = "Remove"; delete $("#vedel").dataset.armed;
     $("#vedel").onclick = () => { const b = $("#vedel"); if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = "Tap again to remove"; return } d.close(); op({t: "vdel", pid, i: +i}, true) };
-    d.querySelector("form").onsubmit = ev => { ev.preventDefault(); const nv = {ref: $("#ver").value.trim(), text: $("#vet").value, version: $("#vev").value.trim()}; d.close();
+    d.querySelector("form").onsubmit = ev => { ev.preventDefault(); const nv = {ref: $("#ver").value.trim(), text: verseText($("#vet")), version: $("#vev").value.trim()}; d.close();
       if (isNew) { if (!nv.ref && !nv.text) return; op({t: "vadd", pid}); i = f.p.verses.length - 1 }
       for (const k of ["ref", "text", "version"]) if (isNew || nv[k] !== (v[k] || "")) op({t: "vset", pid, i: +i, f: k, v: nv[k]});
       render() };
-    try { d.showModal() } catch (e) { d.setAttribute("open", "") } setTimeout(() => autoSize($("#vet")), 0); $(isNew ? "#ver" : "#vet").focus();
+    try { d.showModal() } catch (e) { d.setAttribute("open", "") } $(isNew ? "#ver" : "#vet").focus();
   }
   function render(){ nav(); pane() }
   let posOpen = false;
@@ -548,8 +561,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=15"><link rel="stylesheet" href="../common/countdown.css?v=15"><link rel="stylesheet" href="../common/gate.css?v=15"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=15"></script><script src="../common/countdown.js?v=15"></script><script src="../common/gate.js?v=15"></script><script src="../common/app.js?v=15"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=16"><link rel="stylesheet" href="../common/countdown.css?v=16"><link rel="stylesheet" href="../common/gate.css?v=16"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=16"></script><script src="../common/countdown.js?v=16"></script><script src="../common/gate.js?v=16"></script><script src="../common/app.js?v=16"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
