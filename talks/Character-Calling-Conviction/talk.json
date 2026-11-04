@@ -118,7 +118,8 @@
      "ttX": -5.6,
      "ttY": 22.7,
      "ttW": 72,
-     "sbAlign": "center"
+     "sbAlign": "center",
+     "ttAlign": "center"
     },
     {
      "id": "p1e",
