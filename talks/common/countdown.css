@@ -1,0 +1,15 @@
+.ctimer{display:flex;align-items:center;gap:12px;padding:6px 14px;font:700 14px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums;border-radius:8px}
+.ctimer[hidden]{display:none}
+.ctimer .ct-track{flex:1;height:12px;border-radius:6px;background:rgba(127,127,127,.25);overflow:hidden}
+.ctimer .ct-track i{display:block;height:100%;width:0;transition:width .5s linear,background .3s}
+.ctimer .ct-txt{white-space:nowrap;min-width:13em;text-align:right}
+.ctimer.idle .ct-txt{opacity:.7;font-weight:500}
+.ctimer.green .ct-track i{background:#2fa35a}
+.ctimer.amber .ct-track i{background:#e0a100}
+.ctimer.red .ct-track i,.ctimer.over .ct-track i{background:#d9363e}
+.ctimer.red .ct-txt{color:#d9363e}
+.ctimer.over{animation:ctflash 1s steps(1) infinite}
+@keyframes ctflash{0%{background:#d9363e;color:#fff}50%{background:transparent;color:#d9363e}}
+.ctimer.over .ct-track{background:rgba(255,255,255,.35)}
+@media (prefers-reduced-motion:reduce){.ctimer.over{animation:none;background:#d9363e;color:#fff}}
+@media (max-width:600px){.ctimer .ct-txt{min-width:0;font-size:13px}}
