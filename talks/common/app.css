@@ -174,7 +174,7 @@ dialog.sdlg .ed{max-width:none}
 #prev{user-select:none;-webkit-user-select:none}
 /* verse slides */
 .slide.verse-s{background:#0b1510}
-.slide .vs{position:absolute;inset:7% 9%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2.6cqw;text-align:center}
+.slide .vs{position:absolute;inset:5% 5.5%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2.6cqw;text-align:center}
 .slide .vt{color:#fff;font-family:Georgia,Cambria,serif;line-height:1.38;white-space:pre-line}
 .slide .vr{color:#E9B949;font:600 2.6cqw/1.2 Calibri,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .dots{margin-left:auto;display:flex;gap:3px;flex:0 0 auto}

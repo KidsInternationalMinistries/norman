@@ -96,6 +96,14 @@ function shownAt(p, sub){ const L = verseRefsIn(p); let k = sub; while (k > 0 &&
 const fmtVerse = t => E(t || "").replace(/\*\*([\s\S]+?)\*\*/g, "<b>$1</b>").replace(/__([\s\S]+?)__/g, "<u>$1</u>");
 function verseSlide(v){ const n = (v.text || "").replace(/\*\*|__/g, "").length, sz = n <= 110 ? 4.8 : n <= 220 ? 4 : n <= 360 ? 3.3 : n <= 520 ? 2.8 : 2.3;
   return `<div class="slide verse-s"><div class="vs"><div class="vt" style="font-size:${sz}cqw">${fmtVerse(v.text)}</div><div class="vr">${E(v.ref)}${v.version ? " (" + E(v.version) + ")" : ""}</div></div></div>` }
+// Fit each verse slide's text: the largest size that fills the slide, but never huge for a short verse.
+const fitRO = typeof ResizeObserver !== "undefined" ? new ResizeObserver(es => es.forEach(e => fitVerse(e.target))) : null;
+function fitVerse(sl){ const vs = sl.querySelector(".vs"), vt = sl.querySelector(".vt"), vr = sl.querySelector(".vr"); if (!vs || !vt) return;
+  const W = sl.clientWidth; if (!W) return; const avail = vs.clientHeight, gap = parseFloat(getComputedStyle(vs).rowGap) || 0;
+  let lo = W * .018, hi = W * .056;                     // between about 1.8% and 5.6% of the slide's width
+  for (let k = 0; k < 14; k++) { const mid = (lo + hi) / 2; vt.style.fontSize = mid + "px"; if (vt.offsetHeight + (vr ? vr.offsetHeight + gap : 0) <= avail && vt.scrollWidth <= vs.clientWidth + 1) lo = mid; else hi = mid }
+  vt.style.fontSize = lo + "px" }
+if (fitRO) new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; (n.matches(".verse-s") ? [n] : [...n.querySelectorAll(".verse-s")]).forEach(x => { fitRO.observe(x); fitVerse(x) }) }))).observe(document.documentElement, {childList: true, subtree: true});
 function stepHTML(S, i, sub, d){ const k = shownAt(S[i], sub); if (k > 0) { const v = verseRefsIn(S[i])[k - 1]; if (v && !v.main && !v.stop) return verseSlide(v) } return slideHTML(S, i, d) }
 // One dot per slide on a point (its own slide, then each verse / main-slide step; stops aren't slides); "on" marks the one showing.
 function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + verseRefsIn(p).filter(v => !v.stop).length; if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
@@ -595,8 +603,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=19"><link rel="stylesheet" href="../common/countdown.css?v=19"><link rel="stylesheet" href="../common/gate.css?v=19"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=19"></script><script src="../common/countdown.js?v=19"></script><script src="../common/gate.js?v=19"></script><script src="../common/app.js?v=19"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=20"><link rel="stylesheet" href="../common/countdown.css?v=20"><link rel="stylesheet" href="../common/gate.css?v=20"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=20"></script><script src="../common/countdown.js?v=20"></script><script src="../common/gate.js?v=20"></script><script src="../common/app.js?v=20"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
