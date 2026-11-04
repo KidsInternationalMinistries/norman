@@ -17,6 +17,19 @@
    "minutes": "5",
    "points": [
     {
+     "id": "pmw20axve9na",
+     "cue": "New point",
+     "eyebrow": "",
+     "slideTitle": "",
+     "slide": "",
+     "layout": "left",
+     "image": "",
+     "keyPoints": [],
+     "verses": [],
+     "script": "",
+     "scriptDraft": false
+    },
+    {
      "id": "p1a",
      "cue": "Joke",
      "eyebrow": "",
@@ -71,19 +84,6 @@
      "sbAlign": "center",
      "ttAlign": "center",
      "seconds": 11
-    },
-    {
-     "id": "pmw20axve9na",
-     "cue": "New point",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [],
-     "verses": [],
-     "script": "",
-     "scriptDraft": false
     },
     {
      "id": "p1f",
