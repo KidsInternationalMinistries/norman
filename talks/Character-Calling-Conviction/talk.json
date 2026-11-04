@@ -58,7 +58,13 @@
      "layout": "left",
      "image": "",
      "keyPoints": [],
-     "verses": [],
+     "verses": [
+      {
+       "ref": "John 15:?",
+       "text": "Apart from me you can do NOTHING.",
+       "version": "NIV"
+      }
+     ],
      "script": "",
      "scriptDraft": false
     },
