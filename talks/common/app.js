@@ -326,8 +326,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css"><link rel="stylesheet" href="../common/countdown.css"><link rel="stylesheet" href="../common/gate.css"></head>
-<body data-mode="${mode}"><script src="../common/config.js"></script><script src="../common/countdown.js"></script><script src="../common/gate.js"></script><script src="../common/app.js"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=2"><link rel="stylesheet" href="../common/countdown.css?v=2"><link rel="stylesheet" href="../common/gate.css?v=2"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=2"></script><script src="../common/countdown.js?v=2"></script><script src="../common/gate.js?v=2"></script><script src="../common/app.js?v=2"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
