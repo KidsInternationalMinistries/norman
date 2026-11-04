@@ -45,6 +45,11 @@ function steps(d){
   d.sections.forEach((s, si) => s.points.forEach((p, pi) => out.push({...p, label: (si + 1) + "." + letter(pi), sec: (si + 1) + ". " + (s.title || ""), sid: s.id})));
   return out;
 }
+// Each point's planned time (seconds) comes from a practice run or is typed in Edit; together they make the talk's length.
+const ptSecs = p => { const n = parseFloat(p && p.seconds); return n > 0 ? n : 0 };
+const talkSecs = d => d.sections.reduce((a, s) => a + s.points.reduce((b, p) => b + ptSecs(p), 0), 0);
+const mmss = s => { s = Math.round(Math.abs(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") };
+const parseTime = v => { v = String(v || "").trim(); if (!v) return ""; const m = v.match(/^(\d+):(\d{1,2})$/); if (m) return +m[1] * 60 + +m[2]; const n = parseFloat(v); return n >= 0 ? Math.round(n * 60) : "" };
 const hasSlide = p => !!(p && (p.image || p.slide || p.slideTitle || p.eyebrow));
 function heldIdx(S, i){ for (let k = i; k >= 0; k--) if (hasSlide(S[k])) return k; return -1 }
 const LOCALIMG = {};                                   // freshly uploaded images, shown before the site redeploys
@@ -147,11 +152,13 @@ async function present(){
   document.body.innerHTML = topBar("present") + `<div class="lay"><nav class="cues" id="nav"></nav><main class="pane" id="m"></main></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
-    <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
+    <div id="pace"></div><div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   let cur = 0; try { const v = +localStorage.getItem("pres-" + FOLDER); if (v >= 0 && v < S.length) cur = v } catch (e) {}
   const first = S.findIndex(s => s.id !== "cover");
   const TIMER = CountTimer($("#ct"), "pres-timer-" + FOLDER);
-  TIMER.setMinutes(timerMinutes(D, D.sections));
+  const setLen = () => { const l = ls("pres-practice-base-" + FOLDER); let x = 0; S.forEach(p => { x += l && l.times[p.id] != null ? l.times[p.id] : ptSecs(p) });
+    TIMER.setMinutes(x > 0 ? x / 60 : timerMinutes(D, D.sections)) };
+  setLen();
   function nav(){ let h = "", last = null;
     S.forEach((s, i) => { if (s.sec !== last) { last = s.sec; if (s.sec) h += `<div class="sec">${E(s.sec)}</div>` }
       h += `<button type="button" class="it${i === cur ? " cur" : ""}" data-i="${i}"><i>${E(s.label)}</i><span>${E(s.cue)}</span>${hasSlide(s) ? '<span class="d"></span>' : ""}</button>` });
@@ -170,7 +177,43 @@ async function present(){
     try { const r = await fetch(relayURL(), {method: "POST", body: JSON.stringify(m)}); setSync(r.ok, r.ok ? "Monitors following" : "Sync failed (" + r.status + ")") }
     catch (e) { setSync(false, "Offline: only the slides window follows") } }
   const locked = () => !!$("#gate");
-  function go(i){ if (locked()) return; cur = Math.max(0, Math.min(S.length - 1, i)); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
+  function go(i){ if (locked()) return; const was = cur; cur = Math.max(0, Math.min(S.length - 1, i)); if (cur !== was) moved(was); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
+
+  // ---- Practice: time each point; later, compare the real talk against it ----
+  // A practice run writes each point's time into its "seconds" in talk.json (or keeps {date, times} on this computer if it can't reach GitHub).
+  var PRUN = "pres-practice-" + FOLDER, PBASE = "pres-practice-base-" + FOLDER, PARR = "pres-arrive-" + FOLDER;
+  function ls(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)) } catch (e) { return null } }
+  let run = ls(PRUN), arrive = ls(PARR) || Date.now(), pmsg = "";
+  const planned = p => { const l = ls(PBASE); return l && l.times[p.id] != null ? l.times[p.id] : ptSecs(p) };
+  const hasPlan = () => S.some(p => planned(p) > 0);
+  function moved(was){ const now = Date.now();
+    if (run && was > first) { const id = S[was].id; run.times[id] = Math.round(((run.times[id] || 0) + (now - arrive) / 1000) * 10) / 10 }
+    arrive = now; ls(PARR, arrive); pmsg = "";
+    if (run) { if (cur <= first && was > first) return finish(); ls(PRUN, run) } }
+  async function finish(){
+    if (cur > first) { const id = S[cur].id; run.times[id] = Math.round(((run.times[id] || 0) + (Date.now() - arrive) / 1000) * 10) / 10; arrive = Date.now() }
+    const times = run.times, total = Math.round(Object.values(times).reduce((a, b) => a + b, 0)); run = null; ls(PRUN, null);
+    if (total < 30) { pmsg = "Practice too short to keep"; return pace() }
+    const rec = {date: new Date().toISOString(), total, times}, apply = d => { d.sections.forEach(s => s.points.forEach(p => { if (times[p.id] != null) p.seconds = Math.round(times[p.id]) })); d.lastPractice = {date: rec.date, total} };
+    apply(D); S.forEach(x => { if (times[x.id] != null) x.seconds = Math.round(times[x.id]) }); setLen(); pmsg = "Saving practice (" + mmss(total) + ")…"; pace();
+    if (!token()) { ls(PBASE, rec); setLen(); pmsg = "Practice saved on this computer (" + mmss(total) + "). Open Edit once to connect GitHub and it will save to the site."; return pace() }
+    for (let k = 0; k < 4; k++) { try { const g = await GH.get(PATH + "/talk.json"), d = JSON.parse(g.text); apply(d);
+        await GH.put(PATH + "/talk.json", b64e(JSON.stringify(d, null, 2) + "\n"), g.sha, "Practice run for " + (d.title || FOLDER)); ls(PBASE, null); setLen();
+        pmsg = "Practice saved (" + mmss(total) + "). The real talk will compare against it."; return pace() }
+      catch (e) { if (e.status !== 409 && e.status !== 422) break } }
+    ls(PBASE, rec); setLen(); pmsg = "Couldn't reach GitHub; practice saved on this computer (" + mmss(total) + ")."; pace() }
+  function pace(){ const el = $("#pace"); if (!el) return; const b = hasPlan(), atStart = cur <= first;
+    let h = `<label class="pchk${!run && !atStart ? " off" : ""}" title="${run ? "Uncheck, or go back to 1.a, to finish and save" : atStart ? "Time each point while you practice" : "Go to the first point to start a practice"}"><input type="checkbox" id="pchk"${run ? " checked" : ""}${!run && !atStart ? " disabled" : ""}> Practice</label>`;
+    if (run) h += `<span class="pst rec">● Practicing${cur > first ? " · " + mmss((Date.now() - arrive) / 1000) + " on this point" + (planned(S[cur]) ? " (last time " + mmss(planned(S[cur])) + ")" : "") : " · starts at 1.b"}</span>`;
+    else if (pmsg) h += `<span class="pst">${E(pmsg)}</span>`;
+    else if (b && !atStart && TIMER.elapsed() != null) { let exp = 0; for (let j = first + 1; j < cur; j++) exp += planned(S[j]);
+      exp += Math.min((Date.now() - arrive) / 1000, planned(S[cur])); const dl = TIMER.elapsed() - exp;
+      h += Math.abs(dl) < 15 ? `<span class="pst even">On pace with practice</span>` : dl > 0 ? `<span class="pst slow">${mmss(dl)} behind · speed up</span>` : `<span class="pst fast">${mmss(dl)} ahead · slow down</span>` }
+    else if (b && atStart) h += `<span class="pst">Planned ${mmss(S.reduce((a, p) => a + planned(p), 0))}${D.lastPractice ? " · practiced " + new Date(D.lastPractice.date).toLocaleDateString() : ""}</span>`;
+    if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h } }
+  document.addEventListener("change", e => { if (e.target.id !== "pchk") return;
+    if (e.target.checked) { if (cur > first) { e.target.checked = false; return } run = {times: {}}; pmsg = ""; ls(PRUN, run); pace() } else if (run) finish() });
+  setInterval(pace, 500);
   $("#b").onclick = () => go(cur - 1); $("#n").onclick = () => go(cur + 1);
   $("#nav").onclick = e => { const b = e.target.closest("[data-i]"); if (b) go(+b.dataset.i) };
   $("#m").onclick = e => { const b = e.target.closest("[data-v]"); if (b) showVerse(S[cur].verses[+b.dataset.v]) };
@@ -261,7 +304,8 @@ async function edit(){
         <label>Talk title<input data-t="talk" data-f="title" value="${E(D.title)}"></label>
         <div class="row"><label style="flex:2 1 240px">Audience<input data-t="talk" data-f="audience" value="${E(D.audience)}"></label>
           <label>Length<input data-t="talk" data-f="length" value="${E(D.length)}"></label><label>Date / event<input data-t="talk" data-f="event" value="${E(D.event)}"></label></div>
-        <label style="max-width:320px">Countdown timer (minutes)<input data-t="talk" data-f="timerMinutes" value="${E(D.timerMinutes)}" inputmode="numeric"></label>
+        ${talkSecs(D) ? `<p class="note"><b>Talk length: ${mmss(talkSecs(D))}</b>, the total of the times on each point${D.lastPractice ? ` (last practice ${new Date(D.lastPractice.date).toLocaleDateString()})` : ""}. Practice on Stage to set them, or type them on each point.</p>` : `<p class="note">No point times yet. Tick <b>Practice</b> on Stage at 1.a and run through the talk, or type a time on each point.</p>`}
+        <label style="max-width:320px">Countdown if no point times (minutes)<input data-t="talk" data-f="timerMinutes" value="${E(D.timerMinutes)}" inputmode="numeric"></label>
         <p class="note">In Stage the timer resets on 1.a and starts when you move to 1.b.</p>
         <label>Big idea<textarea data-t="talk" data-f="bigIdea">${E(D.bigIdea)}</textarea></label>`;
     } else if (sel.k === "sec") {
@@ -276,7 +320,8 @@ async function edit(){
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
       e += `<h2><span>${E(lb)}</span>${E(p.cue || "(no cue)")}</h2>${verseTags(p)}
-        <label>Cue (your memory phrase)<input data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}"></label>
+        <div class="row"><label style="flex:3 1 260px">Cue (your memory phrase)<input data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}"></label>
+          <label style="flex:0 1 150px">Time (m:ss)<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
         <div class="slideed"><span class="tag">Slide (leave all of it empty for no new slide at this point)</span>
         <div class="prev" id="prev">${prevHTML(p)}</div>
         <div class="row"><label style="flex:1 1 200px">Small line on top (optional)<input data-t="pt" data-id="${E(p.id)}" data-f="eyebrow" value="${E(p.eyebrow)}" placeholder="e.g. Conference theme"></label>
@@ -377,6 +422,7 @@ async function edit(){
     if (t === "talk") op({t: "talk", f: el.dataset.f, v: el.dataset.f === "timerMinutes" ? v.trim() : v});
     else if (t === "sec") op({t: "sec", sid: el.dataset.id, f: el.dataset.f, v: el.dataset.f === "minutes" ? v.trim() : v});
     else if (t === "pt") { if (el.dataset.f === "keyPoints") v = v.split("\n").map(x => x.trim()).filter(Boolean); if (POSF.includes(el.dataset.f) && el.type === "range") v = +v;
+      if (el.dataset.f === "seconds") { v = parseTime(v); el.value = v ? mmss(v) : "" }
       if (isLXYW(el.dataset.f)) { const f0 = findPt(D, el.dataset.id); if (f0 && !elPos(f0.p, el.dataset.f.slice(0, 2))) { const ad = missing(f0.p, el.dataset.f.slice(0, 2)); delete ad[el.dataset.f]; for (const [a, x] of Object.entries(ad)) op({t: "pt", pid: el.dataset.id, f: a, v: x}) } }
       op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
       if (el.dataset.f === "script") { const d = el.parentElement.querySelector(".draft"); if (d) d.remove() }
@@ -395,8 +441,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=5"><link rel="stylesheet" href="../common/countdown.css?v=5"><link rel="stylesheet" href="../common/gate.css?v=5"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=5"></script><script src="../common/countdown.js?v=5"></script><script src="../common/gate.js?v=5"></script><script src="../common/app.js?v=5"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=7"><link rel="stylesheet" href="../common/countdown.css?v=7"><link rel="stylesheet" href="../common/gate.css?v=7"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=7"></script><script src="../common/countdown.js?v=7"></script><script src="../common/gate.js?v=7"></script><script src="../common/app.js?v=7"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

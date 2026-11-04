@@ -137,3 +137,14 @@ details.pos[open]{display:grid;gap:10px}
 .ed input[type=range]{padding:0;border:0;background:none;accent-color:var(--accent)}
 .slide .eb,.slide .tt,.slide .sb{white-space:pre-line}
 .ed label.clr{flex:0 0 70px}.ed input[type=color]{padding:2px;height:40px;width:60px;cursor:pointer}
+/* Practice / pace, top center on Stage */
+#pace{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:7;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.08);max-width:calc(100vw - 32px)}
+#pace:empty{display:none}
+#pace .pchk{display:flex;gap:6px;align-items:center;font-weight:700;cursor:pointer;white-space:nowrap}
+#pace .pchk.off{opacity:.45;cursor:default}
+#pace .pst{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+#pace .rec{color:var(--danger);font-weight:700}
+#pace .slow{color:#fff;background:#c0392b;border-radius:999px;padding:2px 12px;font-weight:800;font-size:18px}
+#pace .fast{color:#fff;background:#1e8e4e;border-radius:999px;padding:2px 12px;font-weight:800;font-size:18px}
+#pace .even{color:var(--ok);font-weight:700}
+@media (max-width:820px){#pace{position:sticky;top:auto;left:auto;transform:none;margin:8px auto 0;width:max-content}}

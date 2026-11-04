@@ -13,6 +13,7 @@ function CountTimer(root,key){
       :p>=1?"+"+fmt(e-T)+" over · "+fmt(e)+" of "+fmt(T):fmt(T-e)+" left · "+fmt(e)+" of "+fmt(T)}
   setInterval(draw,500);
   return {setMinutes(m){mins=+m||0;draw()},
+    elapsed(){return st.start?(Date.now()-st.start)/1000:null},
     // atStart: true on 1.a (or anything before it): reset and wait. Otherwise start if not running.
     at(atStart){if(atStart){if(st.start!==null){st.start=null;save()}}else if(!st.start){st.start=Date.now();save()}draw()}};
 }
