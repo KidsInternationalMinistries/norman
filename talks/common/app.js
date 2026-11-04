@@ -362,14 +362,19 @@ async function edit(){
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
       if (p.id !== curPid) { curPid = p.id; esub = nextSub || 0; nextSub = 0; atEnd = false; arrive = Date.now() }
       const vt = (p.verses || []).map((v, vi) => v && v.ref ? `<button type="button" data-ve="${vi}">${E(v.ref)}</button>` : "").join("");
-      e += `<div class="cuerow"><span class="lbl">${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue">
-          <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
-        <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div>
-        <div class="ptgrid"><div class="kpl"><div class="ed-l"><span class="tag">Key points</span><span class="note" style="font-size:12px">One per line · type / for a tag</span></div><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="keyPoints" role="textbox" aria-multiline="true" aria-label="Key points">${richHTML(p, (p.keyPoints || []).join("\n"))}</div></div>
-          <div class="picside"><div class="prev small" id="prevs">${smallHTML(p)}</div><div class="pcap" id="pcap">${capHTML(p)}</div>
+      e = `<div class="ed stagev"><div class="sech">${E(L[i].sec || "")}</div>
+        <div class="head"><div class="hc"><span>${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue"></div>
+          <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label>
+          <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div></div>
+        <div class="grid"><div class="lcol">
+          <div class="rich kp" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="keyPoints" role="textbox" aria-multiline="true" aria-label="Key points" data-ph="Key points, one per line. Type / for a tag.">${richHTML(p, (p.keyPoints || []).join("\n"))}</div>
+          <div class="fulltext"><div class="rule"><span class="tag">Full text</span>${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / for a verse, stop or main-slide tag</span></div>
+          <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say" data-ph="What I'll say">${richHTML(p)}</div></div>
+        <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
+          <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
+          <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div></div>
+          <div class="scr-wrap"><div class="prev small" id="prevs">${smallHTML(p)}</div><div class="pcap" id="pcap">${capHTML(p)}</div>
             <div class="stepbar"><button type="button" class="btn small" data-act="eprev" title="Back (Page Up)">&larr; Back</button><button type="button" class="btn small pri" data-act="enext" title="Next (Page Down)">Next &rarr;</button></div></div></div>
-        <div class="ed-l"><span class="tag">What I'll say</span> ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / for a verse, stop or main-slide tag</span></div>
-        <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say">${richHTML(p)}</div>
         <dialog class="sdlg" id="sdlg"><div class="ed"><div class="pgh"><b>Slide for ${E(lb)}</b><button type="button" class="btn small pri" data-act="sdone">Done</button></div>
         <div class="prev" id="prev">${prevHTML(p)}</div>
         <div class="slideed" id="slideed">
@@ -380,12 +385,9 @@ async function edit(){
         ${posHTML(p)}
         <div class="row"><span class="tag">Picture (no words in it; the text goes on top)</span>${p.image ? `<button class="btn small" type="button" data-act="imgdel" data-id="${E(p.id)}">Remove image</button>` : ""}
           <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${p.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(p.id)}" hidden></label><span class="note" id="imgmsg"></span></div>
-        <p class="note">Leave the text and picture empty for no new slide at this point.</p></div></div></dialog>
-        <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
-          <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
-        <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div>`;
+        <p class="note">Leave the text and picture empty for no new slide at this point.</p></div></div></dialog>`;
     }
-    $("#m").innerHTML = e + `</div>`; autoAll(); hlStep();
+    $("#m").innerHTML = e + `</div>`; autoAll(); const tb0 = $(".top"), hd0 = $("#m .head"); document.body.style.setProperty("--stk", ((tb0 ? tb0.offsetHeight : 0) + (hd0 ? hd0.offsetHeight : 0) + 12) + "px"); hlStep();
     const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; const ps = $("#prevs"), f = findPt(D, sel.id); if (ps && f) { ps.innerHTML = smallHTML(f.p); $("#pcap").innerHTML = capHTML(f.p) } }); if (slideOpen) openSlide() }
   }
   // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
@@ -443,7 +445,8 @@ async function edit(){
     if (hasSlide(p)) return `<button type="button" class="linkbtn" data-act="sedit">Edit slide</button>`;
     const k = heldIdx(L, i); return (k >= 0 ? "Slide from " + E(L[k].label) + " stays up" : "No slide yet") + ` · <button type="button" class="linkbtn" data-act="sedit">Add a slide here</button>` }
   function hlStep(){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (!esub || atEnd) return;
-    const c = document.querySelectorAll("#m .rich .vchip")[esub - 1]; if (c) { c.classList.add("on"); c.scrollIntoView({block: "center", behavior: "smooth"}) } }
+    const c = document.querySelectorAll("#m .rich .vchip")[esub - 1]; if (c) { c.classList.add("on"); const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16;
+      window.scrollTo({top: Math.max(0, c.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) } }
   function updStep(){ const f = findPt(D, sel.id); if (!f) return; const ps = $("#prevs"), pc = $("#pcap"); if (ps) ps.innerHTML = smallHTML(f.p); if (pc) pc.innerHTML = capHTML(f.p); hlStep() }
   function record(p, i){ if (i <= 0) return; const t = Math.max(1, Math.round((Date.now() - arrive) / 1000)); op({t: "pt", pid: p.id, f: "seconds", v: t});
     op({t: "talk", f: "lastPractice", v: {date: new Date().toISOString(), total: talkSecs(D)}}); lastRec = S()[i].label + " " + mmss(t) }
@@ -592,8 +595,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=17"><link rel="stylesheet" href="../common/countdown.css?v=17"><link rel="stylesheet" href="../common/gate.css?v=17"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=17"></script><script src="../common/countdown.js?v=17"></script><script src="../common/gate.js?v=17"></script><script src="../common/app.js?v=17"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=18"><link rel="stylesheet" href="../common/countdown.css?v=18"><link rel="stylesheet" href="../common/gate.css?v=18"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=18"></script><script src="../common/countdown.js?v=18"></script><script src="../common/gate.js?v=18"></script><script src="../common/app.js?v=18"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

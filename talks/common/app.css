@@ -220,3 +220,24 @@ body[data-mode="present"] .scr-wrap{position:sticky;top:var(--stk,140px);align-s
 #eprac{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
 #eprac.rec{color:var(--danger);font-weight:700}
 .rich .vchip.on{background:var(--accent);color:#fff}
+/* Edit uses the Stage layout */
+body[data-mode="edit"] .ed.stagev{max-width:none;display:block}
+body[data-mode="edit"] .stagev .head{position:sticky;top:57px;z-index:4;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 6px 10px -8px rgba(0,0,0,.25)}
+.stagev .head .hc{flex:1 1 300px;display:flex;align-items:center;gap:10px;min-width:0}
+.stagev .head .hc span{font-weight:400;opacity:.75;font-size:20px}
+.ed .stagev .head .cuein,.ed.stagev .head .cuein{flex:1;min-width:0;background:transparent;border:1px dashed transparent;color:inherit;font-size:28px;font-weight:800;padding:2px 6px;line-height:1.2}
+.ed.stagev .head .cuein:hover,.ed.stagev .head .cuein:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.35)}
+.ed.stagev .head .tm{display:flex;flex-direction:row;align-items:center;gap:6px;color:inherit;opacity:.85}
+.ed.stagev .head .tm input{width:76px;background:rgba(255,255,255,.5);padding:4px 8px}
+.ed.stagev .head .vtags{margin:0;justify-content:flex-end}
+.ed.stagev .head .vtags button{font-size:15px;padding:4px 13px}
+body[data-mode="edit"] .stagev .scr-wrap{position:sticky;top:var(--stk,150px);align-self:start;display:grid;gap:6px}
+.ed.stagev .lcol{display:grid;gap:14px;align-content:start;padding-bottom:40vh}
+.ed.stagev .rich{border-color:transparent;background:transparent}
+.ed.stagev .rich:hover{border-color:var(--line)}
+.ed.stagev .rich:focus{border-color:var(--accent);background:var(--surface)}
+.ed.stagev .rich.kp{font-size:20px;line-height:1.5;background:color-mix(in srgb,var(--cue) 25%,transparent)}
+.ed.stagev .rich.big{font-size:21px;line-height:1.6}
+.ed.stagev .rich:empty::before{content:attr(data-ph);color:var(--muted)}
+.ed.stagev .fulltext{margin-top:0}
+@media (max-width:820px){body[data-mode="edit"] .stagev .scr-wrap{position:static;order:-1}}
