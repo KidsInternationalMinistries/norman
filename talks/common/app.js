@@ -89,10 +89,12 @@ const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true}, STOP = "Stop", STO
 function tagOf(p, t){ t = t.trim(); const l = t.toLowerCase(); if (l === MAIN.toLowerCase()) return MAINTAG; if (l === STOP.toLowerCase()) return STOPTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || (p.slides || []).find(x => x && x.name && x.name.trim() === t) || null }
 // Extra slides on a point (p.slides): {name, type: "image" | "plain", eyebrow, slideTitle, slide, layout, image, placement…}. The tag is [name].
 // More types can be added here: give each a name, whether it has a picture, and how it draws.
-const SLIDE_TYPES = {image: "Image", plain: "Plain", bullets: "Bullets", bulletsimg: "Bullets on image"};
+const SLIDE_TYPES = {image: "Image", plain: "Plain", bullets: "Bullets", bulletsimg: "Bullets on image", quote: "Quote"};
 const hasPic = t => t === "image" || t === "bulletsimg", isBul = t => t === "bullets" || t === "bulletsimg";
 const isXS = v => !!(v && SLIDE_TYPES[v.type]);
-function xsHTML(v){ if (isBul(v.type)) return bulletsHTML(v); return v.type === "plain" ? slideBox({...v, image: ""}, " plain") : slideBox(v) }
+function xsHTML(v){ if (v.type === "quote") return quoteHTML(v); if (isBul(v.type)) return bulletsHTML(v); return v.type === "plain" ? slideBox({...v, image: ""}, " plain") : slideBox(v) }
+// A quote: large words (fitted like a verse) and who said it.
+function quoteHTML(v){ return `<div class="slide verse-s quote"><div class="vs"><div class="vt">${(v.quote || "").trim() ? "“" + fmtVerse(v.quote.trim()) + "”" : ""}</div>${(v.by || "").trim() ? `<div class="vr">— ${E(v.by.trim())}</div>` : ""}</div></div>` }
 // A typical PowerPoint slide: a title at the top and bullet points (one per line), on a plain background or on a picture.
 function bulletsHTML(v){ const L = (v.bullets || "").split("\n").map(x => x.trim()).filter(Boolean), n = L.length, pic = v.type === "bulletsimg" && v.image;
   const bs = (n <= 3 ? 3.8 : n <= 5 ? 3.3 : n <= 7 ? 2.8 : 2.3) * num(v.blSize, 100) / 100, ts = 5.2 * num(v.ttSize, 100) / 100;
@@ -100,7 +102,18 @@ function bulletsHTML(v){ const L = (v.bullets || "").split("\n").map(x => x.trim
   return `<div class="slide bul${pic ? " pic" : " plain"}">${pic ? imgTag(v.image) + '<div class="scrim"></div>' : ""}<div class="bx">${(v.slideTitle || "").trim() ? `<div class="bt" style="font-size:${ts.toFixed(2)}cqw${tc}">${E(v.slideTitle.trim())}</div>` : ""}${n ? `<ul class="bl" style="font-size:${bs.toFixed(2)}cqw${bc}">${L.map(x => `<li>${E(x)}</li>`).join("")}</ul>` : ""}</div></div>` }
 // The slide a tag shows: its verse, its extra slide, or the point's own slide.
 function tagHTML(S, i, v, d){ if (!v || v.main || v.stop) return slideHTML(S, i, d); return isXS(v) ? xsHTML(v) : verseSlide(v) }
-const tagSources = p => [...(p.keyPoints || [])];      // only key-point tags change slides; full-text tags are reference only
+// A point's talk is a list of key points, each with the words to say for it: p.beats = [{kp, text}].
+// (Older points only have keyPoints[] and script; they read as an opening card with all the text, then the key points.)
+// keyPoints and script are kept as copies (key points in order, texts joined) for older readers and the Past Talks export.
+function beatsOf(p){ if (Array.isArray(p.beats)) return p.beats; const B = []; if ((p.script || "").trim()) B.push({kp: "", text: p.script}); (p.keyPoints || []).forEach(kp => B.push({kp, text: ""})); return B }
+function syncBeats(p){ const B = p.beats || []; p.keyPoints = B.map(b => (b.kp || "").trim()).filter(Boolean); p.script = B.map(b => (b.text || "").trim()).filter(Boolean).join("\n\n") }
+const tagSources = p => beatsOf(p).map(b => b.kp || "").filter(x => x.trim());      // only key-point tags change slides; full-text tags are reference only
+// Next steps through the key points; each tag in a key point is one more step (a key point that starts with a tag shows it on arrival).
+function stepsOf(p){ const out = []; let k = 0;
+  beatsOf(p).forEach((b, j) => { const x = (b.kp || "").trim(); if (!x && !(b.text || "").trim()) return;
+    const tags = [...x.matchAll(TAG)].filter(m => tagOf(p, m[1])), lead = tags.length && x.startsWith(tags[0][0]);
+    out.push({b: j, sub: lead ? ++k : k}); tags.slice(lead ? 1 : 0).forEach(() => out.push({b: j, sub: ++k})) });
+  if (!out.length) out.push({b: 0, sub: 0}); return out }
 function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tagSources(p)) for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v) out.push(v) } return out }
 const subCount = p => verseRefsIn(p).length;
 // Which step's slide is showing at step sub (a Stop keeps the slide before it).
@@ -129,6 +142,10 @@ function taggedHTML(t, p, st){ let h = "", last = 0;
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue;
     st.k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${tagCls(v)}${st.k === st.sub ? " on" : ""}" data-sub="${st.k}" data-ref="${E(tagName(v))}">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
   return h + E(t.slice(last)) }
+function kpList(p, bt, st){ let h = "";
+  beatsOf(p).forEach((b, j) => { const x = (b.kp || "").trim(); if (!x && !(b.text || "").trim()) return;
+    h += `<li data-b="${j}" class="${/^(🔑|🔁)/u.test(x) ? "key" : ""}${j === bt ? " cur" : ""}${x ? "" : " intro"}">${x ? taggedHTML(x, p, st) : "Opening words"}</li>` });
+  return h ? `<ul class="kp kpl">${h}</ul>` : "" }
 function kpTagged(p, st){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map(x => `<li${/^(🔑|🔁)/u.test(x) ? ' class="key"' : ""}>${taggedHTML(x, p, st)}</li>`).join("")}</ul>` : "" }
 function scriptHTML(p){ const t = p.script || ""; let h = "", last = 0;      // tags here don't step slides; clicking one shows it for a moment
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag ref${tagCls(v)}" data-ref="${E(tagName(v))}" title="Click to show this slide. Next or Back goes back">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
@@ -219,7 +236,10 @@ async function present(){
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div id="pace"></div><div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
-  let cur = 0, sub = 0, peek = null; try { const v = +localStorage.getItem("pres-" + FOLDER); if (v >= 0 && v < S.length) cur = v; const w = +localStorage.getItem("pres-sub-" + FOLDER); if (w > 0 && w <= subCount(S[cur])) sub = w } catch (e) {}
+  let cur = 0, sub = 0, pos = 0, bt = 0, peek = null; try { const v = +localStorage.getItem("pres-" + FOLDER); if (v >= 0 && v < S.length) cur = v; const w = +localStorage.getItem("pres-pos-" + FOLDER); if (w > 0 && w < stepsOf(S[cur]).length) pos = w } catch (e) {}
+  // pos = which step of this point (see stepsOf); bt = its key point, sub = how many of its tags have shown (picks the slide).
+  const setPos = k => { const L = stepsOf(S[cur]); pos = Math.max(0, Math.min(L.length - 1, k)); bt = L[pos].b; sub = L[pos].sub };
+  setPos(pos);
   const first = S.findIndex(s => s.id !== "cover");
   const TIMER = CountTimer($("#ct"), "pres-timer-" + FOLDER);
   const setLen = () => { const l = ls("pres-practice-base-" + FOLDER); let x = 0; S.forEach(p => { x += l && l.times[p.id] != null ? l.times[p.id] : ptSecs(p) });
@@ -231,13 +251,16 @@ async function present(){
     const n = $("#nav"); n.innerHTML = h; const c = n.querySelector(".cur"); if (c) { const top = c.offsetTop - n.clientHeight / 2; n.scrollTo({top, behavior: "smooth"}) } }
   function main(){ if (atEnd) { $("#m").innerHTML = `<div class="head">End of the talk</div><div class="grid"><div><p class="note">The last point is timed. Untick Practice when you're done, or press Back.</p></div><div class="scr-wrap"><div class="scr"><div class="slide blank"></div></div><div class="cap">Blank slide</div></div></div>`; $("#pos").textContent = "End"; return }
     const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
-    const st = {k: 0, sub};
+    const st = {k: 0, sub}, B = beatsOf(s), anyText = B.some(x => (x.text || "").trim());
+    const kl = kpList(s, bt, st), nxt = nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>';
     $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head"><div class="hc">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}</div>
-      <div class="grid"><div>${kpTagged(s, st) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}
-      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${scriptHTML(s)}</p></div>` : ""}
-      ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}</div>
+      <div class="grid g3${anyText ? "" : " notext"}"><div class="kcol">${kl || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}${anyText ? "" : nxt}</div>
+      ${anyText ? `<div class="tcol">${s.scriptDraft ? '<div class="rule"><span class="draft">Draft</span></div>' : ""}${B.map((x, j) => (x.text || "").trim() ? `<section class="beat${j === bt ? " cur" : ""}" data-b="${j}">${(x.kp || "").trim() ? `<div class="bk">${E(x.kp.replace(TAG, "$1").trim())}</div>` : ""}<p class="script">${scriptHTML({...s, script: x.text})}</p></section>` : "").join("")}${nxt}</div>` : ""}
       <div class="scr-wrap"><div class="scr">${scrHTML()}</div><div class="cap">${capTxt()}</div></div></div>`;
     $("#pos").textContent = (cur + 1) + " of " + S.length; markPk(); requestAnimationFrame(toStep) }
+  // Move within the point without redrawing it all (keeps the slide column and scroll smooth).
+  function setStep(k){ if (locked()) return; peek = null; setPos(k); document.querySelectorAll("#m [data-b]").forEach(e => e.classList.toggle("cur", +e.dataset.b === bt));
+    document.querySelectorAll("#m .kpl .vtag").forEach(e => e.classList.toggle("on", +e.dataset.sub === sub && sub > 0)); updScr(); nav(); push(); requestAnimationFrame(toStep) }
   // Clicking a tag shows its slide for a moment (a "peek"); Next or Back goes back to where you were.
   const scrHTML = () => peek ? tagHTML(S, cur, tagOf(S[cur], peek), D) : stepHTML(S, cur, sub, D);
   function capTxt(){ const s = S[cur], k = heldIdx(S, cur); if (peek) { const v = tagOf(s, peek); return "Showing " + E(v ? tagLabel(v) : peek) + " · Next or Back goes back" }
@@ -245,23 +268,25 @@ async function present(){
   function markPk(){ document.querySelectorAll("#m [data-ref]").forEach(b => b.classList.toggle("pk", !!peek && b.dataset.ref === peek)) }
   function updScr(){ const sc = $("#m .scr"), cp = $("#m .cap"); if (!sc || atEnd) return main(); sc.innerHTML = scrHTML(); cp.innerHTML = capTxt(); markPk() }
   // Keep the step you're on at the top, just under the sticky header (the page has room below to allow it).
-  function toStep(){ const tb0 = $(".top"), hd0 = $("#m .head"); document.body.style.setProperty("--stk", ((tb0 ? tb0.offsetHeight : 0) + (hd0 ? hd0.offsetHeight : 0) + 12) + "px"); if (!sub) { window.scrollTo({top: 0}); return } const el = $(`#m [data-sub="${sub}"]`), hd = $("#m .head"), tb = $(".top"); if (!el) return;
-    const off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16, line = el.closest("li") || el;
-    const y = el.getBoundingClientRect().top + scrollY - off - (line !== el ? 0 : 8); window.scrollTo({top: Math.max(0, y), behavior: "smooth"}) }
+  // Next keeps the key point you're on near the top of its list, and its words at the top of the page (there's room below to allow it).
+  function toStep(){ const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0); document.body.style.setProperty("--stk", (off + 12) + "px");
+    const g = $("#m .grid"), li = $(`#m .kpl li[data-b="${bt}"]`), sec = $(`#m .beat[data-b="${bt}"]`);
+    if (!g || g.classList.contains("notext")) { if (!pos || !li) { window.scrollTo({top: 0, behavior: "smooth"}); return } window.scrollTo({top: Math.max(0, li.getBoundingClientRect().top + scrollY - off - 16), behavior: "smooth"}); return }
+    const kc = li && li.closest(".kcol"); if (kc) kc.scrollTo({top: Math.max(0, li.offsetTop - 12), behavior: "smooth"});
+    if (!pos) { window.scrollTo({top: 0, behavior: "smooth"}); return } if (sec) window.scrollTo({top: Math.max(0, sec.getBoundingClientRect().top + scrollY - off - 16), behavior: "smooth"}) }
   const syncEl = $("#sync"), setSync = (ok, msg) => { syncEl.className = ok ? "ok" : "bad"; syncEl.lastChild.textContent = msg };
   async function push(){ const m = {point: atEnd ? "__end" : S[cur].id, sub, at: Date.now()}; if (peek && !atEnd) m.pk = peek;
-    try { localStorage.setItem("pres-" + FOLDER, cur); localStorage.setItem("pres-sub-" + FOLDER, sub) } catch (e) {}
+    try { localStorage.setItem("pres-" + FOLDER, cur); localStorage.setItem("pres-pos-" + FOLDER, pos) } catch (e) {}
     if (bc) try { bc.postMessage(m) } catch (e) {}
     try { const r = await fetch(relayURL(), {method: "POST", body: JSON.stringify(m)}); setSync(r.ok, r.ok ? "Monitors following" : "Sync failed (" + r.status + ")") }
     catch (e) { setSync(false, "Offline: only the slides window follows") } }
   const locked = () => !!$("#gate");
-  function go(i, s){ if (locked()) return; const was = cur; atEnd = false; peek = null; cur = Math.max(0, Math.min(S.length - 1, i)); sub = s || 0; if (cur !== was) moved(was); if (!sub) window.scrollTo(0, 0); main(); nav(); push(); TIMER.at(cur <= first) }
-  function setSub(k){ if (locked()) return; peek = null; sub = Math.max(0, Math.min(subCount(S[cur]), k)); main(); nav(); push() }
+  function go(i, s){ if (locked()) return; const was = cur; atEnd = false; peek = null; cur = Math.max(0, Math.min(S.length - 1, i)); setPos(s === "last" ? 1e9 : 0); if (cur !== was) moved(was); if (!pos) window.scrollTo(0, 0); main(); nav(); push(); TIMER.at(cur <= first) }
   // Next (button, arrow or clicker) is the only thing that records a practice time; jumping in the list does not.
-  function next(){ if (locked() || atEnd) return; if (peek) { peek = null; updScr(); push(); return } if (sub < subCount(S[cur])) return setSub(sub + 1);
+  function next(){ if (locked() || atEnd) return; if (peek) { peek = null; updScr(); push(); return } if (pos < stepsOf(S[cur]).length - 1) return setStep(pos + 1);
     if (run) record(); if (cur < S.length - 1) return go(cur + 1);
     if (run) { atEnd = true; main(); nav(); push() } }      // practice: a black slide after the last point, so the last point gets timed
-  const back = () => { if (locked()) return; if (peek) { peek = null; updScr(); push(); return } if (atEnd) { atEnd = false; main(); nav(); push(); return } sub > 0 ? setSub(sub - 1) : cur > 0 ? go(cur - 1, subCount(S[cur - 1])) : null };
+  const back = () => { if (locked()) return; if (peek) { peek = null; updScr(); push(); return } if (atEnd) { atEnd = false; main(); nav(); push(); return } pos > 0 ? setStep(pos - 1) : cur > 0 ? go(cur - 1, "last") : null };
   let atEnd = false;
 
   // ---- Practice: time each point; later, compare the real talk against it ----
@@ -300,7 +325,8 @@ async function present(){
   setInterval(pace, 500);
   $("#b").onclick = back; $("#n").onclick = next;
   $("#nav").onclick = e => { const b = e.target.closest("[data-i]"); if (b) go(+b.dataset.i) };
-  $("#m").onclick = e => { const t = e.target.closest("[data-ref]"); if (t) { if (locked()) return; const v = tagOf(S[cur], t.dataset.ref); if (!v || v.stop) return; peek = peek === t.dataset.ref ? null : t.dataset.ref; updScr(); push(); return } const b = e.target.closest("[data-v]"); if (b) showVerse(S[cur].verses[+b.dataset.v]) };
+  $("#m").onclick = e => { const t = e.target.closest("[data-ref]"); if (t) { if (locked()) return; const v = tagOf(S[cur], t.dataset.ref); if (!v || v.stop) return; peek = peek === t.dataset.ref ? null : t.dataset.ref; updScr(); push(); return }
+    const li = e.target.closest(".kpl li[data-b]"); if (li) { const j = stepsOf(S[cur]).findIndex(x => x.b === +li.dataset.b); if (j >= 0) setStep(j); return } const b = e.target.closest("[data-v]"); if (b) showVerse(S[cur].verses[+b.dataset.v]) };
   $("#pop").onclick = () => { window.open("./?window=1", "slides-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { const vd = $("#vd"); if ((vd && vd.open) || locked()) return;
     if (["ArrowRight","ArrowDown","PageDown"," "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft","ArrowUp","PageUp"].includes(e.key)) { e.preventDefault(); back() } });
@@ -330,6 +356,15 @@ function findPt(d, pid){ for (const s of d.sections) { const i = s.points.findIn
 const PLACEF = /^(text[XYW]|align|(eb|tt|sb)(X|Y|W|Size|Align|Color)|bl(Size|Color))$/;
 function applyOp(d, o){
   switch (o.t) {
+    case "beat": case "badd": case "bdel": case "bmove": { const f = findPt(d, o.pid); if (!f) break;
+      const B = f.p.beats = Array.isArray(f.p.beats) ? f.p.beats : JSON.parse(JSON.stringify(beatsOf(f.p)));
+      if (o.t === "beat") { if (!B[o.b]) break; B[o.b][o.f] = o.v; if (o.f === "text") f.p.scriptDraft = false }
+      if (o.t === "badd") B.splice(Math.max(0, Math.min(B.length, o.at)), 0, {kp: "", text: ""});
+      if (o.t === "bdel") { const x = B[o.b]; if (!x) break; const t = (x.text || "").trim();      // merge: its words go to the key point above (or below, for the first)
+        if (o.merge && t) { const up = B[o.b - 1], dn = B[o.b + 1]; if (up) up.text = [(up.text || "").trim(), t].filter(Boolean).join("\n\n"); else if (dn) dn.text = [t, (dn.text || "").trim()].filter(Boolean).join("\n\n") }
+        B.splice(o.b, 1); if (!B.length) B.push({kp: "", text: ""}) }
+      if (o.t === "bmove") { const j = o.b + o.d; if (j < 0 || j >= B.length || !B[o.b]) break; [B[o.b], B[j]] = [B[j], B[o.b]] }
+      syncBeats(f.p); break }
     case "xset": { const f = findPt(d, o.pid), x = f && f.p.slides && f.p.slides[o.i]; if (!x) break; if (o.v === "" && PLACEF.test(o.f)) delete x[o.f]; else x[o.f] = o.v; break }
     case "xadd": { const f = findPt(d, o.pid); if (f) (f.p.slides = f.p.slides || []).push(JSON.parse(JSON.stringify(o.s))); break }
     case "xdel": { const f = findPt(d, o.pid); if (f && f.p.slides) { f.p.slides.splice(o.i, 1); if (!f.p.slides.length) delete f.p.slides } break }
@@ -339,7 +374,7 @@ function applyOp(d, o){
     case "vset": { const f = findPt(d, o.pid); if (f && f.p.verses && f.p.verses[o.i]) f.p.verses[o.i][o.f] = o.v; break }
     case "vadd": { const f = findPt(d, o.pid); if (f) (f.p.verses = f.p.verses || []).push({ref: "", text: "", version: "NIV"}); break }
     case "vdel": { const f = findPt(d, o.pid); if (f && f.p.verses) f.p.verses.splice(o.i, 1); break }
-    case "padd": { const s = d.sections.find(x => x.id === o.sid); if (s && !findPt(d, o.pid)) s.points.push({id: o.pid, cue: "New point", eyebrow: "", slideTitle: "", slide: "", layout: "left", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}); break }
+    case "padd": { const s = d.sections.find(x => x.id === o.sid); if (s && !findPt(d, o.pid)) s.points.push({id: o.pid, cue: "New point", eyebrow: "", slideTitle: "", slide: "", layout: "left", image: "", beats: [{kp: "", text: ""}], keyPoints: [], verses: [], script: "", scriptDraft: false}); break }
     case "pdel": { const f = findPt(d, o.pid); if (f) f.s.points.splice(f.i, 1); break }
     case "pmove": { const f = findPt(d, o.pid); if (!f) break; const j = f.i + o.d; if (j < 0 || j >= f.s.points.length) break; const a = f.s.points; [a[f.i], a[j]] = [a[j], a[f.i]]; break }
     case "sadd": if (!d.sections.some(x => x.id === o.sid)) d.sections.push({id: o.sid, title: "New movement", minutes: "", points: []}); break;
@@ -408,16 +443,15 @@ async function edit(){
     } else {
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
-      if (p.id !== curPid) { curPid = p.id; esub = nextSub || 0; nextSub = 0; atEnd = false; epeek = null; arrive = Date.now() }
+      if (p.id !== curPid) { curPid = p.id; setE(p, nextPos === "last" ? 1e9 : 0); nextPos = 0; atEnd = false; epeek = null; arrive = Date.now() }
       const vt = (p.verses || []).map((v, vi) => v && v.ref ? `<button type="button" data-ve="${vi}">${E(v.ref)}</button>` : "").join("") + (p.slides || []).map((x, xi) => x && x.name ? `<button type="button" class="xs" data-xe="${xi}" title="${E(SLIDE_TYPES[x.type] || "")} slide">▣ ${E(x.name)}</button>` : "").join("");
       e = `<div class="ed stagev"><div class="sech">${E(L[i].sec || "")}</div>
         <div class="head"><div class="hc"><span>${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue"></div>
           <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label>
           <div class="vtags">${vt}<button type="button" class="vplus" data-act="addmenu" title="Add a verse or a slide">+</button></div></div>
         <div class="grid"><div class="lcol">
-          <div class="rich kp" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="keyPoints" role="textbox" aria-multiline="true" aria-label="Key points" data-ph="Key points, one per line. Type / for a tag.">${richHTML(p, (p.keyPoints || []).join("\n"))}</div>
-          <div class="fulltext"><div class="rule"><span class="tag">Full text</span>${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / for a tag. Click a tag to show its slide</span></div>
-          <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say" data-ph="What I'll say">${richHTML(p)}</div></div>
+          <div class="cards">${beatsOf(p).map((b, j) => cardHTML(p, b, j)).join("")}</div>
+          <div class="row"><button class="btn small" type="button" data-act="badd" data-b="${beatsOf(p).length}">+ Key point</button><span class="note" style="font-size:12px">Each key point has the words to say for it under it. Type / for a tag. Click a tag to show its slide.${p.scriptDraft ? ' <span class="draft">Draft</span>' : ""}</span></div>
         <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
           <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
           <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div></div>
@@ -428,6 +462,12 @@ async function edit(){
     $("#m").innerHTML = e + `</div>`; autoAll(); const tb0 = $(".top"), hd0 = $("#m .head"); document.body.style.setProperty("--stk", ((tb0 ? tb0.offsetHeight : 0) + (hd0 ? hd0.offsetHeight : 0) + 12) + "px"); hlStep();
     const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; if (dlgT && dlgT.i != null) { render(); return } updSmall() }); if (slideOpen) openSlide() }
   }
+  // One card per key point: the key point line (its tags step the slides) and the words to say for it (tags there only show when clicked).
+  function cardHTML(p, b, j){ const id = E(p.id);
+    return `<div class="bcard${j === ebt ? " cur" : ""}" data-b="${j}"><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${id}" data-f="kp" data-b="${j}" role="textbox" aria-label="Key point" data-ph="${j === 0 && !(b.kp || "").trim() && (b.text || "").trim() ? "Opening words (no key point)" : "Key point"}">${richHTML(p, b.kp || "")}</div>
+      <div class="rich big" contenteditable="true" spellcheck="true" data-id="${id}" data-f="text" data-b="${j}" role="textbox" aria-multiline="true" aria-label="What I'll say for this key point" data-ph="What I'll say here (optional)">${richHTML(p, b.text || "")}</div>
+      <div class="bbar"><button type="button" class="btn small" data-act="bmove" data-b="${j}" data-d="-1" title="Move up">↑</button><button type="button" class="btn small" data-act="bmove" data-b="${j}" data-d="1" title="Move down">↓</button>
+        <button type="button" class="btn small" data-act="badd" data-b="${j + 1}">+ Key point below</button><button type="button" class="btn small danger" data-act="bdel" data-b="${j}">Delete</button></div></div>` }
   // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
   // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
   const chip = v => `<span class="vchip${tagCls(v)}" contenteditable="false" data-ref="${E(tagName(v))}">${E(tagLabel(v))}</span>`;
@@ -441,7 +481,10 @@ async function edit(){
         else { const blk = /^(DIV|P)$/.test(c.tagName); if (blk && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } };
     walk(el); return out.replace(/\n$/, "") }
   let richT = null;
-  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return; const kp = el.dataset.f === "keyPoints", txt = richText(el);
+  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return;
+    if (el.dataset.b != null) { const j = +el.dataset.b, fl = el.dataset.f, cur = (beatsOf(f.p)[j] || {})[fl] || ""; let v = richText(el); if (fl === "kp") v = v.replace(/\s*\n\s*/g, " ").trim();
+      if (v !== cur && beatsOf(f.p)[j]) op({t: "beat", pid: f.p.id, b: j, f: fl, v}); return }
+    const kp = el.dataset.f === "keyPoints", txt = richText(el);
     const v = kp ? txt.split("\n").map(x => x.trim()).filter(Boolean) : txt; if (JSON.stringify(v) === JSON.stringify(kp ? f.p.keyPoints || [] : f.p.script || "")) return;
     op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v}); if (kp) return; const d = el.previousElementSibling && el.previousElementSibling.querySelector(".draft"); if (d) d.remove() }
   document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
@@ -474,7 +517,9 @@ async function edit(){
       closeVmenu(); if (e.key === "Escape") { e.preventDefault(); return } }
     const el = e.target.closest && e.target.closest(".rich"); if (!el) return;
     if (e.key === "/") setTimeout(() => openVmenu(el), 0);
+    else if (e.key === "Enter" && el.dataset.f === "kp") { e.preventDefault(); saveRich(el); addCard(el.dataset.id, +el.dataset.b + 1) }
     else if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak") } }, true);
+  function addCard(pid, at){ op({t: "badd", pid, at}, true); const c = $(`#m .bcard[data-b="${at}"] .rich.kp`); if (c) { c.focus(); c.scrollIntoView({block: "center"}) } }
   document.addEventListener("mousedown", e => { if (vmenu && !vmenu.el.contains(e.target)) closeVmenu(); if (amenu && !amenu.contains(e.target)) { amenu.remove(); amenu = null } });
   // The + in the header: add a verse, or a slide of any type.
   let amenu = null;
@@ -484,18 +529,18 @@ async function edit(){
     m.onclick = e => { const b = e.target.closest("[data-new]"); if (!b) return; m.remove(); amenu = null; if (sel.k !== "pt") return;
       if (b.dataset.new === "verse") verseEdit(sel.id, "new"); else openSlide(addSlide(sel.id, b.dataset.new)) } }
   function addSlide(pid, type){ const f = findPt(D, pid); let n = (f.p.slides || []).length + 2, name; do { name = "Slide " + n++ } while (tagOf(f.p, name));
-    op({t: "xadd", pid, s: {name, type, slideTitle: "", ...(isBul(type) ? {bullets: ""} : {eyebrow: "", slide: "", layout: "center"}), image: ""}}); return f.p.slides.length - 1 }
+    op({t: "xadd", pid, s: type === "quote" ? {name, type, quote: "", by: ""} : {name, type, slideTitle: "", ...(isBul(type) ? {bullets: ""} : {eyebrow: "", slide: "", layout: "center"}), image: ""}}); return f.p.slides.length - 1 }
   // Renaming a verse or slide renames its tags in the text; removing it (b empty) removes its tags.
   function renameTag(pid, a, b){ const f = findPt(D, pid); if (!f || !a) return; const rep = t => t.split("[" + a + "]").join(b ? "[" + b + "]" : "");
-    const kp = (f.p.keyPoints || []).map(x => rep(x).replace(/  +/g, " ").trim()).filter(Boolean), sc = rep(f.p.script || "");
-    if (JSON.stringify(kp) !== JSON.stringify(f.p.keyPoints || [])) op({t: "pt", pid, f: "keyPoints", v: kp}); if (sc !== (f.p.script || "")) op({t: "pt", pid, f: "script", v: sc}) }
+    beatsOf(f.p).forEach((x, j) => { for (const fl of ["kp", "text"]) { const o = x[fl] || "", n = fl === "kp" ? rep(o).replace(/  +/g, " ").trim() : rep(o); if (n !== o) op({t: "beat", pid, b: j, f: fl, v: n}) } }) }
   // Text boxes grow to fit their text (they can still be dragged bigger).
   const autoSize = t => { t.style.height = "auto"; t.style.height = (t.scrollHeight + 4) + "px" };
   function autoAll(){ document.querySelectorAll("#m textarea.auto").forEach(autoSize) }
   addEventListener("resize", () => autoAll());
   let slideOpen = false;
   // ---- Step through slides like Stage (Back / Next, Page Up / Page Down), and practice timing ----
-  let esub = 0, nextSub = 0, curPid = null, atEnd = false, run = false, arrive = Date.now(), lastRec = "", epeek = null;
+  let esub = 0, epos = 0, ebt = 0, nextPos = 0, curPid = null, atEnd = false, run = false, arrive = Date.now(), lastRec = "", epeek = null;
+  function setE(p, k){ const L = stepsOf(p); epos = Math.max(0, Math.min(L.length - 1, k)); ebt = L[epos].b; esub = L[epos].sub }
   function smallHTML(p){ if (atEnd) return '<div class="slide blank"></div>'; const L = S(), i = L.findIndex(x => x.id === p.id); if (i < 0) return prevHTML(p);
     const pv = epeek && tagOf(p, epeek); return pv ? tagHTML(L, i, pv, D) : stepHTML(L, i, esub, D) }
   const editLink = v => v && !v.stop ? ` · <button type="button" class="linkbtn" data-act="tagedit" data-ref="${E(tagName(v))}">Edit</button>` : "";
@@ -509,18 +554,19 @@ async function edit(){
   // Click a tag (in Key points or Full text) to show its slide; Next or Back puts back what was showing.
   function peekAt(ref){ const f = findPt(D, sel.id), v = f && tagOf(f.p, ref); if (!v || v.stop) return; epeek = epeek === ref ? null : ref; atEnd = false; updSmall() }
   function tagEdit(ref){ const f = findPt(D, sel.id), v = f && tagOf(f.p, ref); if (!v) return; if (v.main) openSlide(null); else if (isXS(v)) openSlide(f.p.slides.indexOf(v)); else if (!v.stop) verseEdit(sel.id, f.p.verses.indexOf(v)) }
-  function hlStep(){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (!esub || atEnd) return;
-    const c = document.querySelectorAll("#m .rich.kp .vchip")[esub - 1]; if (c) { c.classList.add("on"); const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16;
-      window.scrollTo({top: Math.max(0, c.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) } }
-  function updStep(){ const f = findPt(D, sel.id); if (!f) return; updSmall(); hlStep(); if (!esub || atEnd) window.scrollTo({top: 0, behavior: "smooth"}) }
+  function hlStep(){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); document.querySelectorAll("#m .bcard").forEach(c => c.classList.toggle("cur", !atEnd && +c.dataset.b === ebt));
+    if (esub && !atEnd) { const c = document.querySelectorAll("#m .rich.kp .vchip")[esub - 1]; if (c) c.classList.add("on") }
+    const card = !atEnd && epos > 0 && $(`#m .bcard[data-b="${ebt}"]`); if (card) { const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16;
+      window.scrollTo({top: Math.max(0, card.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) } }
+  function updStep(){ const f = findPt(D, sel.id); if (!f) return; updSmall(); hlStep(); if (!epos || atEnd) window.scrollTo({top: 0, behavior: "smooth"}) }
   function record(p, i){ if (i <= 0) return; const t = Math.max(1, Math.round((Date.now() - arrive) / 1000)); op({t: "pt", pid: p.id, f: "seconds", v: t});
     op({t: "talk", f: "lastPractice", v: {date: new Date().toISOString(), total: talkSecs(D)}}); lastRec = S()[i].label + " " + mmss(t) }
   function enext(){ if (sel.k !== "pt" || atEnd) return; if (epeek) { epeek = null; return updSmall() } const f = findPt(D, sel.id); if (!f) return; const p = f.p;
-    if (esub < subCount(p)) { esub++; return updStep() }
+    if (epos < stepsOf(p).length - 1) { setE(p, epos + 1); return updStep() }
     const L = S(), i = L.findIndex(x => x.id === p.id); if (run) record(p, i);
     if (L[i + 1]) { sel = {k: "pt", id: L[i + 1].id}; render(); window.scrollTo(0, 0) } else if (run) { atEnd = true; updStep() } }
-  function eprev(){ if (sel.k !== "pt") return; if (epeek) { epeek = null; return updSmall() } if (atEnd) { atEnd = false; return updStep() } if (esub > 0) { esub--; return updStep() }
-    const L = S(), i = L.findIndex(x => x.id === sel.id); if (L[i - 1]) { nextSub = subCount(L[i - 1]); sel = {k: "pt", id: L[i - 1].id}; render() } }
+  function eprev(){ if (sel.k !== "pt") return; if (epeek) { epeek = null; return updSmall() } if (atEnd) { atEnd = false; return updStep() } if (epos > 0) { const f = findPt(D, sel.id); if (f) setE(f.p, epos - 1); return updStep() }
+    const L = S(), i = L.findIndex(x => x.id === sel.id); if (L[i - 1]) { nextPos = "last"; sel = {k: "pt", id: L[i - 1].id}; render() } }
   document.addEventListener("keydown", e => { const t = e.target; if (t.closest && (t.closest("input,textarea,select,[contenteditable='true'],dialog"))) return;
     if (["PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); enext() } else if (["PageUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); eprev() } });
   $("#save").insertAdjacentHTML("afterend", `<label class="pchk" title="Time each point: press Next when you finish a point. Jumping in the list doesn't record."><input type="checkbox" id="epchk"> Practice</label><span id="eprac" class="pst"></span>`);
@@ -544,7 +590,9 @@ async function edit(){
     if (xs) h += `<div class="row"><label style="flex:1 1 200px">Name (its tag in your text)<input ${A} data-f="name" value="${E(o.name)}"></label>
       <label style="flex:0 1 220px">Type<select ${A} data-f="type">${Object.entries(SLIDE_TYPES).map(([k, n]) => `<option value="${k}"${k === ty ? " selected" : ""}>${E(n)}</option>`).join("")}</select></label></div>`;
     h += `<div class="prev" id="prev">${prevOf(t, o)}</div><div class="slideed" id="slideed">`;
-    if (bul) h += `<label>Title<textarea class="auto" ${A} data-f="slideTitle">${E(o.slideTitle)}</textarea></label>
+    if (ty === "quote") h += `<label>Quote<textarea class="auto" ${A} data-f="quote" placeholder="The words, without quote marks. Use **bold** or __underline__ if you like.">${E(o.quote)}</textarea></label>
+      <label>Who said it<input ${A} data-f="by" value="${E(o.by)}" placeholder="e.g. Corrie ten Boom"></label>`;
+    else if (bul) h += `<label>Title<textarea class="auto" ${A} data-f="slideTitle">${E(o.slideTitle)}</textarea></label>
       <label>Bullet points (one per line)<textarea class="auto" ${A} data-f="bullets" placeholder="First point&#10;Second point">${E(o.bullets)}</textarea></label>${posOf(t, o)}`;
     else h += `<div class="row"><label style="flex:1 1 200px">Small line on top (optional)<input ${A} data-f="eyebrow" value="${E(o.eyebrow)}" placeholder="e.g. Conference theme"></label>
       <label style="flex:0 1 200px">Style<select ${A} data-f="layout"><option value="left"${o.layout !== "center" ? " selected" : ""}>Gold title, white subtitle</option><option value="center"${o.layout === "center" ? " selected" : ""}>White title, gold subtitle</option></select></label></div>
@@ -617,7 +665,7 @@ async function edit(){
   function fixPos(p){ for (const [k] of LINES) { if (elPos(p, k)) continue; const m = measure(k); if (!m) continue;
     for (const a of ["X", "Y", "W"]) { const i = $(`#posd input[data-f="${k + a}"]`); if (i) { i.value = m[a]; i.parentElement.querySelector("output").textContent = Math.round(m[a]) + "%" } } } }
   function refreshSlide(){ const o = tObj(dlgT); updSmall(); if (!o) return; const pv = $("#prev"), pp = $("#posd"); if (pv) pv.innerHTML = prevOf(dlgT, o); if (pp) pp.outerHTML = posOf(dlgT, o); fixPos(o) }
-  const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align", "Color"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", "bullets", "blSize", "blColor", ...POSF];
+  const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align", "Color"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", "bullets", "blSize", "blColor", "quote", "by", ...POSF];
   const isLXYW = f => /^(eb|tt|sb)[XYW]$/.test(f);
   document.addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("pos")) posOpen = ev.target.open }, true);
   document.addEventListener("mousedown", ev => { if (ev.target.closest && ev.target.closest("#prev [data-k]")) ev.preventDefault() });
@@ -657,6 +705,15 @@ async function edit(){
     if (a === "sadd") { const sid = newId("s"); op({t: "sadd", sid}); sel = {k: "sec", id: sid}; render(); return }
     if (a === "pmove" || a === "smove") { op({t: a, [a === "pmove" ? "pid" : "sid"]: id, d: +b.dataset.d}, true); return }
     if (a === "vadd") { op({t: "vadd", pid: id}, true); const ins = document.querySelectorAll(`[data-t="v"][data-id="${CSS.escape(id)}"][data-f="ref"]`); if (ins.length) ins[ins.length - 1].focus(); return }
+    if (a === "badd") { if (sel.k === "pt") addCard(sel.id, +b.dataset.b); return }
+    if (a === "bmove") { if (sel.k === "pt") op({t: "bmove", pid: sel.id, b: +b.dataset.b, d: +b.dataset.d}, true); return }
+    if (a === "bdel") { if (sel.k !== "pt") return; const f = findPt(D, sel.id), j = +b.dataset.b, x = f && beatsOf(f.p)[j]; if (!x) return;
+      const bar = b.closest(".bbar"), hasT = (x.text || "").trim(), first = j === 0;
+      bar.innerHTML = `<span class="note">Delete this key point?</span>${hasT ? `<button type="button" class="btn small pri" data-act="bdel2" data-b="${j}" data-m="1">Delete, keep its words (move them ${first ? "down" : "up"})</button><button type="button" class="btn small danger" data-act="bdel2" data-b="${j}" data-m="0">Delete with its words</button>` : `<button type="button" class="btn small danger" data-act="bdel2" data-b="${j}" data-m="0">Delete</button>`}<button type="button" class="btn small" data-act="bcancel">Cancel</button>`;
+      bar.classList.add("ask"); return }
+    if (a === "bdel2") { if (sel.k !== "pt") return; const f = findPt(D, sel.id), x = f && beatsOf(f.p)[+b.dataset.b];
+      op({t: "bdel", pid: sel.id, b: +b.dataset.b, merge: +b.dataset.m === 1}, true); return }
+    if (a === "bcancel") { render(); return }
     if (a === "posreset") { const g = b.dataset.g, fs = g === "bul" ? ["ttSize", "ttColor", "blSize", "blColor"] : g === "all" ? POSF : ["X", "Y", "W", "Size", "Align", "Color"].map(x => g + x), T = elT(b);
       fs.forEach(k => setOp(T, k, "")); refreshSlide(); return }
     if (a === "imgdel") { setOp(elT(b), "image", "", true); return }
@@ -707,8 +764,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=23"><link rel="stylesheet" href="../common/countdown.css?v=23"><link rel="stylesheet" href="../common/gate.css?v=23"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=23"></script><script src="../common/countdown.js?v=23"></script><script src="../common/gate.js?v=23"></script><script src="../common/app.js?v=23"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=24"><link rel="stylesheet" href="../common/countdown.css?v=24"><link rel="stylesheet" href="../common/gate.css?v=24"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=24"></script><script src="../common/countdown.js?v=24"></script><script src="../common/gate.js?v=24"></script><script src="../common/app.js?v=24"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

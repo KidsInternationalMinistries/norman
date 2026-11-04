@@ -26,10 +26,16 @@
      "image": "slides/bg/cover.jpg",
      "keyPoints": [],
      "verses": [],
-     "script": " ",
+     "script": "",
      "scriptDraft": false,
      "textY": 44,
-     "ebSize": 95
+     "ebSize": 95,
+     "beats": [
+      {
+       "kp": "",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "pmw20axve9na",
@@ -61,9 +67,43 @@
        "version": "NIV"
       }
      ],
-     "script": "When art told me what was the topic of this conference was originally, I jumpped at the chance to speak.  That's Easy... I already have my talk prepared...  so I decided for this conference I would just ignore Arts new topic and just go with the old one.\n\nToday, I am here to talk about NOTHING.   Thank you  [ Walk off the stage - 20 seconds then come back up]\n\nJust kidding -   I actually did that when I spoke at CCS graduation and when I walked off stage I looked at the MC who was in terror.   What was she going to do?  I could see it in her eyes as I walked by her, then she started to go up to the stage to try to continue...  I asked her later what she was going to say and she said \"I don't know - probably 'thank you sir norman for that wonderful talk about nothing'\"\n\nAs I thought about it though, I actually think the concept of Nothing and a talk about Character, Calling and Conviction actually do have a lot in common.  Let me explain.\n[John 15:1]\nAll of us would have use one verse if we were doing a talk about nothing.  Easy.   John 15:5 - Apart from me you can do nothing.\n\nWithout Jesus, it is imposible for us to do anything.  I don't think that those words of Jesus mean that we cant do a lot or that what we do will mean more if we do it with him.   I think what Jesus was saying was that whatever we do apart from him IS nothing.  No eternal value.  NONE. \n\nWhat was he talking about when he said this? ",
+     "script": "When art told me what was the topic of this conference was originally, I jumpped at the chance to speak. That's Easy...\n\nI already have my talk prepared...  so I decided for this conference I would just ignore Arts new topic and just go with the old one.\n\nToday, I am here to talk about NOTHING.\n\nThank you  [ Walk off the stage - 20 seconds then come back up]\n\nJust kidding -   I actually did that when I spoke at CCS graduation and when I walked off stage I looked at the MC who was in terror. What was she going to do? I could see it in her eyes as I walked by her, then she started to go up to the stage to try to continue...\n\nI asked her later what she was going to say and she said \"I don't know - probably 'thank you sir norman for that wonderful talk about nothing'\"\n\nAs I thought about it though, I actually think the concept of Nothing and a talk about Character, Calling and Conviction actually do have a lot in common. Let me explain.\n\n[John 15:1]\nAll of us would have use one verse if we were doing a talk about nothing. Easy. John 15:5 - Apart from me you can do nothing.\n\nWithout Jesus, it is imposible for us to do anything. I don't think that those words of Jesus mean that we cant do a lot or that what we do will mean more if we do it with him. I think what Jesus was saying was that whatever we do apart from him IS nothing. No eternal value. NONE.\n\nWhat was he talking about when he said this?",
      "scriptDraft": false,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Nothing conference",
+       "text": "When art told me what was the topic of this conference was originally, I jumpped at the chance to speak. That's Easy..."
+      },
+      {
+       "kp": "Ready, Prepared",
+       "text": ""
+      },
+      {
+       "kp": "Decided to do a talk on nothing anyways",
+       "text": "I already have my talk prepared...  so I decided for this conference I would just ignore Arts new topic and just go with the old one.\n\nToday, I am here to talk about NOTHING."
+      },
+      {
+       "kp": "Walk off stage",
+       "text": "Thank you  [ Walk off the stage - 20 seconds then come back up]\n\nJust kidding -   I actually did that when I spoke at CCS graduation and when I walked off stage I looked at the MC who was in terror. What was she going to do? I could see it in her eyes as I walked by her, then she started to go up to the stage to try to continue..."
+      },
+      {
+       "kp": "Descibe CCS Talk",
+       "text": "I asked her later what she was going to say and she said \"I don't know - probably 'thank you sir norman for that wonderful talk about nothing'\""
+      },
+      {
+       "kp": "But... Nothing and Character, Calling and Convition are connected",
+       "text": "As I thought about it though, I actually think the concept of Nothing and a talk about Character, Calling and Conviction actually do have a lot in common. Let me explain."
+      },
+      {
+       "kp": "[John 15:1]",
+       "text": "[John 15:1]\nAll of us would have use one verse if we were doing a talk about nothing. Easy. John 15:5 - Apart from me you can do nothing.\n\nWithout Jesus, it is imposible for us to do anything. I don't think that those words of Jesus mean that we cant do a lot or that what we do will mean more if we do it with him. I think what Jesus was saying was that whatever we do apart from him IS nothing. No eternal value. NONE.\n\nWhat was he talking about when he said this?"
+      },
+      {
+       "kp": "[John 15:?]",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "p1d",
@@ -81,7 +121,7 @@
       "Fruit comes from the vine"
      ],
      "verses": [],
-     "script": " A vine and branches and fruit.   Bearing fruit...  Abiding in him.. and if we do.. Much fruit.   I think we can agree that a definite conclusion from this verse that if we are not abiding in him we cannot produce fruit at all.   Nothing.\n\nSo, here is question for you.   Are Character, Calling and Conviction fruit?   If you try hard enough by yourself, without Jesus, can you have good character?   Can have a strong conviction?  Can you be called to ANYTHING?\n\nI think the best example I have of this is the disciples.\n\nLet me ask a question. How did the disciples get their character, their calling and their conviction?\n\nDid they get it when they walked with Jesus for three years. They heard every sermon. They saw every miracle. They had the best discipleship program in history, and the teacher was Jesus Himself.\n\nSo did they have it?   I think the phrase \"The proof is in the pudding\" is appropriate here.  what was the result of those three years?  ",
+     "script": "A vine and branches and fruit. Bearing fruit... Abiding in him.. and if we do.. Much fruit. I think we can agree that a definite conclusion from this verse that if we are not abiding in him we cannot produce fruit at all. Nothing.\n\nSo, here is question for you. Are Character, Calling and Conviction fruit?\n\nIf you try hard enough by yourself, without Jesus, can you have good character? Can have a strong conviction?\n\nCan you be called to ANYTHING?\n\nI think the best example I have of this is the disciples.\n\nLet me ask a question. How did the disciples get their character, their calling and their conviction?\n\nDid they get it when they walked with Jesus for three years. They heard every sermon. They saw every miracle. They had the best discipleship program in history, and the teacher was Jesus Himself.\n\nSo did they have it? I think the phrase \"The proof is in the pudding\" is appropriate here.  what was the result of those three years?",
      "scriptDraft": false,
      "ebSize": 112,
      "textX": 2.1,
@@ -98,7 +138,29 @@
      "ttW": 72,
      "sbAlign": "center",
      "ttAlign": "center",
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "We try to manufacture fruit",
+       "text": "A vine and branches and fruit. Bearing fruit... Abiding in him.. and if we do.. Much fruit. I think we can agree that a definite conclusion from this verse that if we are not abiding in him we cannot produce fruit at all. Nothing.\n\nSo, here is question for you. Are Character, Calling and Conviction fruit?"
+      },
+      {
+       "kp": "Character → try harder",
+       "text": "If you try hard enough by yourself, without Jesus, can you have good character? Can have a strong conviction?"
+      },
+      {
+       "kp": "Calling → another conference",
+       "text": "Can you be called to ANYTHING?\n\nI think the best example I have of this is the disciples.\n\nLet me ask a question. How did the disciples get their character, their calling and their conviction?\n\nDid they get it when they walked with Jesus for three years. They heard every sermon. They saw every miracle. They had the best discipleship program in history, and the teacher was Jesus Himself.\n\nSo did they have it? I think the phrase \"The proof is in the pudding\" is appropriate here.  what was the result of those three years?"
+      },
+      {
+       "kp": "Conviction → grit our teeth",
+       "text": ""
+      },
+      {
+       "kp": "Fruit comes from the vine",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "p1f",
@@ -133,7 +195,7 @@
        "version": "NIV"
       }
      ],
-     "script": "This is how I view the disciples.   Huddled together, afraid, destroyed.   Jesus was dead.  Their dreems were gone, their convictions were gone, their character -- quitters!   Thier calling?  What calling -- the one who they believed was dead.  Now what?  Hide and hopefully they dont find us.\n\nAfter all the time with Jesus.  After all the miracles.  After all his teaching.  After the countless discussions over dinner.  After all the personal one on one time.  ALL OF THEM, left.  All of them left their convition in the dust.   Their charcter -- failures, loosers, stupid.   Now what?  All of thier plans, their calling to change the world... gone.\n\nIt is obvious that even after being with Jesus, even after all thier effort and trying... None of them developed true character, none of them developed conviciton to die for what they believed, none of them knew what it really ment to be called.\n\nMark - They all deserted him and fled\nLuke - You will deny me three times\nJohn - And after the cross, where do we find them? Behind locked doors, afraid. The men who would one day turn the world upside down were hiding in a room.\n\nAnd that is where it would have ended...  Except for Jesus.  As it should be, their calling, character and conviction were NOTHING without Him.",
+     "script": "This is how I view the disciples. Huddled together, afraid, destroyed. Jesus was dead. Their dreems were gone, their convictions were gone, their character -- quitters! Thier calling? What calling -- the one who they believed was dead. Now what? Hide and hopefully they dont find us.\n\nAfter all the time with Jesus. After all the miracles. After all his teaching. After the countless discussions over dinner. After all the personal one on one time. ALL OF THEM, left. All of them left their convition in the dust. Their charcter -- failures, loosers, stupid. Now what? All of thier plans, their calling to change the world... gone.\n\nIt is obvious that even after being with Jesus, even after all thier effort and trying... None of them developed true character, none of them developed conviciton to die for what they believed, none of them knew what it really ment to be called.\n\nMark - They all deserted him and fled\nLuke - You will deny me three times\nJohn - And after the cross, where do we find them?\n\nBehind locked doors, afraid. The men who would one day turn the world upside down were hiding in a room.\n\nAnd that is where it would have ended... Except for Jesus.\n\nAs it should be, their calling, character and conviction were NOTHING without Him.",
      "scriptDraft": false,
      "ttX": 2.9,
      "ttY": 10.6,
@@ -141,7 +203,37 @@
      "sbX": 2.7,
      "sbY": 50.8,
      "sbW": 56,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "",
+       "text": "This is how I view the disciples. Huddled together, afraid, destroyed. Jesus was dead. Their dreems were gone, their convictions were gone, their character -- quitters! Thier calling? What calling -- the one who they believed was dead. Now what? Hide and hopefully they dont find us."
+      },
+      {
+       "kp": "Not before the resurrection",
+       "text": ""
+      },
+      {
+       "kp": "Peter: denied Him three times",
+       "text": "After all the time with Jesus. After all the miracles. After all his teaching. After the countless discussions over dinner. After all the personal one on one time. ALL OF THEM, left. All of them left their convition in the dust. Their charcter -- failures, loosers, stupid. Now what? All of thier plans, their calling to change the world... gone.\n\nIt is obvious that even after being with Jesus, even after all thier effort and trying... None of them developed true character, none of them developed conviciton to die for what they believed, none of them knew what it really ment to be called.\n\nMark - They all deserted him and fled\nLuke - You will deny me three times\nJohn - And after the cross, where do we find them?"
+      },
+      {
+       "kp": "The rest: lost hope, scattered",
+       "text": ""
+      },
+      {
+       "kp": "Judas: betrayed Him",
+       "text": ""
+      },
+      {
+       "kp": "Behind locked doors, afraid",
+       "text": "Behind locked doors, afraid. The men who would one day turn the world upside down were hiding in a room.\n\nAnd that is where it would have ended... Except for Jesus."
+      },
+      {
+       "kp": "\"Where was their conviction? Their character? Did they feel called?\"",
+       "text": "As it should be, their calling, character and conviction were NOTHING without Him."
+      }
+     ]
     }
    ]
   },
@@ -177,12 +269,54 @@
        "version": "NIV"
       }
      ],
-     "script": "Can you picture the scene as the disciples, excited to see Jesus back from the dead, ask this question: \"Lord, are you at this time going to restore the kingdom to Israel?\" (Acts 1:6). I am sure they thought, \"Finally… Now we can get going again. Jesus is back and nothing is going to stop us now!\" His response brought even more excitement: \"you will receive power when the Holy Spirit comes on you.\" I am sure they thought, \"Awesome!! We get power!!!\" But little did they know what lay ahead. Although it was full of power, it was also full of trials, hard times, persecutions and even death.\n\nIf I want to experience the Power of God in my life I should expect nothing different. His power in the midst of difficulties, hard times and struggles.\n\"You shall receive power\" will bring opposition.\n\"You shall receive power\" will bring difficulties.\n\"You shall receive power\" will bring hard times.\n\"You shall receive power\" will bring jail.\n\"You shall receive power\" will bring conflict.\n\"You shall receive power\" will bring thorns in the flesh.\n\"You shall receive power\" WILL reveal our weakness.\n\nAnd then...\n\nIn our weakness He is strong.\nIn our weakness He works in mighty ways.\nIn our weakness He brings healing.\nIn our weakness He saves people.\nIn our weakness He brings revival.\nIn our weakness He transforms us.\nIn our weakness He changes the world.\n\nDon't expect \"you shall receive power\" will look any different in your life than it did for the disciples.",
+     "script": "Can you picture the scene as the disciples, excited to see Jesus back from the dead, ask this question: \"Lord, are you at this time going to restore the kingdom to Israel?\" (Acts 1:6). I am sure they thought, \"Finally… Now we can get going again.\n\nJesus is back and nothing is going to stop us now!\"\n\nHis response brought even more excitement: \"you will receive power when the Holy Spirit comes on you.\" I am sure they thought, \"Awesome!! We get power!!!\" But little did they know what lay ahead. Although it was full of power, it was also full of trials, hard times, persecutions and even death.\n\nIf I want to experience the Power of God in my life I should expect nothing different. His power in the midst of difficulties, hard times and struggles.\n\"You shall receive power\" will bring opposition.\n\"You shall receive power\" will bring difficulties.\n\"You shall receive power\" will bring hard times.\n\"You shall receive power\" will bring jail.\n\"You shall receive power\" will bring conflict.\n\"You shall receive power\" will bring thorns in the flesh.\n\"You shall receive power\" WILL reveal our weakness.\n\nAnd then...\n\nIn our weakness He is strong.\nIn our weakness He works in mighty ways.\nIn our weakness He brings healing.\nIn our weakness He saves people.\nIn our weakness He brings revival.\nIn our weakness He transforms us.\nIn our weakness He changes the world.\n\nDon't expect \"you shall receive power\" will look any different in your life than it did for the disciples.",
      "scriptDraft": false,
      "ttX": 4.2,
      "ttY": 25.9,
      "ttW": 56,
-     "seconds": 2
+     "seconds": 2,
+     "beats": [
+      {
+       "kp": "Read Acts 1:6–8",
+       "text": ""
+      },
+      {
+       "kp": "[Acts 1:8]",
+       "text": "Can you picture the scene as the disciples, excited to see Jesus back from the dead, ask this question: \"Lord, are you at this time going to restore the kingdom to Israel?\" (Acts 1:6). I am sure they thought, \"Finally… Now we can get going again."
+      },
+      {
+       "kp": "[Acts 1:6–8]",
+       "text": ""
+      },
+      {
+       "kp": "Still asking about the kingdom",
+       "text": ""
+      },
+      {
+       "kp": "\"When do we get back on top?\"",
+       "text": "Jesus is back and nothing is going to stop us now!\""
+      },
+      {
+       "kp": "Jesus doesn't answer it",
+       "text": ""
+      },
+      {
+       "kp": "Asked for a kingdom; He gave power",
+       "text": ""
+      },
+      {
+       "kp": "Power for: \"you will be my witnesses\"",
+       "text": "His response brought even more excitement: \"you will receive power when the Holy Spirit comes on you.\" I am sure they thought, \"Awesome!! We get power!!!\" But little did they know what lay ahead. Although it was full of power, it was also full of trials, hard times, persecutions and even death.\n\nIf I want to experience the Power of God in my life I should expect nothing different. His power in the midst of difficulties, hard times and struggles.\n\"You shall receive power\" will bring opposition.\n\"You shall receive power\" will bring difficulties.\n\"You shall receive power\" will bring hard times.\n\"You shall receive power\" will bring jail.\n\"You shall receive power\" will bring conflict.\n\"You shall receive power\" will bring thorns in the flesh.\n\"You shall receive power\" WILL reveal our weakness.\n\nAnd then...\n\nIn our weakness He is strong.\nIn our weakness He works in mighty ways.\nIn our weakness He brings healing.\nIn our weakness He saves people.\nIn our weakness He brings revival.\nIn our weakness He transforms us.\nIn our weakness He changes the world.\n\nDon't expect \"you shall receive power\" will look any different in your life than it did for the disciples."
+      },
+      {
+       "kp": "Jerusalem → Judea → Samaria → ends of the earth",
+       "text": ""
+      },
+      {
+       "kp": "Power sends you where you didn't want to go",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "p2c",
@@ -214,7 +348,7 @@
        "version": "NIV"
       }
      ],
-     "script": "And look at what happened next. Within a few chapters, Peter and John are in jail. Then all the apostles are arrested, flogged, and ordered never to speak in the name of Jesus again. And Luke says they left rejoicing, because they had been counted worthy of suffering disgrace for the Name.\n\nStephen is stoned. James is killed with a sword. The church is scattered. They expected a throne. They got a road.\n\nAnd when Jesus calls Paul, He tells Ananias, \"This man is my chosen instrument.\" And in the same breath: \"I will show him how much he must suffer for my name.\" The calling and the suffering came in the same sentence.\n\nThe word Jesus used for witness is martys, the word we get martyr from. When He said, \"You will be my witnesses,\" they had no idea yet what that word would come to mean.\n\nThe disciples received power, and it brought prison, conflict and weakness.\n\nSo don't expect it to look any different for you. I think a lot of us in ministry carry a quiet expectation. If I'm really called, if God's power is really on me, things should go well. The church should grow. The money should come in. The board should agree with me. And when it doesn't, we wonder what we did wrong.\n\nMaybe nothing. Maybe that's just what the power looks like.",
+     "script": "And look at what happened next.\n\nWithin a few chapters, Peter and John are in jail.\n\nThen all the apostles are arrested, flogged, and ordered never to speak in the name of Jesus again. And Luke says they left rejoicing, because they had been counted worthy of suffering disgrace for the Name.\n\nStephen is stoned. James is killed with a sword. The church is scattered.\n\nThey expected a throne. They got a road.\n\nAnd when Jesus calls Paul, He tells Ananias, \"This man is my chosen instrument.\" And in the same breath: \"I will show him how much he must suffer for my name.\" The calling and the suffering came in the same sentence.\n\nThe word Jesus used for witness is martys, the word we get martyr from. When He said, \"You will be my witnesses,\" they had no idea yet what that word would come to mean.\n\nThe disciples received power, and it brought prison, conflict and weakness.\n\nSo don't expect it to look any different for you.\n\nI think a lot of us in ministry carry a quiet expectation. If I'm really called, if God's power is really on me, things should go well. The church should grow. The money should come in. The board should agree with me. And when it doesn't, we wonder what we did wrong.\n\nMaybe nothing. Maybe that's just what the power looks like.",
      "scriptDraft": true,
      "ttX": 1.5,
      "ttY": 18.1,
@@ -224,7 +358,45 @@
      "sbX": 1.7,
      "sbY": 53.4,
      "sbW": 56,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "",
+       "text": "And look at what happened next."
+      },
+      {
+       "kp": "Acts 4: Peter and John in jail",
+       "text": "Within a few chapters, Peter and John are in jail."
+      },
+      {
+       "kp": "Acts 5: flogged, and they rejoiced",
+       "text": "Then all the apostles are arrested, flogged, and ordered never to speak in the name of Jesus again. And Luke says they left rejoicing, because they had been counted worthy of suffering disgrace for the Name."
+      },
+      {
+       "kp": "Stephen stoned, James killed, church scattered",
+       "text": "Stephen is stoned. James is killed with a sword. The church is scattered."
+      },
+      {
+       "kp": "Expected a throne, got a road",
+       "text": "They expected a throne. They got a road."
+      },
+      {
+       "kp": "Paul: called and told how much he'd suffer (Acts 9:16)",
+       "text": "And when Jesus calls Paul, He tells Ananias, \"This man is my chosen instrument.\" And in the same breath: \"I will show him how much he must suffer for my name.\" The calling and the suffering came in the same sentence."
+      },
+      {
+       "kp": "Witness = martys (martyr)",
+       "text": "The word Jesus used for witness is martys, the word we get martyr from. When He said, \"You will be my witnesses,\" they had no idea yet what that word would come to mean.\n\nThe disciples received power, and it brought prison, conflict and weakness.\n\nSo don't expect it to look any different for you."
+      },
+      {
+       "kp": "Our quiet expectation: \"if I'm called, it should go well\"",
+       "text": "I think a lot of us in ministry carry a quiet expectation. If I'm really called, if God's power is really on me, things should go well. The church should grow. The money should come in. The board should agree with me. And when it doesn't, we wonder what we did wrong."
+      },
+      {
+       "kp": "Maybe that's what the power looks like",
+       "text": "Maybe nothing. Maybe that's just what the power looks like."
+      }
+     ]
     },
     {
      "id": "p2d",
@@ -247,7 +419,7 @@
        "version": "NIV"
       }
      ],
-     "script": "But look at what happened to these men. The same Peter who couldn't stand up to a servant girl by a fire now stands up to the Sanhedrin, the most powerful men in Jerusalem.\n\nAnd the leaders looked at Peter and John, saw that they were unschooled, ordinary men, and they were astonished. And they took note that these men had been with Jesus.\n\nWhere did that courage come from? Where did that character come from? Not from a seminar. Not from trying harder.\n\nCharacter, calling, conviction. They didn't make them. His power produced them.",
+     "script": "But look at what happened to these men.\n\nThe same Peter who couldn't stand up to a servant girl by a fire now stands up to the Sanhedrin, the most powerful men in Jerusalem.\n\nAnd the leaders looked at Peter and John, saw that they were unschooled, ordinary men, and they were astonished. And they took note that these men had been with Jesus.\n\nWhere did that courage come from? Where did that character come from?\n\nNot from a seminar. Not from trying harder.\n\nCharacter, calling, conviction. They didn't make them. His power produced them.",
      "scriptDraft": true,
      "seconds": 1,
      "ttX": 4.4,
@@ -255,7 +427,29 @@
      "ttW": 56,
      "sbX": 7.8,
      "sbY": 53.9,
-     "sbW": 56
+     "sbW": 56,
+     "beats": [
+      {
+       "kp": "",
+       "text": "But look at what happened to these men."
+      },
+      {
+       "kp": "Same Peter: servant girl → Sanhedrin",
+       "text": "The same Peter who couldn't stand up to a servant girl by a fire now stands up to the Sanhedrin, the most powerful men in Jerusalem."
+      },
+      {
+       "kp": "\"Unschooled, ordinary men... had been with Jesus\"",
+       "text": "And the leaders looked at Peter and John, saw that they were unschooled, ordinary men, and they were astonished. And they took note that these men had been with Jesus.\n\nWhere did that courage come from? Where did that character come from?"
+      },
+      {
+       "kp": "Not a seminar, not trying harder",
+       "text": "Not from a seminar. Not from trying harder."
+      },
+      {
+       "kp": "🔁 Character, calling, conviction. They didn't make them. His power produced them.",
+       "text": "Character, calling, conviction. They didn't make them. His power produced them."
+      }
+     ]
     }
    ]
   },
@@ -288,9 +482,39 @@
        "version": "NIV"
       }
      ],
-     "script": "Now, we can argue a lot about what that power is supposed to look like and what it is supposed to do. Some of us say the power is about miracles and healing and signs. Some of us say God doesn't really work that way anymore. And we could spend this whole conference arguing about it.\n\nI don't want to argue today. I want to suggest that maybe we're asking the wrong question. We keep asking what the power does. Jesus was describing what the power would make them into. He didn't say, \"You will do witnessing.\" He said, \"You will be my witnesses.\"\n\nJeremiah went down to the potter's house and watched him work. The pot was marred in his hands. So the potter didn't throw the clay away. He formed it into another pot, shaping it as seemed best to him.\n\nHis power isn't about how we change ourselves. It's about what He makes us into.",
+     "script": "Now, we can argue a lot about what that power is supposed to look like and what it is supposed to do. Some of us say the power is about miracles and healing and signs.\n\nSome of us say God doesn't really work that way anymore.\n\nAnd we could spend this whole conference arguing about it.\n\nI don't want to argue today.\n\nI want to suggest that maybe we're asking the wrong question. We keep asking what the power does.\n\nJesus was describing what the power would make them into. He didn't say, \"You will do witnessing.\" He said, \"You will be my witnesses.\"\n\nJeremiah went down to the potter's house and watched him work.\n\nThe pot was marred in his hands. So the potter didn't throw the clay away. He formed it into another pot, shaping it as seemed best to him.\n\nHis power isn't about how we change ourselves. It's about what He makes us into.",
      "scriptDraft": true,
-     "seconds": 2
+     "seconds": 2,
+     "beats": [
+      {
+       "kp": "We argue about what the power looks like",
+       "text": "Now, we can argue a lot about what that power is supposed to look like and what it is supposed to do. Some of us say the power is about miracles and healing and signs."
+      },
+      {
+       "kp": "Miracles vs. \"God doesn't work that way now\"",
+       "text": "Some of us say God doesn't really work that way anymore."
+      },
+      {
+       "kp": "Not arguing today",
+       "text": "And we could spend this whole conference arguing about it.\n\nI don't want to argue today."
+      },
+      {
+       "kp": "Wrong question: what it does",
+       "text": "I want to suggest that maybe we're asking the wrong question. We keep asking what the power does."
+      },
+      {
+       "kp": "Jesus: what it makes them into (\"you will BE\")",
+       "text": "Jesus was describing what the power would make them into. He didn't say, \"You will do witnessing.\" He said, \"You will be my witnesses.\"\n\nJeremiah went down to the potter's house and watched him work."
+      },
+      {
+       "kp": "Potter: marred pot, formed into another",
+       "text": "The pot was marred in his hands. So the potter didn't throw the clay away. He formed it into another pot, shaping it as seemed best to him."
+      },
+      {
+       "kp": "🔑 \"His power isn't about how we change ourselves. It's about what He makes us into.\"",
+       "text": "His power isn't about how we change ourselves. It's about what He makes us into."
+      }
+     ]
     },
     {
      "id": "p3b",
@@ -315,9 +539,35 @@
        "version": "NIV"
       }
      ],
-     "script": "The word Jesus uses for power in Acts 1:8 is dynamis. And it is the same word Paul uses in 2 Corinthians 12:9, when the Lord tells him, \"My grace is sufficient for you, for my power is made perfect in weakness.\"\n\nSame word. Same power.\n\nWe get our word dynamite from it, and we love that. We want the dynamite. But look where Paul found it. He had begged God three times to take his thorn away, and God said no. So Paul says, \"I will boast all the more gladly about my weaknesses, so that Christ's power may rest on me... For when I am weak, then I am strong.\"",
+     "script": "The word Jesus uses for power in Acts 1:8 is dynamis.\n\nAnd it is the same word Paul uses in 2 Corinthians 12:9, when the Lord tells him, \"My grace is sufficient for you, for my power is made perfect in weakness.\"\n\nSame word. Same power.\n\nWe get our word dynamite from it, and we love that. We want the dynamite.\n\nBut look where Paul found it. He had begged God three times to take his thorn away, and God said no. So Paul says, \"I will boast all the more gladly about my weaknesses, so that Christ's power may rest on me...\n\nFor when I am weak, then I am strong.\"",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Acts 1:8 power = dynamis",
+       "text": "The word Jesus uses for power in Acts 1:8 is dynamis."
+      },
+      {
+       "kp": "Same word: 2 Cor 12:9",
+       "text": "And it is the same word Paul uses in 2 Corinthians 12:9, when the Lord tells him, \"My grace is sufficient for you, for my power is made perfect in weakness.\"\n\nSame word. Same power."
+      },
+      {
+       "kp": "We love \"dynamite\"",
+       "text": "We get our word dynamite from it, and we love that. We want the dynamite."
+      },
+      {
+       "kp": "Paul begged 3x for the thorn to go",
+       "text": "But look where Paul found it. He had begged God three times to take his thorn away, and God said no. So Paul says, \"I will boast all the more gladly about my weaknesses, so that Christ's power may rest on me..."
+      },
+      {
+       "kp": "God said no: power made perfect in weakness",
+       "text": ""
+      },
+      {
+       "kp": "\"When I am weak, then I am strong\"",
+       "text": "For when I am weak, then I am strong.\""
+      }
+     ]
     },
     {
      "id": "p3c",
@@ -352,9 +602,55 @@
        "version": "NIV"
       }
      ],
-     "script": "Go back to Peter. Peter was the strong one. He was the first to speak, the first to step out of the boat, the first to pull out a sword in the garden. He cut off a man's ear. That was strength without character.\n\nPeter was the one who said, \"Even if all fall away, I will not.\" That was his conviction. And he meant it. But it was his conviction, not God's. And it failed him by a fire, in front of a servant girl.\n\nI learned this one as a dad. I could be a pretty legalistic father. I was focused on my kids' behavior, not what was going on in their hearts. And as they grew up, a lot of those behaviors just washed away. Because it was my conviction in them. It was never their own. Conviction that is put on you from the outside doesn't hold. It has to be planted on the inside.\n\nLuke tells us that the Lord turned and looked straight at Peter, and Peter went outside and wept bitterly. That night by the fire, something in Peter broke. And it had to.\n\nThen a few weeks later, there's another fire. Jesus makes breakfast on the beach. Three denials, and now three questions: \"Peter, do you love me?\" \"Feed my sheep.\" The calling comes back, but this time it isn't resting on Peter's strength.\n\nBefore God could use Peter, He had to break Peter's self-sufficiency. I believe God cannot use someone who is not broken.",
+     "script": "Go back to Peter. Peter was the strong one. He was the first to speak, the first to step out of the boat, the first to pull out a sword in the garden. He cut off a man's ear.\n\nThat was strength without character.\n\nPeter was the one who said, \"Even if all fall away, I will not.\"\n\nThat was his conviction. And he meant it. But it was his conviction, not God's.\n\nAnd it failed him by a fire, in front of a servant girl.\n\nI learned this one as a dad. I could be a pretty legalistic father. I was focused on my kids' behavior, not what was going on in their hearts.\n\nAnd as they grew up, a lot of those behaviors just washed away. Because it was my conviction in them. It was never their own. Conviction that is put on you from the outside doesn't hold.\n\nIt has to be planted on the inside.\n\nLuke tells us that the Lord turned and looked straight at Peter, and Peter went outside and wept bitterly.\n\nThat night by the fire, something in Peter broke. And it had to.\n\nThen a few weeks later, there's another fire. Jesus makes breakfast on the beach.\n\nThree denials, and now three questions: \"Peter, do you love me?\" \"Feed my sheep.\" The calling comes back, but this time it isn't resting on Peter's strength.\n\nBefore God could use Peter, He had to break Peter's self-sufficiency. I believe God cannot use someone who is not broken.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Peter the strong one: first to speak, out of the boat, the sword",
+       "text": "Go back to Peter. Peter was the strong one. He was the first to speak, the first to step out of the boat, the first to pull out a sword in the garden. He cut off a man's ear."
+      },
+      {
+       "kp": "The ear: strength without character",
+       "text": "That was strength without character."
+      },
+      {
+       "kp": "\"Even if all fall away, I never will\"",
+       "text": "Peter was the one who said, \"Even if all fall away, I will not.\""
+      },
+      {
+       "kp": "Real conviction, but his own",
+       "text": "That was his conviction. And he meant it. But it was his conviction, not God's."
+      },
+      {
+       "kp": "Failed by a fire, a servant girl",
+       "text": "And it failed him by a fire, in front of a servant girl.\n\nI learned this one as a dad. I could be a pretty legalistic father. I was focused on my kids' behavior, not what was going on in their hearts."
+      },
+      {
+       "kp": "Me as a dad: my conviction in them washed away",
+       "text": "And as they grew up, a lot of those behaviors just washed away. Because it was my conviction in them. It was never their own. Conviction that is put on you from the outside doesn't hold."
+      },
+      {
+       "kp": "Conviction must be planted inside",
+       "text": "It has to be planted on the inside."
+      },
+      {
+       "kp": "The look, wept bitterly",
+       "text": "Luke tells us that the Lord turned and looked straight at Peter, and Peter went outside and wept bitterly."
+      },
+      {
+       "kp": "Second fire: breakfast on the beach",
+       "text": "That night by the fire, something in Peter broke. And it had to.\n\nThen a few weeks later, there's another fire. Jesus makes breakfast on the beach."
+      },
+      {
+       "kp": "Three denials, three questions: \"Feed my sheep\"",
+       "text": "Three denials, and now three questions: \"Peter, do you love me?\" \"Feed my sheep.\" The calling comes back, but this time it isn't resting on Peter's strength."
+      },
+      {
+       "kp": "Had to break his self-sufficiency",
+       "text": "Before God could use Peter, He had to break Peter's self-sufficiency. I believe God cannot use someone who is not broken."
+      }
+     ]
     },
     {
      "id": "p3d",
@@ -374,9 +670,39 @@
       "🔑 \"We spend our whole lives striving to be strong, when God is calling us to be weak.\""
      ],
      "verses": [],
-     "script": "And this is the hard part for us as leaders. Most of us got where we are because we were strong. We were the ones who could handle it. People look to us. We have to have the answer, preach the sermon, fix the problem, keep the ministry going. Nobody hires a weak pastor. Nobody sends out a weak missionary.\n\nI know this one personally. I spent about thirty years in business, and I was the one they called when things broke. Being strong was my job.\n\nWatchman Nee said, \"Effort is not the key to maturity; death is.\" That is not the kind of thing you put on a leadership poster.\n\nWe spend our whole lives striving to be strong, when God is calling us to be weak.",
+     "script": "And this is the hard part for us as leaders.\n\nMost of us got where we are because we were strong. We were the ones who could handle it. People look to us.\n\nWe have to have the answer, preach the sermon, fix the problem, keep the ministry going.\n\nNobody hires a weak pastor. Nobody sends out a weak missionary.\n\nI know this one personally.\n\nI spent about thirty years in business, and I was the one they called when things broke. Being strong was my job.\n\nWatchman Nee said, \"Effort is not the key to maturity; death is.\" That is not the kind of thing you put on a leadership poster.\n\nWe spend our whole lives striving to be strong, when God is calling us to be weak.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Hard part for leaders",
+       "text": "And this is the hard part for us as leaders."
+      },
+      {
+       "kp": "We got here by being strong",
+       "text": "Most of us got where we are because we were strong. We were the ones who could handle it. People look to us."
+      },
+      {
+       "kp": "Have the answer, fix the problem",
+       "text": "We have to have the answer, preach the sermon, fix the problem, keep the ministry going."
+      },
+      {
+       "kp": "\"Nobody sends a weak missionary\"",
+       "text": "Nobody hires a weak pastor. Nobody sends out a weak missionary.\n\nI know this one personally."
+      },
+      {
+       "kp": "Me: 30 years in business, the one they called when things broke",
+       "text": "I spent about thirty years in business, and I was the one they called when things broke. Being strong was my job."
+      },
+      {
+       "kp": "Watchman Nee: \"Effort is not the key to maturity; death is.\"",
+       "text": "Watchman Nee said, \"Effort is not the key to maturity; death is.\" That is not the kind of thing you put on a leadership poster."
+      },
+      {
+       "kp": "🔑 \"We spend our whole lives striving to be strong, when God is calling us to be weak.\"",
+       "text": "We spend our whole lives striving to be strong, when God is calling us to be weak."
+      }
+     ]
     },
     {
      "id": "p3e",
@@ -406,9 +732,55 @@
        "version": "NIV"
       }
      ],
-     "script": "My dad, Gene Denler, was a missionary here in the Philippines for about thirty years with the Navigators. He was very effort focused. It was always, \"It's you, it's you.\"\n\nHe left the field feeling broken. He wondered what his life had really accomplished, and he ended up working as a construction supervisor for my uncle. As he got older, he came to see that it was never about his effort. By the time he died, he was a different person.\n\nIn 2009, when he was 81, my dad came back to the Philippines with my family. He ended up in the hospital with blood clots in both legs, at St. Luke's, the same hospital where I was born. And because of that interruption, he got to sit with some of the men he had discipled as teenagers forty years earlier, still serving God in their sixties. He wrote, \"It humbled me, to realize anew that we sow, we water, but it's God that makes it grow.\"\n\nOn that same trip he wrote about what he called \"a faulty ministry model\" that had been part of his DNA, the idea that you have to aggressively make it happen through strategies and programs. And he wrote about being drawn instead to the way Jesus simply went about doing good. He ended it with three words: \"He is enough!\"\n\nBut even then, he didn't see all of it. When I was three years old, my mom and dad were discipling two young men in our home. One of them is the director of our school today. The other is the pastor of the church. They have been foundational to this ministry for about twenty years.\n\nMy dad thought it came to nothing. God wasn't done.",
+     "script": "My dad, Gene Denler, was a missionary here in the Philippines for about thirty years with the Navigators.\n\nHe was very effort focused. It was always, \"It's you, it's you.\"\n\nHe left the field feeling broken.\n\nHe wondered what his life had really accomplished, and he ended up working as a construction supervisor for my uncle.\n\nAs he got older, he came to see that it was never about his effort. By the time he died, he was a different person.\n\nIn 2009, when he was 81, my dad came back to the Philippines with my family. He ended up in the hospital with blood clots in both legs, at St. Luke's, the same hospital where I was born. And because of that interruption, he got to sit with some of the men he had discipled as teenagers forty years earlier, still serving God in their sixties.\n\nHe wrote, \"It humbled me, to realize anew that we sow, we water, but it's God that makes it grow.\"\n\nOn that same trip he wrote about what he called \"a faulty ministry model\" that had been part of his DNA, the idea that you have to aggressively make it happen through strategies and programs. And he wrote about being drawn instead to the way Jesus simply went about doing good.\n\nHe ended it with three words: \"He is enough!\"\n\nBut even then, he didn't see all of it. When I was three years old, my mom and dad were discipling two young men in our home.\n\nOne of them is the director of our school today. The other is the pastor of the church. They have been foundational to this ministry for about twenty years.\n\nMy dad thought it came to nothing. God wasn't done.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Dad, Gene: ~30 yrs Navigators in PH",
+       "text": "My dad, Gene Denler, was a missionary here in the Philippines for about thirty years with the Navigators."
+      },
+      {
+       "kp": "Effort focused: \"It's you, it's you\"",
+       "text": "He was very effort focused. It was always, \"It's you, it's you.\""
+      },
+      {
+       "kp": "Left the field broken",
+       "text": "He left the field feeling broken."
+      },
+      {
+       "kp": "Construction supervisor for my uncle",
+       "text": "He wondered what his life had really accomplished, and he ended up working as a construction supervisor for my uncle."
+      },
+      {
+       "kp": "Changed with age: never about his effort",
+       "text": "As he got older, he came to see that it was never about his effort. By the time he died, he was a different person."
+      },
+      {
+       "kp": "2009: hospital at St. Luke's, saw his old disciples still serving",
+       "text": "In 2009, when he was 81, my dad came back to the Philippines with my family. He ended up in the hospital with blood clots in both legs, at St. Luke's, the same hospital where I was born. And because of that interruption, he got to sit with some of the men he had discipled as teenagers forty years earlier, still serving God in their sixties."
+      },
+      {
+       "kp": "\"We sow, we water... God makes it grow\"",
+       "text": "He wrote, \"It humbled me, to realize anew that we sow, we water, but it's God that makes it grow.\""
+      },
+      {
+       "kp": "His \"faulty ministry model\" → \"He is enough!\"",
+       "text": "On that same trip he wrote about what he called \"a faulty ministry model\" that had been part of his DNA, the idea that you have to aggressively make it happen through strategies and programs. And he wrote about being drawn instead to the way Jesus simply went about doing good."
+      },
+      {
+       "kp": "Discipled two young men when I was three",
+       "text": "He ended it with three words: \"He is enough!\"\n\nBut even then, he didn't see all of it. When I was three years old, my mom and dad were discipling two young men in our home."
+      },
+      {
+       "kp": "Today: our school director and our pastor, ~20 yrs",
+       "text": "One of them is the director of our school today. The other is the pastor of the church. They have been foundational to this ministry for about twenty years."
+      },
+      {
+       "kp": "Thought it came to nothing. God wasn't done.",
+       "text": "My dad thought it came to nothing. God wasn't done."
+      }
+     ]
     },
     {
      "id": "p3f",
@@ -428,9 +800,43 @@
       "🔑 \"God cannot use someone who is not broken. If you are, you're exactly where He wants you to be.\""
      ],
      "verses": [],
-     "script": "So let me ask you.\n\nAre you broken?\n\n(Pause. Let it sit.)\n\nMaybe you came to this conference broken. Maybe it's your church, or your marriage, or your finances, or your own heart. Maybe, like my dad, you feel like your work has come to nothing.\n\nMy dad quoted someone who said, \"In the ministry of love, only the wounded can serve.\"\n\nGod cannot use someone who is not broken. If you are, you're exactly where He wants you to be.\n\nThat isn't the end of your ministry. It may be the beginning of it.",
+     "script": "So let me ask you.\n\nAre you broken?\n\n(Pause. Let it sit.)\n\nMaybe you came to this conference broken.\n\nMaybe it's your church, or your marriage, or your finances, or your own heart.\n\nMaybe, like my dad, you feel like your work has come to nothing.\n\nMy dad quoted someone who said, \"In the ministry of love, only the wounded can serve.\"\n\nGod cannot use someone who is not broken. If you are, you're exactly where He wants you to be.\n\nThat isn't the end of your ministry. It may be the beginning of it.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "",
+       "text": "So let me ask you."
+      },
+      {
+       "kp": "Slide up, silence",
+       "text": ""
+      },
+      {
+       "kp": "Maybe you came here broken",
+       "text": "Are you broken?\n\n(Pause. Let it sit.)\n\nMaybe you came to this conference broken."
+      },
+      {
+       "kp": "Church, marriage, money, your own heart",
+       "text": "Maybe it's your church, or your marriage, or your finances, or your own heart."
+      },
+      {
+       "kp": "Feels like your work came to nothing",
+       "text": "Maybe, like my dad, you feel like your work has come to nothing."
+      },
+      {
+       "kp": "Not the end, maybe the beginning",
+       "text": ""
+      },
+      {
+       "kp": "\"In the ministry of love, only the wounded can serve.\"",
+       "text": "My dad quoted someone who said, \"In the ministry of love, only the wounded can serve.\""
+      },
+      {
+       "kp": "🔑 \"God cannot use someone who is not broken. If you are, you're exactly where He wants you to be.\"",
+       "text": "God cannot use someone who is not broken. If you are, you're exactly where He wants you to be.\n\nThat isn't the end of your ministry. It may be the beginning of it."
+      }
+     ]
     },
     {
      "id": "p3g",
@@ -454,9 +860,31 @@
        "version": "NIV"
       }
      ],
-     "script": "In Japan there's an art called kintsugi. When a bowl breaks, they don't throw it away. They put it back together with gold. And the bowl becomes more valuable than it was before it broke. The cracks are where the gold is.\n\nPaul says, \"We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.\"\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.",
+     "script": "In Japan there's an art called kintsugi. When a bowl breaks, they don't throw it away. They put it back together with gold.\n\nAnd the bowl becomes more valuable than it was before it broke.\n\nThe cracks are where the gold is.\n\nPaul says, \"We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.\"\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Kintsugi: broken bowl repaired with gold",
+       "text": "In Japan there's an art called kintsugi. When a bowl breaks, they don't throw it away. They put it back together with gold."
+      },
+      {
+       "kp": "Worth more than before it broke",
+       "text": "And the bowl becomes more valuable than it was before it broke."
+      },
+      {
+       "kp": "The cracks are where the gold is",
+       "text": "The cracks are where the gold is."
+      },
+      {
+       "kp": "Treasure in jars of clay",
+       "text": "Paul says, \"We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.\""
+      },
+      {
+       "kp": "🔁 Character, calling, conviction. We don't make them. His power makes them in our weakness.",
+       "text": "Character, calling, conviction. We don't make them. His power makes them in our weakness."
+      }
+     ]
     }
    ]
   },
@@ -492,9 +920,55 @@
        "version": "NIV"
       }
      ],
-     "script": "Let me tell you where I learned this. When I came to KIDS in 2017, the ministry was hurting. It had been damaged by past leadership. Every month was a struggle for money, and I prayed one prayer over and over: \"Leadership, leadership, leadership.\"\n\nI had left business because I was tired of measuring my life by how much revenue I created for a company. I wanted to measure my life by the lives I impact. But I brought my business habits with me. I came in like a CTO. Plans, budgets, fundraising, systems.\n\nAnd it took me a long time to get here. I felt called to missions when I was young. My dad was actually the one who objected the most. I think he had been burnt by ministry, and he wanted his son to have a job and a foundation. So I went into business. For years I wondered why I didn't go sooner. Now I can see that those years were preparation. God wasn't wasting them. He had things to do in me first. Calling isn't just a job you get. It's someone He makes you into.\n\nAnd I worked. I believed it was up to me to fix it. I would have told you it was Christ in me, but I lived like it was all up to me.\n\nBy 2019 the ministry was somewhat healthy. The finances were better. But the leaders I had prayed for still weren't there. And I was tired.",
+     "script": "Let me tell you where I learned this.\n\nWhen I came to KIDS in 2017, the ministry was hurting.\n\nIt had been damaged by past leadership.\n\nEvery month was a struggle for money, and I prayed one prayer over and over: \"Leadership, leadership, leadership.\"\n\nI had left business because I was tired of measuring my life by how much revenue I created for a company. I wanted to measure my life by the lives I impact. But I brought my business habits with me.\n\nI came in like a CTO. Plans, budgets, fundraising, systems.\n\nAnd it took me a long time to get here.\n\nI felt called to missions when I was young. My dad was actually the one who objected the most. I think he had been burnt by ministry, and he wanted his son to have a job and a foundation. So I went into business.\n\nFor years I wondered why I didn't go sooner. Now I can see that those years were preparation. God wasn't wasting them. He had things to do in me first. Calling isn't just a job you get. It's someone He makes you into.\n\nAnd I worked. I believed it was up to me to fix it.\n\nI would have told you it was Christ in me, but I lived like it was all up to me.\n\nBy 2019 the ministry was somewhat healthy. The finances were better. But the leaders I had prayed for still weren't there. And I was tired.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "",
+       "text": "Let me tell you where I learned this."
+      },
+      {
+       "kp": "2017: came to KIDS, ministry hurting",
+       "text": "When I came to KIDS in 2017, the ministry was hurting."
+      },
+      {
+       "kp": "Damaged by past leadership",
+       "text": "It had been damaged by past leadership."
+      },
+      {
+       "kp": "Money a struggle every month",
+       "text": "Every month was a struggle for money, and I prayed one prayer over and over: \"Leadership, leadership, leadership.\""
+      },
+      {
+       "kp": "Prayer: \"Leadership, leadership, leadership\"",
+       "text": ""
+      },
+      {
+       "kp": "Left business: lives impacted, not revenue",
+       "text": "I had left business because I was tired of measuring my life by how much revenue I created for a company. I wanted to measure my life by the lives I impact. But I brought my business habits with me."
+      },
+      {
+       "kp": "Came in like a CTO: plans, budgets, systems",
+       "text": "I came in like a CTO. Plans, budgets, fundraising, systems.\n\nAnd it took me a long time to get here."
+      },
+      {
+       "kp": "My calling, delayed: Dad objected, went into business",
+       "text": "I felt called to missions when I was young. My dad was actually the one who objected the most. I think he had been burnt by ministry, and he wanted his son to have a job and a foundation. So I went into business."
+      },
+      {
+       "kp": "Years of preparation; calling = who He makes you",
+       "text": "For years I wondered why I didn't go sooner. Now I can see that those years were preparation. God wasn't wasting them. He had things to do in me first. Calling isn't just a job you get. It's someone He makes you into.\n\nAnd I worked. I believed it was up to me to fix it."
+      },
+      {
+       "kp": "\"Christ in me,\" but lived like it was up to me",
+       "text": "I would have told you it was Christ in me, but I lived like it was all up to me."
+      },
+      {
+       "kp": "2019: healthier, still no leaders, tired",
+       "text": "By 2019 the ministry was somewhat healthy. The finances were better. But the leaders I had prayed for still weren't there. And I was tired."
+      }
+     ]
     },
     {
      "id": "p4b",
@@ -512,9 +986,31 @@
       "For the first time in a long time: nothing"
      ],
      "verses": [],
-     "script": "Then 2020 came, and everything stopped. We were shut in. For two weeks we did nothing. There was no money coming in, and I had no plan.\n\nEverything I knew how to do didn't work. I couldn't fundraise my way out of it. I couldn't plan my way out of it. Everything I had been leaning on, my experience, my strength, my systems, was gone.\n\nFor the first time in a long time, I had nothing.",
+     "script": "Then 2020 came, and everything stopped.\n\nWe were shut in. For two weeks we did nothing.\n\nThere was no money coming in, and I had no plan.\n\nEverything I knew how to do didn't work.\n\nI couldn't fundraise my way out of it. I couldn't plan my way out of it. Everything I had been leaning on, my experience, my strength, my systems, was gone.\n\nFor the first time in a long time, I had nothing.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "2020: everything stopped",
+       "text": "Then 2020 came, and everything stopped."
+      },
+      {
+       "kp": "Shut in, two weeks of nothing",
+       "text": "We were shut in. For two weeks we did nothing."
+      },
+      {
+       "kp": "No money coming in, no plan",
+       "text": "There was no money coming in, and I had no plan.\n\nEverything I knew how to do didn't work."
+      },
+      {
+       "kp": "Couldn't fundraise or plan my way out",
+       "text": "I couldn't fundraise my way out of it. I couldn't plan my way out of it. Everything I had been leaning on, my experience, my strength, my systems, was gone."
+      },
+      {
+       "kp": "For the first time in a long time: nothing",
+       "text": "For the first time in a long time, I had nothing."
+      }
+     ]
     },
     {
      "id": "p4c",
@@ -535,9 +1031,43 @@
       "Birthed youth + family ministry, clinic ×10, 1,000+ pastors"
      ],
      "verses": [],
-     "script": "Then hungry families started coming to us, asking for food. So we started cooking and handing out meals at the market. Then the local government came and asked us for food, and I asked, \"Can we also feed the pastors?\"\n\nOne of our pastors, Pastora Grace, said it this way: \"We are not afraid of COVID-19. We are more afraid of people dying because of hunger.\"\n\nWe went from about 3,000 meals a week to about 250,000 meals a week. I didn't plan that. Nobody would plan that. We didn't have the money for 3,000 meals, much less 250,000.\n\nAnd out of that season came things we never could have built. A youth ministry. A family ministry. Our clinic grew about ten times. More than a thousand pastors connected with us through those feedings.",
+     "script": "Then hungry families started coming to us, asking for food.\n\nSo we started cooking and handing out meals at the market.\n\nThen the local government came and asked us for food, and I asked, \"Can we also feed the pastors?\"\n\nOne of our pastors, Pastora Grace, said it this way: \"We are not afraid of COVID-19. We are more afraid of people dying because of hunger.\"\n\nWe went from about 3,000 meals a week to about 250,000 meals a week.\n\nI didn't plan that. Nobody would plan that. We didn't have the money for 3,000 meals, much less 250,000.\n\nAnd out of that season came things we never could have built.\n\nA youth ministry. A family ministry. Our clinic grew about ten times. More than a thousand pastors connected with us through those feedings.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Hungry families at our gate",
+       "text": "Then hungry families started coming to us, asking for food."
+      },
+      {
+       "kp": "Cooking at the market",
+       "text": "So we started cooking and handing out meals at the market."
+      },
+      {
+       "kp": "Local government asked for food",
+       "text": "Then the local government came and asked us for food, and I asked, \"Can we also feed the pastors?\""
+      },
+      {
+       "kp": "\"Can we also feed the pastors?\"",
+       "text": ""
+      },
+      {
+       "kp": "3,000 → 250,000 meals a week",
+       "text": ""
+      },
+      {
+       "kp": "Pastora Grace: more afraid of hunger than COVID",
+       "text": "One of our pastors, Pastora Grace, said it this way: \"We are not afraid of COVID-19. We are more afraid of people dying because of hunger.\"\n\nWe went from about 3,000 meals a week to about 250,000 meals a week."
+      },
+      {
+       "kp": "Didn't plan it; couldn't afford it",
+       "text": "I didn't plan that. Nobody would plan that. We didn't have the money for 3,000 meals, much less 250,000.\n\nAnd out of that season came things we never could have built."
+      },
+      {
+       "kp": "Birthed youth + family ministry, clinic ×10, 1,000+ pastors",
+       "text": "A youth ministry. A family ministry. Our clinic grew about ten times. More than a thousand pastors connected with us through those feedings."
+      }
+     ]
     },
     {
      "id": "p4d",
@@ -557,9 +1087,39 @@
       "Not my strength; God was already there"
      ],
      "verses": [],
-     "script": "One day we were sitting around a table, talking about stopping the feeding. There was no money. Pastor Art looked at me and said, \"We can't. There's people who are hungry, Norman.\"\n\nI told him there was no money, and I got up and walked away from the table. I looked at my phone, and there was a message from my former boss. He is not a Christian. He said his board wanted to donate $50,000.\n\nI walked back to the table and said, \"Never mind. The money came in.\"\n\nI didn't raise that money. I walked away from that table with nothing, and God was already there. And we have so many stories from that season just like that one.",
+     "script": "One day we were sitting around a table, talking about stopping the feeding. There was no money.\n\nPastor Art looked at me and said, \"We can't. There's people who are hungry, Norman.\"\n\nI told him there was no money, and I got up and walked away from the table.\n\nI looked at my phone, and there was a message from my former boss. He is not a Christian.\n\nHe said his board wanted to donate $50,000.\n\nI walked back to the table and said, \"Never mind. The money came in.\"\n\nI didn't raise that money.\n\nI walked away from that table with nothing, and God was already there. And we have so many stories from that season just like that one.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "At the table: time to stop the feeding",
+       "text": "One day we were sitting around a table, talking about stopping the feeding. There was no money."
+      },
+      {
+       "kp": "Pastor Art: \"We can't. There's people who are hungry, Norman.\"",
+       "text": "Pastor Art looked at me and said, \"We can't. There's people who are hungry, Norman.\""
+      },
+      {
+       "kp": "\"There's no money,\" walked away",
+       "text": "I told him there was no money, and I got up and walked away from the table."
+      },
+      {
+       "kp": "Phone: former boss, not a Christian",
+       "text": "I looked at my phone, and there was a message from my former boss. He is not a Christian."
+      },
+      {
+       "kp": "His board: $50,000",
+       "text": "He said his board wanted to donate $50,000."
+      },
+      {
+       "kp": "\"Never mind. The money came in.\"",
+       "text": "I walked back to the table and said, \"Never mind. The money came in.\"\n\nI didn't raise that money."
+      },
+      {
+       "kp": "Not my strength; God was already there",
+       "text": "I walked away from that table with nothing, and God was already there. And we have so many stories from that season just like that one."
+      }
+     ]
     },
     {
      "id": "p4e",
@@ -588,9 +1148,51 @@
        "version": "NIV"
       }
      ],
-     "script": "And then the leaders came, the ones I had been praying for. People we had never been connected to before. Pastor Art became my partner in the feedings. His son started Youth Lab, the first youth ministry we ever had. Volunteers who quarantined together at the ministry center caught a passion and became missionaries. We went from zero Filipino missionaries to twenty six. And they brought a whole new culture with them, a passion for prayer that we hadn't had before.\n\nIt was the hardest time of my life, and the most beautiful. I was up at four in the morning and working until ten or eleven at night, and I enjoyed every moment of it.\n\nI used to windsurf. When you windsurf, you don't make the wind. You can't. You can pull on that sail as hard as you want, and if there's no wind, you go nowhere. But when the wind comes and you catch it, you fly. You're still working. Every muscle is working. But it doesn't drain you. It's the most fun you'll ever have.\n\nThat's what Paul means in Colossians 1:29: \"To this end I strenuously contend with all the energy Christ so powerfully works in me.\" Paul is working hard. But the energy is Christ's.\n\nWhen I strive in my strength, I burn out. When I strive in His, I'm refreshed.",
+     "script": "And then the leaders came, the ones I had been praying for. People we had never been connected to before.\n\nPastor Art became my partner in the feedings.\n\nHis son started Youth Lab, the first youth ministry we ever had.\n\nVolunteers who quarantined together at the ministry center caught a passion and became missionaries.\n\nWe went from zero Filipino missionaries to twenty six. And they brought a whole new culture with them, a passion for prayer that we hadn't had before.\n\nIt was the hardest time of my life, and the most beautiful.\n\nI was up at four in the morning and working until ten or eleven at night, and I enjoyed every moment of it.\n\nI used to windsurf. When you windsurf, you don't make the wind. You can't. You can pull on that sail as hard as you want, and if there's no wind, you go nowhere. But when the wind comes and you catch it, you fly. You're still working. Every muscle is working. But it doesn't drain you. It's the most fun you'll ever have.\n\nThat's what Paul means in Colossians 1:29: \"To this end I strenuously contend with all the energy Christ so powerfully works in me.\" Paul is working hard. But the energy is Christ's.\n\nWhen I strive in my strength, I burn out. When I strive in His, I'm refreshed.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "The leaders came, the ones I prayed for",
+       "text": "And then the leaders came, the ones I had been praying for. People we had never been connected to before."
+      },
+      {
+       "kp": "Pastor Art: partner in the feedings",
+       "text": "Pastor Art became my partner in the feedings."
+      },
+      {
+       "kp": "His son: Youth Lab, first youth ministry",
+       "text": "His son started Youth Lab, the first youth ministry we ever had."
+      },
+      {
+       "kp": "Volunteers quarantined together → missionaries",
+       "text": "Volunteers who quarantined together at the ministry center caught a passion and became missionaries."
+      },
+      {
+       "kp": "0 → 26 Filipino missionaries",
+       "text": "We went from zero Filipino missionaries to twenty six. And they brought a whole new culture with them, a passion for prayer that we hadn't had before."
+      },
+      {
+       "kp": "Hardest and most beautiful season",
+       "text": "It was the hardest time of my life, and the most beautiful."
+      },
+      {
+       "kp": "Up at 4am, working till 10 or 11pm, loved it",
+       "text": "I was up at four in the morning and working until ten or eleven at night, and I enjoyed every moment of it."
+      },
+      {
+       "kp": "Windsurfing: I don't make the wind",
+       "text": "I used to windsurf. When you windsurf, you don't make the wind. You can't. You can pull on that sail as hard as you want, and if there's no wind, you go nowhere. But when the wind comes and you catch it, you fly. You're still working. Every muscle is working. But it doesn't drain you. It's the most fun you'll ever have."
+      },
+      {
+       "kp": "Col 1:29: all His energy",
+       "text": "That's what Paul means in Colossians 1:29: \"To this end I strenuously contend with all the energy Christ so powerfully works in me.\" Paul is working hard. But the energy is Christ's."
+      },
+      {
+       "kp": "🔑 \"When I strive in my strength, I burn out. When I strive in His, I'm refreshed.\"",
+       "text": "When I strive in my strength, I burn out. When I strive in His, I'm refreshed."
+      }
+     ]
     },
     {
      "id": "p4f",
@@ -615,9 +1217,35 @@
        "version": "NIV"
       }
      ],
-     "script": "We are building a high school on land in a poor community, and it is still not finished. There are classrooms full of kids, and there are still more stories and an auditorium to go. People ask me how we are going to finish it. I don't know. When we first walked that land, I asked myself, if God's love is extravagant, why shouldn't the school be?\n\nHebrews says faith is confidence in what we hope for and assurance about what we do not see. If I can already see how it gets done, if the money is in the bank and the plan is on the spreadsheet, I don't need faith. I need a calculator.\n\nI have learned this: if I can do it myself, it isn't faith.",
+     "script": "We are building a high school on land in a poor community, and it is still not finished.\n\nThere are classrooms full of kids, and there are still more stories and an auditorium to go.\n\nPeople ask me how we are going to finish it. I don't know.\n\nWhen we first walked that land, I asked myself, if God's love is extravagant, why shouldn't the school be?\n\nHebrews says faith is confidence in what we hope for and assurance about what we do not see. If I can already see how it gets done, if the money is in the bank and the plan is on the spreadsheet, I don't need faith. I need a calculator.\n\nI have learned this: if I can do it myself, it isn't faith.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Building a high school, poor community",
+       "text": "We are building a high school on land in a poor community, and it is still not finished."
+      },
+      {
+       "kp": "Still not finished: more floors, an auditorium",
+       "text": "There are classrooms full of kids, and there are still more stories and an auditorium to go."
+      },
+      {
+       "kp": "\"How will you finish it?\" I don't know",
+       "text": "People ask me how we are going to finish it. I don't know."
+      },
+      {
+       "kp": "If I can see it on a spreadsheet, I need a calculator, not faith",
+       "text": ""
+      },
+      {
+       "kp": "\"If God's love is extravagant, why not the school?\"",
+       "text": "When we first walked that land, I asked myself, if God's love is extravagant, why shouldn't the school be?"
+      },
+      {
+       "kp": "🔑 \"If I can do it myself, it isn't faith.\"",
+       "text": "Hebrews says faith is confidence in what we hope for and assurance about what we do not see. If I can already see how it gets done, if the money is in the bank and the plan is on the spreadsheet, I don't need faith. I need a calculator.\n\nI have learned this: if I can do it myself, it isn't faith."
+      }
+     ]
     },
     {
      "id": "p4g",
@@ -635,9 +1263,31 @@
       "God used the loss to change me"
      ],
      "verses": [],
-     "script": "(Optional, judgment call on the day.) There was also a season in my own life, a very personal one, where my own conviction about how my life would go simply gave way. I won't go into it today. But God used that loss to change me in ways my strength never could.",
+     "script": "(Optional, judgment call on the day.) There was also a season in my own life, a very personal one, where my own conviction about how my life would go simply gave way. I won't go into it today.\n\nBut God used that loss to change me in ways my strength never could.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "(Optional, judgment call on the day)",
+       "text": "(Optional, judgment call on the day.) There was also a season in my own life, a very personal one, where my own conviction about how my life would go simply gave way. I won't go into it today."
+      },
+      {
+       "kp": "A very personal season",
+       "text": ""
+      },
+      {
+       "kp": "My conviction about my life gave way",
+       "text": ""
+      },
+      {
+       "kp": "Not going into it",
+       "text": ""
+      },
+      {
+       "kp": "God used the loss to change me",
+       "text": "But God used that loss to change me in ways my strength never could."
+      }
+     ]
     },
     {
      "id": "p4h",
@@ -659,9 +1309,27 @@
        "version": "NIV"
       }
      ],
-     "script": "So that's what I learned. I'm not the strong one. I never was. It's the same pattern we saw in Peter, and in my dad. God let the strength run out, so He could be the strength.\n\nPaul says suffering produces perseverance, and perseverance produces character. Character isn't something you build on a good day.\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.",
+     "script": "So that's what I learned.\n\nI'm not the strong one. I never was.\n\nIt's the same pattern we saw in Peter, and in my dad. God let the strength run out, so He could be the strength.\n\nPaul says suffering produces perseverance, and perseverance produces character. Character isn't something you build on a good day.\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "",
+       "text": "So that's what I learned."
+      },
+      {
+       "kp": "I'm not the strong one; I never was",
+       "text": "I'm not the strong one. I never was."
+      },
+      {
+       "kp": "Same pattern as Peter, as my dad",
+       "text": "It's the same pattern we saw in Peter, and in my dad. God let the strength run out, so He could be the strength."
+      },
+      {
+       "kp": "🔁 Character, calling, conviction. We don't make them. His power makes them in our weakness.",
+       "text": "Paul says suffering produces perseverance, and perseverance produces character. Character isn't something you build on a good day.\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness."
+      }
+     ]
     }
    ]
   },
@@ -688,9 +1356,39 @@
       "🔑 \"Ministry is messy, and there's beauty in the mess.\""
      ],
      "verses": [],
-     "script": "Character, calling and conviction sound very tidy, don't they? Like something you could put in a box and check off. Character, check. Calling, check. Conviction, check.\n\nThe opposite is true.\n\nLook at a painter's palette. It's a mess. Colors smeared everywhere, blobs, drips, brushes dipped in three colors at once. If all you ever saw was the palette, you'd say, what a mess. But somewhere behind it, there's a painting. Every beautiful painting started on a messy palette.\n\nMinistry is messy, and there's beauty in the mess. If life were all straight lines, we wouldn't need God. And I've come to believe God intentionally puts us right where the mess shows up, so that He can be the one who makes it work.",
+     "script": "Character, calling and conviction sound very tidy, don't they? Like something you could put in a box and check off. Character, check. Calling, check. Conviction, check.\n\nThe opposite is true.\n\nLook at a painter's palette. It's a mess. Colors smeared everywhere, blobs, drips, brushes dipped in three colors at once. If all you ever saw was the palette, you'd say, what a mess.\n\nBut somewhere behind it, there's a painting. Every beautiful painting started on a messy palette.\n\nMinistry is messy, and there's beauty in the mess.\n\nIf life were all straight lines, we wouldn't need God.\n\nAnd I've come to believe God intentionally puts us right where the mess shows up, so that He can be the one who makes it work.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "CCC sound tidy: in a box, checked off",
+       "text": "Character, calling and conviction sound very tidy, don't they? Like something you could put in a box and check off. Character, check. Calling, check. Conviction, check."
+      },
+      {
+       "kp": "The opposite is true",
+       "text": "The opposite is true."
+      },
+      {
+       "kp": "Painter's palette: a mess",
+       "text": "Look at a painter's palette. It's a mess. Colors smeared everywhere, blobs, drips, brushes dipped in three colors at once. If all you ever saw was the palette, you'd say, what a mess."
+      },
+      {
+       "kp": "Every painting started on a messy palette",
+       "text": "But somewhere behind it, there's a painting. Every beautiful painting started on a messy palette.\n\nMinistry is messy, and there's beauty in the mess."
+      },
+      {
+       "kp": "If life were straight lines, we wouldn't need God",
+       "text": "If life were all straight lines, we wouldn't need God."
+      },
+      {
+       "kp": "God puts us where the mess shows up",
+       "text": "And I've come to believe God intentionally puts us right where the mess shows up, so that He can be the one who makes it work."
+      },
+      {
+       "kp": "🔑 \"Ministry is messy, and there's beauty in the mess.\"",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "p5b",
@@ -709,9 +1407,35 @@
       "Expect the mess, and God in it"
      ],
      "verses": [],
-     "script": "The mess teaches us humility. I'm not in control, and I can't fix it.\n\nAnd if I expect it to be clean, I will be disappointed, and then I will be angry. Angry at my staff, angry at the board, angry at the pastors who didn't show up, and if I'm honest, angry at God.\n\nMy dad once said it's easier not to question God about the big trials than about the small daily interruptions. The big things, we give to God. It's the little things that get under our skin.\n\nEven right now, there are relationships in our ministry that are strained. It's messy. And I am seeing God at work everywhere in the middle of it.\n\nSo expect the mess. And expect God in it.",
+     "script": "The mess teaches us humility.\n\nI'm not in control, and I can't fix it.\n\nAnd if I expect it to be clean, I will be disappointed, and then I will be angry. Angry at my staff, angry at the board, angry at the pastors who didn't show up, and if I'm honest, angry at God.\n\nMy dad once said it's easier not to question God about the big trials than about the small daily interruptions. The big things, we give to God. It's the little things that get under our skin.\n\nEven right now, there are relationships in our ministry that are strained. It's messy. And I am seeing God at work everywhere in the middle of it.\n\nSo expect the mess. And expect God in it.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Mess teaches humility",
+       "text": "The mess teaches us humility."
+      },
+      {
+       "kp": "I'm not in control; I can't fix it",
+       "text": "I'm not in control, and I can't fix it."
+      },
+      {
+       "kp": "Expect clean → disappointed → angry",
+       "text": "And if I expect it to be clean, I will be disappointed, and then I will be angry. Angry at my staff, angry at the board, angry at the pastors who didn't show up, and if I'm honest, angry at God."
+      },
+      {
+       "kp": "Dad: the small interruptions are harder than the big trials",
+       "text": "My dad once said it's easier not to question God about the big trials than about the small daily interruptions. The big things, we give to God. It's the little things that get under our skin."
+      },
+      {
+       "kp": "Even now, strained relationships; God at work in the middle",
+       "text": "Even right now, there are relationships in our ministry that are strained. It's messy. And I am seeing God at work everywhere in the middle of it."
+      },
+      {
+       "kp": "Expect the mess, and God in it",
+       "text": "So expect the mess. And expect God in it."
+      }
+     ]
     },
     {
      "id": "p5c",
@@ -739,9 +1463,47 @@
        "version": "NIV"
       }
      ],
-     "script": "Henry Blackaby taught us to find where God is working and join Him. Jesus said, \"My Father is always at his work to this very day, and I too am working.\" And, \"The Son can do nothing by himself; he can do only what he sees his Father doing.\"\n\nI'll be honest. Sitting still for hours is not where I hear God best. I've tried. For me, I find God's voice in the doing, not just the waiting.\n\nI try something, I see if God blesses it, and I adjust or I move on. A hungry family at the gate. A pastor who needs food. A volunteer who doesn't want to go home. That's where the Father is working, and I join Him. COVID taught me that. Where God goes, go there. Don't expect God to follow us. Sometimes a disaster is the biggest opportunity He gives you.\n\nMy whole life becomes my prayer life.",
+     "script": "Henry Blackaby taught us to find where God is working and join Him.\n\nJesus said, \"My Father is always at his work to this very day, and I too am working.\" And, \"The Son can do nothing by himself; he can do only what he sees his Father doing.\"\n\nI'll be honest.\n\nSitting still for hours is not where I hear God best. I've tried. For me, I find God's voice in the doing, not just the waiting.\n\nI try something, I see if God blesses it, and I adjust or I move on.\n\nA hungry family at the gate. A pastor who needs food. A volunteer who doesn't want to go home. That's where the Father is working, and I join Him. COVID taught me that. Where God goes, go there. Don't expect God to follow us. Sometimes a disaster is the biggest opportunity He gives you.\n\nMy whole life becomes my prayer life.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Blackaby: find where God is working, join Him",
+       "text": "Henry Blackaby taught us to find where God is working and join Him."
+      },
+      {
+       "kp": "Jesus: \"My Father is always at work\"",
+       "text": "Jesus said, \"My Father is always at his work to this very day, and I too am working.\" And, \"The Son can do nothing by himself; he can do only what he sees his Father doing.\"\n\nI'll be honest."
+      },
+      {
+       "kp": "Not my best place: sitting still for hours",
+       "text": "Sitting still for hours is not where I hear God best. I've tried. For me, I find God's voice in the doing, not just the waiting."
+      },
+      {
+       "kp": "Try something, see if God blesses it",
+       "text": "I try something, I see if God blesses it, and I adjust or I move on."
+      },
+      {
+       "kp": "Adjust, or move on",
+       "text": ""
+      },
+      {
+       "kp": "Hungry family, a pastor, a volunteer who won't go home",
+       "text": "A hungry family at the gate. A pastor who needs food. A volunteer who doesn't want to go home. That's where the Father is working, and I join Him. COVID taught me that. Where God goes, go there. Don't expect God to follow us. Sometimes a disaster is the biggest opportunity He gives you."
+      },
+      {
+       "kp": "Whole life becomes my prayer life",
+       "text": "My whole life becomes my prayer life."
+      },
+      {
+       "kp": "\"Where God goes, go there. Don't expect God to follow us.\"",
+       "text": ""
+      },
+      {
+       "kp": "🔑 \"I find God's voice in the doing, not just the waiting.\"",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "p5d",
@@ -769,9 +1531,47 @@
        "version": "NIV"
       }
      ],
-     "script": "Now, that doesn't mean we go looking for mess, or that we create it. Some of us are very good at creating it. We bring God's order into it.\n\nThat's what Christ did. He didn't stand outside our mess and tell us to clean it up. He came down into the middle of it. \"The Word became flesh and made his dwelling among us.\"\n\nHe was born in a barn and laid in a feeding trough, with the animals. That is about as messy as it gets. God's answer to our mess wasn't a memo. It was a baby in a manger.\n\nIn 2009, my wife Tina and I were in Tondo, and we handed a bag of groceries to a woman named Grace. She worked the streets. She came to the Bible study under the bridge, and on the second day she wept, overwhelmed by how much Jesus loved her. Then an old woman who sells mangoes, Lola Maming, brought us a kilo of mangoes she couldn't afford to give. We took them so she could give. And then we found out Lola Maming was Grace's aunt. My dad wrote, \"We were probably the only Jesus many of them had ever seen.\" That's what it looks like to bring His order into the mess. You go in.",
+     "script": "Now, that doesn't mean we go looking for mess, or that we create it. Some of us are very good at creating it.\n\nWe bring God's order into it.\n\nThat's what Christ did. He didn't stand outside our mess and tell us to clean it up. He came down into the middle of it.\n\n\"The Word became flesh and made his dwelling among us.\"\n\nHe was born in a barn and laid in a feeding trough, with the animals. That is about as messy as it gets.\n\nGod's answer to our mess wasn't a memo. It was a baby in a manger.\n\nIn 2009, my wife Tina and I were in Tondo, and we handed a bag of groceries to a woman named Grace. She worked the streets. She came to the Bible study under the bridge, and on the second day she wept, overwhelmed by how much Jesus loved her. Then an old woman who sells mangoes, Lola Maming, brought us a kilo of mangoes she couldn't afford to give. We took them so she could give. And then we found out Lola Maming was Grace's aunt.\n\nMy dad wrote, \"We were probably the only Jesus many of them had ever seen.\" That's what it looks like to bring His order into the mess. You go in.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Balance: don't go looking for mess",
+       "text": "Now, that doesn't mean we go looking for mess, or that we create it. Some of us are very good at creating it."
+      },
+      {
+       "kp": "Don't create it",
+       "text": ""
+      },
+      {
+       "kp": "Bring God's order into it",
+       "text": "We bring God's order into it."
+      },
+      {
+       "kp": "Christ didn't stand outside our mess",
+       "text": "That's what Christ did. He didn't stand outside our mess and tell us to clean it up. He came down into the middle of it."
+      },
+      {
+       "kp": "\"The Word became flesh\"",
+       "text": "\"The Word became flesh and made his dwelling among us.\""
+      },
+      {
+       "kp": "Born in a feeding trough, in a barn",
+       "text": "He was born in a barn and laid in a feeding trough, with the animals. That is about as messy as it gets."
+      },
+      {
+       "kp": "God's answer to the mess: a baby in a manger",
+       "text": "God's answer to our mess wasn't a memo. It was a baby in a manger."
+      },
+      {
+       "kp": "Tondo 2009: Grace, Lola Maming's mangoes",
+       "text": "In 2009, my wife Tina and I were in Tondo, and we handed a bag of groceries to a woman named Grace. She worked the streets. She came to the Bible study under the bridge, and on the second day she wept, overwhelmed by how much Jesus loved her. Then an old woman who sells mangoes, Lola Maming, brought us a kilo of mangoes she couldn't afford to give. We took them so she could give. And then we found out Lola Maming was Grace's aunt."
+      },
+      {
+       "kp": "\"Probably the only Jesus many had ever seen\"",
+       "text": "My dad wrote, \"We were probably the only Jesus many of them had ever seen.\" That's what it looks like to bring His order into the mess. You go in."
+      }
+     ]
     },
     {
      "id": "p5e",
@@ -796,9 +1596,35 @@
        "version": "NIV"
       }
      ],
-     "script": "And when you are in the middle of the mess, remember this.\n\nMy dad used to tell a story about two boys at the circus. One watches through a knothole in the fence, and he sees one animal at a time going by. The other boy is up in a tree, and he sees the whole circus at one glance. My dad said, \"God sees at one glance every episode of our lives.\"\n\nSo don't judge your ministry by one frame. And don't judge anyone else's by one frame either. He who began a good work in you will carry it on to completion.\n\nGod doesn't see a point in time. He sees the whole journey.",
+     "script": "And when you are in the middle of the mess, remember this.\n\nMy dad used to tell a story about two boys at the circus.\n\nOne watches through a knothole in the fence, and he sees one animal at a time going by. The other boy is up in a tree, and he sees the whole circus at one glance. My dad said, \"God sees at one glance every episode of our lives.\"\n\nSo don't judge your ministry by one frame. And don't judge anyone else's by one frame either.\n\nHe who began a good work in you will carry it on to completion.\n\nGod doesn't see a point in time. He sees the whole journey.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "In the middle of the mess, remember:",
+       "text": "And when you are in the middle of the mess, remember this."
+      },
+      {
+       "kp": "Dad's circus story: knothole vs. up in the tree",
+       "text": "My dad used to tell a story about two boys at the circus."
+      },
+      {
+       "kp": "\"God sees at one glance every episode of our lives\"",
+       "text": "One watches through a knothole in the fence, and he sees one animal at a time going by. The other boy is up in a tree, and he sees the whole circus at one glance. My dad said, \"God sees at one glance every episode of our lives.\""
+      },
+      {
+       "kp": "Don't judge your ministry, or anyone else, by one frame",
+       "text": "So don't judge your ministry by one frame. And don't judge anyone else's by one frame either."
+      },
+      {
+       "kp": "He who began a good work will finish it",
+       "text": "He who began a good work in you will carry it on to completion."
+      },
+      {
+       "kp": "🔑 \"God doesn't see a point in time. He sees the whole journey.\"",
+       "text": "God doesn't see a point in time. He sees the whole journey."
+      }
+     ]
     },
     {
      "id": "p5f",
@@ -821,9 +1647,27 @@
        "version": "NIV"
       }
      ],
-     "script": "Remember, Paul wrote some of his most beautiful letters from prison. Philippians, the letter about joy, was written in chains. The mess didn't stop what God was doing in him. The mess was where God was doing it. And in that same letter he writes, \"It is God who works in you to will and to act in order to fulfill his good purpose.\" From a prison cell.\n\nCharacter, calling, conviction. We don't make them. His power makes them in the mess.",
+     "script": "Remember, Paul wrote some of his most beautiful letters from prison. Philippians, the letter about joy, was written in chains. The mess didn't stop what God was doing in him. The mess was where God was doing it. And in that same letter he writes, \"It is God who works in you to will and to act in order to fulfill his good purpose.\"\n\nFrom a prison cell.\n\nCharacter, calling, conviction. We don't make them. His power makes them in the mess.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Paul's best letters: from prison",
+       "text": "Remember, Paul wrote some of his most beautiful letters from prison. Philippians, the letter about joy, was written in chains. The mess didn't stop what God was doing in him. The mess was where God was doing it. And in that same letter he writes, \"It is God who works in you to will and to act in order to fulfill his good purpose.\""
+      },
+      {
+       "kp": "Philippians: joy, from a cell",
+       "text": "From a prison cell."
+      },
+      {
+       "kp": "\"It is God who works in you\" (Phil 2:13)",
+       "text": ""
+      },
+      {
+       "kp": "🔁 Character, calling, conviction. We don't make them. His power makes them in the mess.",
+       "text": "Character, calling, conviction. We don't make them. His power makes them in the mess."
+      }
+     ]
     }
    ]
   },
@@ -846,9 +1690,23 @@
       "The power and the mess: the same thing"
      ],
      "verses": [],
-     "script": "At the beginning I told you not to expect His power to look any different for you than it did for the disciples. Don't expect the mess to be any different either.\n\nThe power and the mess aren't two different things. They're the same thing.\n\nIf you go home from this conference and things get hard, don't think the power left you. That may be the very moment it's working. Peter by the fire. My dad in that hospital bed. Me at that table with no money. The mess is not a sign that God left.",
+     "script": "At the beginning I told you not to expect His power to look any different for you than it did for the disciples.\n\nDon't expect the mess to be any different either.\n\nThe power and the mess aren't two different things. They're the same thing.\n\nIf you go home from this conference and things get hard, don't think the power left you. That may be the very moment it's working. Peter by the fire. My dad in that hospital bed. Me at that table with no money. The mess is not a sign that God left.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Callback: \"Don't expect it to look any different\"",
+       "text": "At the beginning I told you not to expect His power to look any different for you than it did for the disciples."
+      },
+      {
+       "kp": "Don't expect the mess to be different either",
+       "text": "Don't expect the mess to be any different either."
+      },
+      {
+       "kp": "The power and the mess: the same thing",
+       "text": "The power and the mess aren't two different things. They're the same thing.\n\nIf you go home from this conference and things get hard, don't think the power left you. That may be the very moment it's working. Peter by the fire. My dad in that hospital bed. Me at that table with no money. The mess is not a sign that God left."
+      }
+     ]
     },
     {
      "id": "p6b",
@@ -872,9 +1730,35 @@
        "version": "NIV"
       }
      ],
-     "script": "Because the mess is where the power lives.\n\nIt started in a manger, and it went all the way to a cross. Think about the cross. From the outside, it was the biggest mess in all of history. The Son of God, beaten, mocked, hanging between two criminals, His friends gone. And it was the greatest display of God's power the world has ever seen.\n\nPaul says, \"The message of the cross is foolishness to those who are perishing, but to us who are being saved it is the power of God.\" The weakness of God is stronger than human strength.",
+     "script": "Because the mess is where the power lives.\n\nIt started in a manger, and it went all the way to a cross. Think about the cross.\n\nFrom the outside, it was the biggest mess in all of history. The Son of God, beaten, mocked, hanging between two criminals, His friends gone.\n\nAnd it was the greatest display of God's power the world has ever seen.\n\nPaul says, \"The message of the cross is foolishness to those who are perishing, but to us who are being saved it is the power of God.\" The weakness of God is stronger than human strength.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "",
+       "text": "Because the mess is where the power lives."
+      },
+      {
+       "kp": "Started in a manger, ended at a cross",
+       "text": "It started in a manger, and it went all the way to a cross. Think about the cross."
+      },
+      {
+       "kp": "Cross: biggest mess in history",
+       "text": "From the outside, it was the biggest mess in all of history. The Son of God, beaten, mocked, hanging between two criminals, His friends gone."
+      },
+      {
+       "kp": "And the greatest display of His power",
+       "text": "And it was the greatest display of God's power the world has ever seen."
+      },
+      {
+       "kp": "Foolishness to some; to us, the power of God",
+       "text": "Paul says, \"The message of the cross is foolishness to those who are perishing, but to us who are being saved it is the power of God.\" The weakness of God is stronger than human strength."
+      },
+      {
+       "kp": "🔑 \"The mess is where the power lives.\"",
+       "text": ""
+      }
+     ]
     },
     {
      "id": "p6c",
@@ -892,9 +1776,31 @@
       "🔑 \"There's a thin line between faith and insanity. Walk the line.\""
      ],
      "verses": [],
-     "script": "When we started building the high school, people thought I was crazy. Some days I thought I was crazy too.\n\nFrom the outside, faith and insanity can look exactly the same. And if you never go anywhere near that line, you will never need faith. Walking the line doesn't mean doing something foolish. It means doing the next thing He shows you, even when you can't see how it ends.\n\nThere's a thin line between faith and insanity. Walk the line.",
+     "script": "When we started building the high school, people thought I was crazy. Some days I thought I was crazy too.\n\nFrom the outside, faith and insanity can look exactly the same.\n\nAnd if you never go anywhere near that line, you will never need faith.\n\nWalking the line doesn't mean doing something foolish. It means doing the next thing He shows you, even when you can't see how it ends.\n\nThere's a thin line between faith and insanity. Walk the line.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "High school: people thought I was crazy",
+       "text": "When we started building the high school, people thought I was crazy. Some days I thought I was crazy too."
+      },
+      {
+       "kp": "Sometimes I did too",
+       "text": ""
+      },
+      {
+       "kp": "From outside, faith and insanity look the same",
+       "text": "From the outside, faith and insanity can look exactly the same."
+      },
+      {
+       "kp": "Never near the line → never need faith",
+       "text": "And if you never go anywhere near that line, you will never need faith."
+      },
+      {
+       "kp": "🔑 \"There's a thin line between faith and insanity. Walk the line.\"",
+       "text": "Walking the line doesn't mean doing something foolish. It means doing the next thing He shows you, even when you can't see how it ends.\n\nThere's a thin line between faith and insanity. Walk the line."
+      }
+     ]
     },
     {
      "id": "p6d",
@@ -917,9 +1823,27 @@
        "version": "NIV"
       }
      ],
-     "script": "It turns out I came to talk about nothing after all.\n\nRemember the branch. Apart from Him, nothing. In Him, fruit.\n\nAnd that isn't bad news. It's the best news I know. It means it was never up to you. We are His handiwork, created in Christ Jesus for good works He prepared in advance. He's the one doing the making.\n\nSo as you go into the next three sessions, as we go deep on character, and on calling, and on conviction, I want you to remember where they come from.",
+     "script": "It turns out I came to talk about nothing after all.\n\nRemember the branch.\n\nApart from Him, nothing. In Him, fruit.\n\nAnd that isn't bad news. It's the best news I know. It means it was never up to you. We are His handiwork, created in Christ Jesus for good works He prepared in advance. He's the one doing the making.\n\nSo as you go into the next three sessions, as we go deep on character, and on calling, and on conviction, I want you to remember where they come from.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Came to talk about nothing after all",
+       "text": "It turns out I came to talk about nothing after all."
+      },
+      {
+       "kp": "Remember the branch",
+       "text": "Remember the branch."
+      },
+      {
+       "kp": "Apart from Him, nothing. In Him, fruit.",
+       "text": "Apart from Him, nothing. In Him, fruit."
+      },
+      {
+       "kp": "Not bad news: it was never up to you",
+       "text": "And that isn't bad news. It's the best news I know. It means it was never up to you. We are His handiwork, created in Christ Jesus for good works He prepared in advance. He's the one doing the making.\n\nSo as you go into the next three sessions, as we go deep on character, and on calling, and on conviction, I want you to remember where they come from."
+      }
+     ]
     },
     {
      "id": "p6e",
@@ -939,9 +1863,39 @@
       "Hand off to the next three speakers"
      ],
      "verses": [],
-     "script": "The disciples asked for a kingdom, and Jesus gave them power. But it didn't make life easier. It made them different. Peter had his own conviction: \"I will never deny you.\" And it failed him by a fire, in front of a servant girl. Then, through prison, persecution and failure, God did what Peter never could. He formed a character that was His, made clear a calling that was His, and planted a conviction that was His. It still works that way. So over the next three sessions, don't listen for what you need to do for God. Listen for what He's making you into.",
+     "script": "The disciples asked for a kingdom, and Jesus gave them power. But it didn't make life easier. It made them different.\n\nPeter had his own conviction: \"I will never deny you.\" And it failed him by a fire, in front of a servant girl. Then, through prison, persecution and failure, God did what Peter never could.\n\nHe formed a character that was His, made clear a calling that was His, and planted a conviction that was His. It still works that way.\n\nSo over the next three sessions, don't listen for what you need to do for God.\n\nListen for what He's making you into.",
      "scriptDraft": false,
-     "seconds": 1
+     "seconds": 1,
+     "beats": [
+      {
+       "kp": "Read the closing paragraph",
+       "text": ""
+      },
+      {
+       "kp": "Kingdom → power → made them different",
+       "text": "The disciples asked for a kingdom, and Jesus gave them power. But it didn't make life easier. It made them different."
+      },
+      {
+       "kp": "Peter's conviction failed by a fire",
+       "text": "Peter had his own conviction: \"I will never deny you.\" And it failed him by a fire, in front of a servant girl. Then, through prison, persecution and failure, God did what Peter never could."
+      },
+      {
+       "kp": "God formed, clarified, planted: His",
+       "text": "He formed a character that was His, made clear a calling that was His, and planted a conviction that was His. It still works that way."
+      },
+      {
+       "kp": "\"Don't listen for what you need to do for God\"",
+       "text": "So over the next three sessions, don't listen for what you need to do for God."
+      },
+      {
+       "kp": "\"Listen for what He's making you into\"",
+       "text": "Listen for what He's making you into."
+      },
+      {
+       "kp": "Hand off to the next three speakers",
+       "text": ""
+      }
+     ]
     }
    ]
   }
