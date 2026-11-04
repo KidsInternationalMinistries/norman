@@ -104,7 +104,7 @@
      "cue": "Disciples",
      "eyebrow": "",
      "slideTitle": "Locked doors",
-     "slide": "Conviction?\nCharacter?\nCalling?\n",
+     "slide": "Conviction?\n\nCharacter?\n\nCalling?\n",
      "layout": "left",
      "image": "slides/bg/p1f.jpg",
      "keyPoints": [
@@ -137,8 +137,8 @@
      "ttX": 2.9,
      "ttY": 10.6,
      "ttW": 56,
-     "sbX": 2.9,
-     "sbY": 37.1,
+     "sbX": 2.7,
+     "sbY": 50.8,
      "sbW": 56,
      "seconds": 1
     }
