@@ -117,7 +117,8 @@
      "sbW": 41,
      "ttX": -5.6,
      "ttY": 22.7,
-     "ttW": 72
+     "ttW": 72,
+     "sbAlign": "center"
     },
     {
      "id": "p1e",
