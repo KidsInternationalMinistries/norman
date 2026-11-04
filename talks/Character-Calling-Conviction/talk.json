@@ -37,31 +37,6 @@
      "ebSize": 95
     },
     {
-     "id": "p1c",
-     "cue": "Vine, branches, fruit",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [
-      "John 15:5: apart from me, nothing",
-      "Branch doesn't strain to make fruit",
-      "Stays connected; the vine produces",
-      "Cut off = nothing",
-      "Not \"less.\" Nothing."
-     ],
-     "verses": [
-      {
-       "ref": "John 15:5",
-       "text": "I am the vine; you are the branches. If you remain in me and I in you, you will bear much fruit; apart from me you can do nothing.",
-       "version": "NIV"
-      }
-     ],
-     "script": "",
-     "scriptDraft": false
-    },
-    {
      "id": "p1d",
      "cue": "They are fruit",
      "eyebrow": "",
