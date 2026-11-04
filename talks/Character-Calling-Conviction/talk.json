@@ -300,7 +300,10 @@
      "ttY": 18.1,
      "ttW": 65,
      "ttAlign": "left",
-     "ttSize": 108
+     "ttSize": 108,
+     "sbX": 1.7,
+     "sbY": 53.4,
+     "sbW": 56
     },
     {
      "id": "p2d",
