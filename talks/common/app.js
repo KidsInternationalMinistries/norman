@@ -82,6 +82,21 @@ function slideBox(p){
   const st = `left:${b.x}%;top:${b.y}%;width:${b.w}%;text-align:${b.a};align-items:${SELF[b.a]}`;
   return `<div class="slide ${c ? "center" : "left"}">${p.image ? imgTag(p.image) : ""}${inner ? `<div class="tx" style="${st}">${inner}</div>` : ""}${out}</div>`;
 }
+// Verse slides: a tag like [Acts 1:8] in a point's full text (matching one of its verses) adds a slide with just that verse.
+const TAG = /\[([^\[\]\n]{1,60})\]/g;
+function verseRefsIn(p){ const out = []; if (!p || !p.script) return out; for (const m of p.script.matchAll(TAG)) { const v = (p.verses || []).find(x => x && x.ref && x.ref.trim() === m[1].trim()); if (v) out.push(v) } return out }
+const subCount = p => verseRefsIn(p).length;
+function verseSlide(v){ const n = (v.text || "").length, sz = n <= 110 ? 4.8 : n <= 220 ? 4 : n <= 360 ? 3.3 : n <= 520 ? 2.8 : 2.3;
+  return `<div class="slide verse-s"><div class="vs"><div class="vt" style="font-size:${sz}cqw">${E(v.text || "")}</div><div class="vr">${E(v.ref)}${v.version ? " (" + E(v.version) + ")" : ""}</div></div></div>` }
+function stepHTML(S, i, sub, d){ if (sub > 0) { const v = verseRefsIn(S[i])[sub - 1]; if (v) return verseSlide(v) } return slideHTML(S, i, d) }
+// One dot per slide on a point (its own slide, then each verse slide); "on" marks the one showing.
+function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + subCount(p); if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
+const dotOf = (p, sub) => sub > 0 ? sub - 1 + (hasSlide(p) ? 1 : 0) : hasSlide(p) ? 0 : -1;
+// Full text with the verse tags as buttons (data-sub = which verse slide).
+function scriptHTML(p, sub){ let h = "", last = 0, k = 0; const t = p.script || "";
+  for (const m of t.matchAll(TAG)) { const v = (p.verses || []).find(x => x && x.ref && x.ref.trim() === m[1].trim()); if (!v) continue;
+    k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${k === sub ? " on" : ""}" data-sub="${k}">${E(v.ref)}</button>`; last = m.index + m[0].length }
+  return h + E(t.slice(last)) }
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
   if (s) return slideBox(s);
@@ -117,15 +132,16 @@ async function monitor(){
   document.title = D.title + " · slides";
   const S = steps(D), idx = id => S.findIndex(s => s.id === id);
   preload(S, D);
-  let pres = 0, local = 0, follow = true, connected = false, bcSeen = false, lastAt = 0;
-  const slideSteps = S.map((s, i) => i).filter(i => hasSlide(S[i]));
+  let pres = 0, psub = 0, local = 0, lsub = 0, follow = true, connected = false, bcSeen = false, lastAt = 0;
+  const items = []; S.forEach((s, i) => { if (hasSlide(s)) items.push([i, 0]); for (let k = 1; k <= subCount(s); k++) items.push([i, k]) });
   const st = $("#st");
-  function show(){ const i = follow ? pres : local; $("#s").innerHTML = slideHTML(S, i, D);
+  function show(){ const i = follow ? pres : local; $("#s").innerHTML = stepHTML(S, i, follow ? psub : lsub, D);
     st.className = follow ? (connected || bcSeen ? "on" : "") : "local";
     st.lastChild.textContent = follow ? (connected || bcSeen ? "Following the presenter" : "Waiting for the presenter") : "Stepping here, snaps back when the presenter moves" }
-  function fromPresenter(m){ if (!m || !m.point) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); const i = idx(m.point); if (i < 0) return; pres = i; follow = true; show() }
-  function step(d){ const cur = heldIdx(S, follow ? pres : local); let k = slideSteps.indexOf(cur); if (k < 0) k = d > 0 ? -1 : 0;
-    k = Math.max(0, Math.min(slideSteps.length - 1, k + d)); local = slideSteps[k]; follow = false; show() }
+  function fromPresenter(m){ if (!m || !m.point) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); const i = idx(m.point); if (i < 0) return; pres = i; psub = +m.sub || 0; follow = true; show() }
+  function step(d){ const ci = follow ? pres : local, cs = follow ? psub : lsub; let k = -1;
+    items.forEach(([i, s], j) => { if (i < ci || (i === ci && s <= cs)) k = j }); if (k < 0 && d < 0) k = 0;
+    k = Math.max(0, Math.min(items.length - 1, k + d)); if (!items[k]) return; [local, lsub] = items[k]; follow = false; show() }
   $("#b").onclick = () => step(-1); $("#n").onclick = () => step(1);
   const full = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen() } catch (e) {} };
   $("#f").onclick = full;
@@ -153,7 +169,7 @@ async function present(){
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div id="pace"></div><div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
-  let cur = 0; try { const v = +localStorage.getItem("pres-" + FOLDER); if (v >= 0 && v < S.length) cur = v } catch (e) {}
+  let cur = 0, sub = 0; try { const v = +localStorage.getItem("pres-" + FOLDER); if (v >= 0 && v < S.length) cur = v; const w = +localStorage.getItem("pres-sub-" + FOLDER); if (w > 0 && w <= subCount(S[cur])) sub = w } catch (e) {}
   const first = S.findIndex(s => s.id !== "cover");
   const TIMER = CountTimer($("#ct"), "pres-timer-" + FOLDER);
   const setLen = () => { const l = ls("pres-practice-base-" + FOLDER); let x = 0; S.forEach(p => { x += l && l.times[p.id] != null ? l.times[p.id] : ptSecs(p) });
@@ -161,23 +177,26 @@ async function present(){
   setLen();
   function nav(){ let h = "", last = null;
     S.forEach((s, i) => { if (s.sec !== last) { last = s.sec; if (s.sec) h += `<div class="sec">${E(s.sec)}</div>` }
-      h += `<button type="button" class="it${i === cur ? " cur" : ""}" data-i="${i}"><i>${E(s.label)}</i><span>${E(s.cue)}</span>${hasSlide(s) ? '<span class="d"></span>' : ""}</button>` });
+      h += `<button type="button" class="it${i === cur ? " cur" : ""}" data-i="${i}"><i>${E(s.label)}</i><span>${E(s.cue)}</span>${dotsHTML(s, i === cur ? dotOf(s, sub) : -1)}</button>` });
     const n = $("#nav"); n.innerHTML = h; const c = n.querySelector(".cur"); if (c) { const top = c.offsetTop - n.clientHeight / 2; n.scrollTo({top, behavior: "smooth"}) } }
   function main(){ const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
     $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}
       <div class="grid"><div>${kpHTML(s.keyPoints) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}</div>
-      <div class="scr-wrap"><div class="scr">${slideHTML(S, cur, D)}</div><div class="cap">${k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
-      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${E(s.script)}</p></div>` : ""}
+      <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Verse slide " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
+      ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${scriptHTML(s, sub)}</p></div>` : ""}
       ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}`;
     $("#pos").textContent = (cur + 1) + " of " + S.length }
   const syncEl = $("#sync"), setSync = (ok, msg) => { syncEl.className = ok ? "ok" : "bad"; syncEl.lastChild.textContent = msg };
-  async function push(){ const m = {point: S[cur].id, at: Date.now()};
-    try { localStorage.setItem("pres-" + FOLDER, cur) } catch (e) {}
+  async function push(){ const m = {point: S[cur].id, sub, at: Date.now()};
+    try { localStorage.setItem("pres-" + FOLDER, cur); localStorage.setItem("pres-sub-" + FOLDER, sub) } catch (e) {}
     if (bc) try { bc.postMessage(m) } catch (e) {}
     try { const r = await fetch(relayURL(), {method: "POST", body: JSON.stringify(m)}); setSync(r.ok, r.ok ? "Monitors following" : "Sync failed (" + r.status + ")") }
     catch (e) { setSync(false, "Offline: only the slides window follows") } }
   const locked = () => !!$("#gate");
-  function go(i){ if (locked()) return; const was = cur; cur = Math.max(0, Math.min(S.length - 1, i)); if (cur !== was) moved(was); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
+  function go(i, s){ if (locked()) return; const was = cur; cur = Math.max(0, Math.min(S.length - 1, i)); sub = s || 0; if (cur !== was) moved(was); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
+  function setSub(k){ if (locked()) return; sub = Math.max(0, Math.min(subCount(S[cur]), k)); main(); nav(); push() }
+  const next = () => sub < subCount(S[cur]) ? setSub(sub + 1) : go(cur + 1);
+  const back = () => sub > 0 ? setSub(sub - 1) : cur > 0 ? go(cur - 1, subCount(S[cur - 1])) : null;
 
   // ---- Practice: time each point; later, compare the real talk against it ----
   // A practice run writes each point's time into its "seconds" in talk.json (or keeps {date, times} on this computer if it can't reach GitHub).
@@ -214,12 +233,12 @@ async function present(){
   document.addEventListener("change", e => { if (e.target.id !== "pchk") return;
     if (e.target.checked) { if (cur > first) { e.target.checked = false; return } run = {times: {}}; pmsg = ""; ls(PRUN, run); pace() } else if (run) finish() });
   setInterval(pace, 500);
-  $("#b").onclick = () => go(cur - 1); $("#n").onclick = () => go(cur + 1);
+  $("#b").onclick = back; $("#n").onclick = next;
   $("#nav").onclick = e => { const b = e.target.closest("[data-i]"); if (b) go(+b.dataset.i) };
-  $("#m").onclick = e => { const b = e.target.closest("[data-v]"); if (b) showVerse(S[cur].verses[+b.dataset.v]) };
+  $("#m").onclick = e => { const t = e.target.closest("[data-sub]"); if (t) { setSub(+t.dataset.sub === sub ? 0 : +t.dataset.sub); return } const b = e.target.closest("[data-v]"); if (b) showVerse(S[cur].verses[+b.dataset.v]) };
   $("#pop").onclick = () => { window.open("./?window=1", "slides-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { const vd = $("#vd"); if ((vd && vd.open) || locked()) return;
-    if (["ArrowRight","ArrowDown","PageDown"," "].includes(e.key)) { e.preventDefault(); go(cur + 1) } else if (["ArrowLeft","ArrowUp","PageUp"].includes(e.key)) { e.preventDefault(); go(cur - 1) } });
+    if (["ArrowRight","ArrowDown","PageDown"," "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft","ArrowUp","PageUp"].includes(e.key)) { e.preventDefault(); back() } });
   main(); nav();
   presenterGate(C.passHash, "pres-ok", () => { push(); TIMER.at(cur <= first) });
 }
@@ -291,7 +310,7 @@ async function edit(){
     let h = `<button type="button" class="it${sel.k === "talk" ? " cur" : ""}" data-sel="talk"><span>Talk details</span></button>`;
     D.sections.forEach((s, si) => {
       h += `<button type="button" class="sec${sel.k === "sec" && sel.id === s.id ? " cur" : ""}" data-sel="sec" data-id="${E(s.id)}"><span>${si + 1}. ${E(s.title)}</span><span>${E(s.minutes)}${s.minutes ? "m" : ""}</span></button>`;
-      s.points.forEach((p, pi) => { h += `<button type="button" class="it${sel.k === "pt" && sel.id === p.id ? " cur" : ""}" data-sel="pt" data-id="${E(p.id)}"><i>${si + 1}.${letter(pi)}</i><span>${E(p.cue || "(no cue)")}</span>${hasSlide(p) ? '<span class="d"></span>' : ""}</button>` });
+      s.points.forEach((p, pi) => { h += `<button type="button" class="it${sel.k === "pt" && sel.id === p.id ? " cur" : ""}" data-sel="pt" data-id="${E(p.id)}"><i>${si + 1}.${letter(pi)}</i><span>${E(p.cue || "(no cue)")}</span>${dotsHTML(p, -1)}</button>` });
       h += `<button type="button" class="btn small add" data-act="padd" data-id="${E(s.id)}">+ Point in ${si + 1}</button>`;
     });
     h += `<div style="margin:14px 8px"><button type="button" class="btn small" data-act="sadd">+ Movement</button></div>`;
@@ -344,6 +363,28 @@ async function edit(){
     $("#m").innerHTML = e + `</div>`; autoAll();
     const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; const ps = $("#prevs"), f = findPt(D, sel.id); if (ps && f) ps.innerHTML = prevHTML(f.p) }); if (slideOpen) openSlide() }
   }
+  // Typing "/" in the full text lists this point's verses; picking one puts its tag, like [Acts 1:8], in the text.
+  let vmenu = null;
+  function caretXY(ta, pos){ const m = document.createElement("div"), cs = getComputedStyle(ta);
+    for (const k of ["fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "padding", "border", "boxSizing", "whiteSpace", "wordWrap", "width"]) m.style[k] = cs[k];
+    Object.assign(m.style, {position: "absolute", visibility: "hidden", whiteSpace: "pre-wrap", wordWrap: "break-word", top: "0", left: "-9999px"});
+    m.textContent = ta.value.slice(0, pos); const sp = document.createElement("span"); sp.textContent = "\u200b"; m.appendChild(sp); document.body.appendChild(m);
+    const r = ta.getBoundingClientRect(), x = r.left + sp.offsetLeft - ta.scrollLeft, y = r.top + sp.offsetTop - ta.scrollTop + parseFloat(cs.lineHeight || 24); m.remove(); return {x, y} }
+  function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
+  function openVmenu(ta, at){ const f = findPt(D, ta.dataset.id); const vs = f ? (f.p.verses || []).filter(v => v && v.ref) : []; if (!vs.length) return;
+    closeVmenu(); const el = document.createElement("div"); el.className = "vmenu"; el.innerHTML = `<div class="vmh">Verse slide</div>` + vs.map((v, i) => `<button type="button" data-k="${i}"${i ? "" : ' class="on"'}>${E(v.ref)}</button>`).join("");
+    document.body.appendChild(el); const p = caretXY(ta, at); el.style.left = Math.min(p.x, innerWidth - 240) + "px"; el.style.top = Math.min(p.y, innerHeight - el.offsetHeight - 8) + "px";
+    vmenu = {el, ta, at, vs, k: 0}; el.onmousedown = e => e.preventDefault(); el.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
+  function pickV(k){ const {ta, at, vs} = vmenu, tag = "[" + vs[k].ref + "]"; closeVmenu();
+    if (ta.value[at] !== "/") return; ta.value = ta.value.slice(0, at) + tag + ta.value.slice(at + 1); const c = at + tag.length; ta.focus(); ta.setSelectionRange(c, c); autoSize(ta);
+    ta.dispatchEvent(new Event("change", {bubbles: true})) }
+  document.addEventListener("keydown", e => { const ta = e.target;
+    if (vmenu) { const n = vmenu.vs.length;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); vmenu.k = (vmenu.k + (e.key === "ArrowDown" ? 1 : n - 1)) % n; vmenu.el.querySelectorAll("[data-k]").forEach((b, i) => b.classList.toggle("on", i === vmenu.k)); return }
+      if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pickV(vmenu.k); return }
+      closeVmenu(); if (e.key === "Escape") { e.preventDefault(); return } }
+    if (e.key === "/" && ta.matches && ta.matches('textarea[data-f="script"]')) { const at = ta.selectionStart; setTimeout(() => openVmenu(ta, at), 0) } }, true);
+  document.addEventListener("mousedown", e => { if (vmenu && !vmenu.el.contains(e.target)) closeVmenu() });
   // Text boxes grow to fit their text (they can still be dragged bigger).
   const autoSize = t => { t.style.height = "auto"; t.style.height = (t.scrollHeight + 4) + "px" };
   function autoAll(){ document.querySelectorAll("#m textarea.auto").forEach(autoSize) }
@@ -466,8 +507,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=9"><link rel="stylesheet" href="../common/countdown.css?v=9"><link rel="stylesheet" href="../common/gate.css?v=9"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=9"></script><script src="../common/countdown.js?v=9"></script><script src="../common/gate.js?v=9"></script><script src="../common/app.js?v=9"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=10"><link rel="stylesheet" href="../common/countdown.css?v=10"><link rel="stylesheet" href="../common/gate.css?v=10"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=10"></script><script src="../common/countdown.js?v=10"></script><script src="../common/gate.js?v=10"></script><script src="../common/app.js?v=10"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

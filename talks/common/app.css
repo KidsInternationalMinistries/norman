@@ -40,7 +40,7 @@ main.pane{padding:18px 22px 40px;min-width:0}
 .vtags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .vtags button{border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:5px 15px;font-weight:700;font-size:16px}
 .vtags button:hover{background:var(--accent);color:#fff}
-.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:22px;align-items:start}
+.grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:22px;align-items:start}
 ul.kp{margin:0;padding-left:1.25em;font-size:20px;line-height:1.5}
 ul.kp li{margin:4px 0}
 ul.kp li.key{list-style:none;margin-left:-1.25em;font-weight:700}
@@ -172,3 +172,18 @@ dialog.sdlg::backdrop{background:rgba(5,10,15,.6)}
 dialog.sdlg .ed{max-width:none}
 @media (max-width:820px){.ptgrid{grid-template-columns:1fr}.picside{order:-1;justify-items:start;padding-top:0}}
 #prev{user-select:none;-webkit-user-select:none}
+/* verse slides */
+.slide.verse-s{background:#0b1510}
+.slide .vs{position:absolute;inset:7% 9%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2.6cqw;text-align:center}
+.slide .vt{color:#fff;font-family:Georgia,Cambria,serif;line-height:1.38;white-space:pre-line}
+.slide .vr{color:#E9B949;font:600 2.6cqw/1.2 Calibri,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.dots{margin-left:auto;display:flex;gap:3px;flex:0 0 auto}
+.dots b{width:7px;height:7px;border-radius:50%;background:var(--accent);opacity:.45}
+.dots b.on{opacity:1;box-shadow:0 0 0 2px var(--cue)}
+nav.cues .it:not(.cur) .dots b{opacity:1}
+.script .vtag{border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:0 10px;font:700 15px/1.6 system-ui,sans-serif;vertical-align:2px;margin:0 2px}
+.script .vtag.on{background:var(--accent);color:#fff}
+.vmenu{position:fixed;z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px;display:grid;min-width:200px;max-width:280px}
+.vmenu .vmh{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:4px 8px}
+.vmenu button{border:0;background:none;text-align:left;padding:7px 10px;border-radius:7px;font-size:15px}
+.vmenu button.on,.vmenu button:hover{background:var(--cue);color:var(--cue-ink)}
