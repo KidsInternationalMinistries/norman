@@ -111,7 +111,13 @@
      "textW": 41,
      "ttSize": "",
      "sbSize": "",
-     "align": "center"
+     "align": "center",
+     "sbX": 2.9,
+     "sbY": 76.5,
+     "sbW": 41,
+     "ttX": 3.9,
+     "ttY": 17.4,
+     "ttW": 41
     },
     {
      "id": "p1e",
