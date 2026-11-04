@@ -319,30 +319,48 @@ async function edit(){
     } else {
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
-      e += `<h2><span>${E(lb)}</span>${E(p.cue || "(no cue)")}</h2>${verseTags(p)}
-        <div class="row"><label style="flex:3 1 260px">Cue (your memory phrase)<input data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}"></label>
-          <label style="flex:0 1 150px">Time (m:ss)<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
-        <div class="slideed"><span class="tag">Slide (leave all of it empty for no new slide at this point)</span>
-        <div class="prev" id="prev">${prevHTML(p)}</div>
+      const vt = (p.verses || []).map((v, vi) => v && v.ref ? `<button type="button" data-ve="${vi}">${E(v.ref)}</button>` : "").join("");
+      e += `<div class="cuerow"><span class="lbl">${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue">
+          <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
+        <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div>
+        <div class="picrow"><div class="prev" id="prev">${prevHTML(p)}</div><button type="button" class="linkbtn" data-act="sedit">${slideOpen ? "Done" : "Edit"}</button></div>
+        <div class="slideed" id="slideed"${slideOpen ? "" : " hidden"}>
         <div class="row"><label style="flex:1 1 200px">Small line on top (optional)<input data-t="pt" data-id="${E(p.id)}" data-f="eyebrow" value="${E(p.eyebrow)}" placeholder="e.g. Conference theme"></label>
           <label style="flex:0 1 200px">Style<select data-t="pt" data-id="${E(p.id)}" data-f="layout"><option value="left"${p.layout !== "center" ? " selected" : ""}>Gold title, white subtitle</option><option value="center"${p.layout === "center" ? " selected" : ""}>White title, gold subtitle</option></select></label></div>
+        <label>Title<textarea class="auto" data-t="pt" data-id="${E(p.id)}" data-f="slideTitle">${E(p.slideTitle)}</textarea></label>
+        <label>Subtitle<textarea class="auto" data-t="pt" data-id="${E(p.id)}" data-f="slide">${E(p.slide)}</textarea></label>
         ${posHTML(p)}
-        <label>Title (gold)<textarea data-t="pt" data-id="${E(p.id)}" data-f="slideTitle" style="min-height:60px">${E(p.slideTitle)}</textarea></label>
-        <label>Subtitle (white)<textarea data-t="pt" data-id="${E(p.id)}" data-f="slide" style="min-height:60px">${E(p.slide)}</textarea></label>
-        <div class="row"><span class="tag">Background image (a picture with no words; the text goes on top)</span>${p.image ? `<button class="btn small" type="button" data-act="imgdel" data-id="${E(p.id)}">Remove image</button>` : ""}
-          <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${p.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(p.id)}" hidden></label><span class="note" id="imgmsg"></span></div></div>
-        <label>Key points (one short phrase per line)<textarea class="kp" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints">${E((p.keyPoints || []).join("\n"))}</textarea></label>
-        <div class="vedit"><span class="tag">Verses I may read (tags at the top; tap one to show it)</span>
-          ${(p.verses || []).map((v, vi) => `<div class="vrow"><input data-t="v" data-id="${E(p.id)}" data-i="${vi}" data-f="ref" value="${E(v.ref)}" placeholder="Reference, e.g. John 15:5" aria-label="Verse reference">
-            <textarea data-t="v" data-id="${E(p.id)}" data-i="${vi}" data-f="text" placeholder="Verse text" aria-label="Verse text">${E(v.text)}</textarea>
-            <div class="row"><input data-t="v" data-id="${E(p.id)}" data-i="${vi}" data-f="version" value="${E(v.version)}" placeholder="Version" aria-label="Bible version" style="max-width:110px"><button class="btn small danger" type="button" data-act="vdel" data-id="${E(p.id)}" data-i="${vi}">Remove verse</button></div></div>`).join("")}
-          <div><button class="btn small" type="button" data-act="vadd" data-id="${E(p.id)}">+ Add verse</button></div></div>
-        <label>What I'll say (full words) ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<textarea class="big" data-t="pt" data-id="${E(p.id)}" data-f="script">${E(p.script)}</textarea></label>
+        <div class="row"><span class="tag">Picture (no words in it; the text goes on top)</span>${p.image ? `<button class="btn small" type="button" data-act="imgdel" data-id="${E(p.id)}">Remove image</button>` : ""}
+          <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${p.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(p.id)}" hidden></label><span class="note" id="imgmsg"></span></div>
+        <p class="note">Leave the text and picture empty for no new slide at this point.</p></div>
+        <label>Key points<textarea class="kp auto" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints" placeholder="One short phrase per line">${E((p.keyPoints || []).join("\n"))}</textarea></label>
+        <label>What I'll say ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<textarea class="big auto" data-t="pt" data-id="${E(p.id)}" data-f="script">${E(p.script)}</textarea></label>
         <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
           <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
         <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div>`;
     }
-    $("#m").innerHTML = e + `</div>`;
+    $("#m").innerHTML = e + `</div>`; autoAll();
+  }
+  // Text boxes grow to fit their text (they can still be dragged bigger).
+  const autoSize = t => { t.style.height = "auto"; t.style.height = (t.scrollHeight + 4) + "px" };
+  function autoAll(){ document.querySelectorAll("#m textarea.auto").forEach(autoSize) }
+  addEventListener("resize", () => autoAll());
+  let slideOpen = false;
+  // Verse pop-up in Edit: change the reference, text and version, or remove it.
+  function verseEdit(pid, i){
+    const f = findPt(D, pid); if (!f) return; const isNew = i === "new", v = isNew ? {ref: "", text: "", version: "NIV"} : f.p.verses[+i];
+    let d = $("#ved"); if (!d) { document.body.insertAdjacentHTML("beforeend", `<dialog class="verse ved" id="ved"><form method="dialog" class="ed">
+        <label>Reference<input id="ver" placeholder="e.g. John 15:5"></label><label>Text<textarea id="vet" class="auto" style="min-height:140px"></textarea></label>
+        <div class="row"><label style="flex:0 1 140px">Version<input id="vev"></label><span style="flex:1"></span>
+          <button class="btn small danger" type="button" id="vedel">Remove</button><button class="btn small" type="button" id="vecan">Cancel</button><button class="btn small pri" type="submit" id="vesave">Save</button></div></form></dialog>`); d = $("#ved");
+      $("#vecan").onclick = () => d.close(); $("#vet").addEventListener("input", e => autoSize(e.target)) }
+    $("#ver").value = v.ref || ""; $("#vet").value = v.text || ""; $("#vev").value = v.version || ""; $("#vedel").hidden = isNew; $("#vedel").textContent = "Remove"; delete $("#vedel").dataset.armed;
+    $("#vedel").onclick = () => { const b = $("#vedel"); if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = "Tap again to remove"; return } d.close(); op({t: "vdel", pid, i: +i}, true) };
+    d.querySelector("form").onsubmit = ev => { ev.preventDefault(); const nv = {ref: $("#ver").value.trim(), text: $("#vet").value, version: $("#vev").value.trim()}; d.close();
+      if (isNew) { if (!nv.ref && !nv.text) return; op({t: "vadd", pid}); i = f.p.verses.length - 1 }
+      for (const k of ["ref", "text", "version"]) if (isNew || nv[k] !== (v[k] || "")) op({t: "vset", pid, i: +i, f: k, v: nv[k]});
+      render() };
+    try { d.showModal() } catch (e) { d.setAttribute("open", "") } setTimeout(() => autoSize($("#vet")), 0); $(isNew ? "#ver" : "#vet").focus();
   }
   function render(){ nav(); pane() }
   let posOpen = false;
@@ -387,14 +405,15 @@ async function edit(){
     addEventListener("pointermove", mv); addEventListener("pointerup", up);
   });
   function prevHTML(p){ return hasSlide(p) ? slideBox(p) : '<div class="slide"><div class="tx" style="justify-content:center;align-items:center;opacity:.6;font-size:16px;color:#fff">No slide at this point</div></div>' }
-  document.addEventListener("input", ev => { const el = ev.target; if (el.dataset.t !== "pt" || !SLF.includes(el.dataset.f)) return;
+  document.addEventListener("input", ev => { const el = ev.target; if (el.matches && el.matches("#m textarea.auto")) autoSize(el); if (el.dataset.t !== "pt" || !SLF.includes(el.dataset.f)) return;
     if (el.type === "range") { const o = el.parentElement.querySelector("output"); if (o) o.textContent = el.value + "%" }
     const f = findPt(D, el.dataset.id), pv = $("#prev"); if (!f || !pv) return;
     const add = isLXYW(el.dataset.f) ? missing(f.p, el.dataset.f.slice(0, 2)) : {};
     pv.innerHTML = prevHTML({...f.p, ...add, [el.dataset.f]: el.value}); if (!isLXYW(el.dataset.f)) fixPos(f.p) });
   document.addEventListener("click", ev => {
     const s = ev.target.closest("[data-sel]"); if (s) { sel = {k: s.dataset.sel, id: s.dataset.id}; render(); if (matchMedia("(max-width:820px)").matches) $("#m").scrollIntoView(); else window.scrollTo(0, 0); return }
-    const v = ev.target.closest(".vtags [data-v]"); if (v && sel.k === "pt") { const f = findPt(D, sel.id); if (f) showVerse(f.p.verses[+v.dataset.v]); return }
+    const v = ev.target.closest(".vtags [data-ve]"); if (v && sel.k === "pt") { verseEdit(sel.id, v.dataset.ve); return }
+    if (ev.target.closest('[data-act="sedit"]')) { slideOpen = !slideOpen; const se = $("#slideed"); if (se) se.hidden = !slideOpen; ev.target.textContent = slideOpen ? "Done" : "Edit"; if (slideOpen) autoAll(); return }
     const b = ev.target.closest("[data-act]"); if (!b) return;
     const a = b.dataset.act, id = b.dataset.id;
     if (a === "padd") { const pid = newId("p"); op({t: "padd", sid: id, pid}); sel = {k: "pt", id: pid}; render(); return }
@@ -441,8 +460,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=7"><link rel="stylesheet" href="../common/countdown.css?v=7"><link rel="stylesheet" href="../common/gate.css?v=7"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=7"></script><script src="../common/countdown.js?v=7"></script><script src="../common/gate.js?v=7"></script><script src="../common/app.js?v=7"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=8"><link rel="stylesheet" href="../common/countdown.css?v=8"><link rel="stylesheet" href="../common/gate.css?v=8"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=8"></script><script src="../common/countdown.js?v=8"></script><script src="../common/gate.js?v=8"></script><script src="../common/app.js?v=8"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
