@@ -323,8 +323,12 @@ async function edit(){
       e += `<div class="cuerow"><span class="lbl">${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue">
           <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label></div>
         <div class="vtags">${vt}<button type="button" class="vplus" data-ve="new" title="Add a verse">+</button></div>
-        <div class="picrow"><div class="prev" id="prev">${prevHTML(p)}</div><button type="button" class="linkbtn" data-act="sedit">${slideOpen ? "Done" : "Edit"}</button></div>
-        <div class="slideed" id="slideed"${slideOpen ? "" : " hidden"}>
+        <div class="ptgrid"><label class="kpl">Key points<textarea class="kp auto" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints" placeholder="One short phrase per line">${E((p.keyPoints || []).join("\n"))}</textarea></label>
+          <div class="picside"><button type="button" class="prev small" id="prevs" data-act="sedit" title="Edit the slide">${prevHTML(p)}</button><button type="button" class="linkbtn" data-act="sedit">Edit slide</button></div></div>
+        <label>What I'll say ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<textarea class="big auto" data-t="pt" data-id="${E(p.id)}" data-f="script">${E(p.script)}</textarea></label>
+        <dialog class="sdlg" id="sdlg"><div class="ed"><div class="pgh"><b>Slide for ${E(lb)}</b><button type="button" class="btn small pri" data-act="sdone">Done</button></div>
+        <div class="prev" id="prev">${prevHTML(p)}</div>
+        <div class="slideed" id="slideed">
         <div class="row"><label style="flex:1 1 200px">Small line on top (optional)<input data-t="pt" data-id="${E(p.id)}" data-f="eyebrow" value="${E(p.eyebrow)}" placeholder="e.g. Conference theme"></label>
           <label style="flex:0 1 200px">Style<select data-t="pt" data-id="${E(p.id)}" data-f="layout"><option value="left"${p.layout !== "center" ? " selected" : ""}>Gold title, white subtitle</option><option value="center"${p.layout === "center" ? " selected" : ""}>White title, gold subtitle</option></select></label></div>
         <label>Title<textarea class="auto" data-t="pt" data-id="${E(p.id)}" data-f="slideTitle">${E(p.slideTitle)}</textarea></label>
@@ -332,20 +336,20 @@ async function edit(){
         ${posHTML(p)}
         <div class="row"><span class="tag">Picture (no words in it; the text goes on top)</span>${p.image ? `<button class="btn small" type="button" data-act="imgdel" data-id="${E(p.id)}">Remove image</button>` : ""}
           <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${p.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(p.id)}" hidden></label><span class="note" id="imgmsg"></span></div>
-        <p class="note">Leave the text and picture empty for no new slide at this point.</p></div>
-        <label>Key points<textarea class="kp auto" data-t="pt" data-id="${E(p.id)}" data-f="keyPoints" placeholder="One short phrase per line">${E((p.keyPoints || []).join("\n"))}</textarea></label>
-        <label>What I'll say ${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<textarea class="big auto" data-t="pt" data-id="${E(p.id)}" data-f="script">${E(p.script)}</textarea></label>
+        <p class="note">Leave the text and picture empty for no new slide at this point.</p></div></div></dialog>
         <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
           <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
         <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div>`;
     }
     $("#m").innerHTML = e + `</div>`; autoAll();
+    const dl = $("#sdlg"); if (dl) { dl.addEventListener("close", () => { slideOpen = false; const ps = $("#prevs"), f = findPt(D, sel.id); if (ps && f) ps.innerHTML = prevHTML(f.p) }); if (slideOpen) openSlide() }
   }
   // Text boxes grow to fit their text (they can still be dragged bigger).
   const autoSize = t => { t.style.height = "auto"; t.style.height = (t.scrollHeight + 4) + "px" };
   function autoAll(){ document.querySelectorAll("#m textarea.auto").forEach(autoSize) }
   addEventListener("resize", () => autoAll());
   let slideOpen = false;
+  function openSlide(){ const dl = $("#sdlg"); if (!dl) return; slideOpen = true; if (!dl.open) try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } autoAll(); const f = findPt(D, sel.id); if (f) fixPos(f.p) }
   // Verse pop-up in Edit: change the reference, text and version, or remove it.
   function verseEdit(pid, i){
     const f = findPt(D, pid); if (!f) return; const isNew = i === "new", v = isNew ? {ref: "", text: "", version: "NIV"} : f.p.verses[+i];
@@ -386,10 +390,11 @@ async function edit(){
   // Sliders of lines still in the block show where they sit now.
   function fixPos(p){ for (const [k] of LINES) { if (elPos(p, k)) continue; const m = measure(k); if (!m) continue;
     for (const a of ["X", "Y", "W"]) { const i = $(`#pos-${CSS.escape(p.id)} input[data-f="${k + a}"]`); if (i) { i.value = m[a]; i.parentElement.querySelector("output").textContent = Math.round(m[a]) + "%" } } } }
-  function refreshSlide(id){ const f = findPt(D, id); if (!f) return; const pv = $("#prev"), pp = $("#pos-" + CSS.escape(id)); if (pv) pv.innerHTML = prevHTML(f.p); if (pp) pp.outerHTML = posHTML(f.p); fixPos(f.p) }
+  function refreshSlide(id){ const f = findPt(D, id); if (!f) return; const pv = $("#prev"), ps = $("#prevs"), pp = $("#pos-" + CSS.escape(id)); if (pv) pv.innerHTML = prevHTML(f.p); if (ps) ps.innerHTML = prevHTML(f.p); if (pp) pp.outerHTML = posHTML(f.p); fixPos(f.p) }
   const LF = LINES.flatMap(([k]) => ["X", "Y", "W", "Size", "Align", "Color"].map(a => k + a)), POSF = ["textX", "textY", "textW", "align", ...LF], SLF = ["eyebrow", "slideTitle", "slide", "layout", ...POSF];
   const isLXYW = f => /^(eb|tt|sb)[XYW]$/.test(f);
   document.addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("pos")) posOpen = ev.target.open }, true);
+  document.addEventListener("mousedown", ev => { if (ev.target.closest && ev.target.closest("#prev [data-k]")) ev.preventDefault() });
   // Drag one line inside the preview to place it on its own.
   document.addEventListener("pointerdown", ev => {
     let el = ev.target.closest("#prev [data-k]"); if (!el || sel.k !== "pt") return; const f = findPt(D, sel.id); if (!f) return;
@@ -413,7 +418,8 @@ async function edit(){
   document.addEventListener("click", ev => {
     const s = ev.target.closest("[data-sel]"); if (s) { sel = {k: s.dataset.sel, id: s.dataset.id}; render(); if (matchMedia("(max-width:820px)").matches) $("#m").scrollIntoView(); else window.scrollTo(0, 0); return }
     const v = ev.target.closest(".vtags [data-ve]"); if (v && sel.k === "pt") { verseEdit(sel.id, v.dataset.ve); return }
-    if (ev.target.closest('[data-act="sedit"]')) { slideOpen = !slideOpen; const se = $("#slideed"); if (se) se.hidden = !slideOpen; ev.target.textContent = slideOpen ? "Done" : "Edit"; if (slideOpen) autoAll(); return }
+    if (ev.target.closest('[data-act="sedit"]')) { openSlide(); return }
+    if (ev.target.closest('[data-act="sdone"]')) { const dl = $("#sdlg"); if (dl) dl.close(); slideOpen = false; return }
     const b = ev.target.closest("[data-act]"); if (!b) return;
     const a = b.dataset.act, id = b.dataset.id;
     if (a === "padd") { const pid = newId("p"); op({t: "padd", sid: id, pid}); sel = {k: "pt", id: pid}; render(); return }
@@ -460,8 +466,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=8"><link rel="stylesheet" href="../common/countdown.css?v=8"><link rel="stylesheet" href="../common/gate.css?v=8"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=8"></script><script src="../common/countdown.js?v=8"></script><script src="../common/gate.js?v=8"></script><script src="../common/app.js?v=8"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=9"><link rel="stylesheet" href="../common/countdown.css?v=9"><link rel="stylesheet" href="../common/gate.css?v=9"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=9"></script><script src="../common/countdown.js?v=9"></script><script src="../common/gate.js?v=9"></script><script src="../common/app.js?v=9"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

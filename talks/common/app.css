@@ -156,11 +156,19 @@ details.pos[open]{display:grid;gap:10px}
 .ed .cuerow .tm input{width:80px}
 .ed .vtags{margin:0}
 .vtags .vplus{padding:5px 13px;border-style:dashed}
-.picrow{display:flex;gap:12px;align-items:flex-start}
-.picrow .prev{flex:1 1 auto;max-width:640px}
 .linkbtn{border:0;background:none;color:var(--accent);font-weight:700;text-decoration:underline;padding:4px 2px;font-size:15px}
 .ed textarea.auto{min-height:44px;overflow:hidden}
 .ed textarea.kp{min-height:60px;background:color-mix(in srgb,var(--cue) 35%,var(--surface))}
 .ed textarea.big{min-height:120px}
 dialog.ved{width:min(94vw,640px)}
 [hidden]{display:none!important}
+.ptgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,320px);gap:16px;align-items:start}
+.picside{display:grid;gap:4px;justify-items:end;padding-top:20px}
+.prev.small{all:unset;display:block;width:100%;cursor:pointer;border-radius:10px;overflow:hidden}
+.prev.small .slide{border-radius:10px}
+.prev.small:focus-visible{outline:2px solid var(--accent)}
+dialog.sdlg{border:0;border-radius:14px;padding:18px;width:min(96vw,1000px);max-height:94vh;background:var(--bg);color:var(--ink)}
+dialog.sdlg::backdrop{background:rgba(5,10,15,.6)}
+dialog.sdlg .ed{max-width:none}
+@media (max-width:820px){.ptgrid{grid-template-columns:1fr}.picside{order:-1;justify-items:start;padding-top:0}}
+#prev{user-select:none;-webkit-user-select:none}
