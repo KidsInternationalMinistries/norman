@@ -135,10 +135,11 @@ async function monitor(){
   let pres = 0, psub = 0, local = 0, lsub = 0, follow = true, connected = false, bcSeen = false, lastAt = 0;
   const items = []; S.forEach((s, i) => { if (hasSlide(s)) items.push([i, 0]); for (let k = 1; k <= subCount(s); k++) items.push([i, k]) });
   const st = $("#st");
-  function show(){ const i = follow ? pres : local; $("#s").innerHTML = stepHTML(S, i, follow ? psub : lsub, D);
+  let pEnd = false;
+  function show(){ const i = follow ? pres : local; $("#s").innerHTML = follow && pEnd ? '<div class="slide blank"></div>' : stepHTML(S, i, follow ? psub : lsub, D);
     st.className = follow ? (connected || bcSeen ? "on" : "") : "local";
     st.lastChild.textContent = follow ? (connected || bcSeen ? "Following the presenter" : "Waiting for the presenter") : "Stepping here, snaps back when the presenter moves" }
-  function fromPresenter(m){ if (!m || !m.point) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); const i = idx(m.point); if (i < 0) return; pres = i; psub = +m.sub || 0; follow = true; show() }
+  function fromPresenter(m){ if (!m || !m.point) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); if (m.point === "__end") { pEnd = true; follow = true; show(); return } const i = idx(m.point); if (i < 0) return; pEnd = false; pres = i; psub = +m.sub || 0; follow = true; show() }
   function step(d){ const ci = follow ? pres : local, cs = follow ? psub : lsub; let k = -1;
     items.forEach(([i, s], j) => { if (i < ci || (i === ci && s <= cs)) k = j }); if (k < 0 && d < 0) k = 0;
     k = Math.max(0, Math.min(items.length - 1, k + d)); if (!items[k]) return; [local, lsub] = items[k]; follow = false; show() }
@@ -179,7 +180,8 @@ async function present(){
     S.forEach((s, i) => { if (s.sec !== last) { last = s.sec; if (s.sec) h += `<div class="sec">${E(s.sec)}</div>` }
       h += `<button type="button" class="it${i === cur ? " cur" : ""}" data-i="${i}"><i>${E(s.label)}</i><span>${E(s.cue)}</span>${dotsHTML(s, i === cur ? dotOf(s, sub) : -1)}</button>` });
     const n = $("#nav"); n.innerHTML = h; const c = n.querySelector(".cur"); if (c) { const top = c.offsetTop - n.clientHeight / 2; n.scrollTo({top, behavior: "smooth"}) } }
-  function main(){ const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
+  function main(){ if (atEnd) { $("#m").innerHTML = `<div class="head">End of the talk</div><div class="grid"><div><p class="note">The last point is timed. Untick Practice when you're done, or press Back.</p></div><div class="scr-wrap"><div class="scr"><div class="slide blank"></div></div><div class="cap">Blank slide</div></div></div>`; $("#pos").textContent = "End"; return }
+    const s = S[cur], k = heldIdx(S, cur), nx = S[cur + 1];
     $("#m").innerHTML = `<div class="sech">${E(s.sec)}</div><div class="head">${s.label ? `<span>${E(s.label)}</span>` : ""}${E(s.cue)}</div>${verseTags(s)}
       <div class="grid"><div>${kpHTML(s.keyPoints) || (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}</div>
       <div class="scr-wrap"><div class="scr">${stepHTML(S, cur, sub, D)}</div><div class="cap">${sub > 0 ? "Verse slide " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide"}</div></div></div>
@@ -187,43 +189,46 @@ async function present(){
       ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}`;
     $("#pos").textContent = (cur + 1) + " of " + S.length }
   const syncEl = $("#sync"), setSync = (ok, msg) => { syncEl.className = ok ? "ok" : "bad"; syncEl.lastChild.textContent = msg };
-  async function push(){ const m = {point: S[cur].id, sub, at: Date.now()};
+  async function push(){ const m = {point: atEnd ? "__end" : S[cur].id, sub, at: Date.now()};
     try { localStorage.setItem("pres-" + FOLDER, cur); localStorage.setItem("pres-sub-" + FOLDER, sub) } catch (e) {}
     if (bc) try { bc.postMessage(m) } catch (e) {}
     try { const r = await fetch(relayURL(), {method: "POST", body: JSON.stringify(m)}); setSync(r.ok, r.ok ? "Monitors following" : "Sync failed (" + r.status + ")") }
     catch (e) { setSync(false, "Offline: only the slides window follows") } }
   const locked = () => !!$("#gate");
-  function go(i, s){ if (locked()) return; const was = cur; cur = Math.max(0, Math.min(S.length - 1, i)); sub = s || 0; if (cur !== was) moved(was); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
+  function go(i, s){ if (locked()) return; const was = cur; atEnd = false; cur = Math.max(0, Math.min(S.length - 1, i)); sub = s || 0; if (cur !== was) moved(was); main(); nav(); window.scrollTo(0, 0); push(); TIMER.at(cur <= first) }
   function setSub(k){ if (locked()) return; sub = Math.max(0, Math.min(subCount(S[cur]), k)); main(); nav(); push() }
-  const next = () => sub < subCount(S[cur]) ? setSub(sub + 1) : go(cur + 1);
-  const back = () => sub > 0 ? setSub(sub - 1) : cur > 0 ? go(cur - 1, subCount(S[cur - 1])) : null;
+  // Next (button, arrow or clicker) is the only thing that records a practice time; jumping in the list does not.
+  function next(){ if (locked() || atEnd) return; if (sub < subCount(S[cur])) return setSub(sub + 1);
+    if (run) record(); if (cur < S.length - 1) return go(cur + 1);
+    if (run) { atEnd = true; main(); nav(); push() } }      // practice: a black slide after the last point, so the last point gets timed
+  const back = () => { if (atEnd) { atEnd = false; main(); nav(); push(); return } sub > 0 ? setSub(sub - 1) : cur > 0 ? go(cur - 1, subCount(S[cur - 1])) : null };
+  let atEnd = false;
 
   // ---- Practice: time each point; later, compare the real talk against it ----
-  // A practice run writes each point's time into its "seconds" in talk.json (or keeps {date, times} on this computer if it can't reach GitHub).
+  // Practice: each Next writes the time spent on that point into its "seconds" in talk.json right away
+  // (or keeps it on this computer if it can't reach GitHub). The first point (1.a) isn't timed, like the countdown.
   var PRUN = "pres-practice-" + FOLDER, PBASE = "pres-practice-base-" + FOLDER, PARR = "pres-arrive-" + FOLDER;
   function ls(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)) } catch (e) { return null } }
-  let run = ls(PRUN), arrive = ls(PARR) || Date.now(), pmsg = "";
+  let run = !!ls(PRUN), arrive = ls(PARR) || Date.now(), pmsg = "", lastRec = "", queue = {}, saveT = null, saving = false;
   const planned = p => { const l = ls(PBASE); return l && l.times[p.id] != null ? l.times[p.id] : ptSecs(p) };
   const hasPlan = () => S.some(p => planned(p) > 0);
-  function moved(was){ const now = Date.now();
-    if (run && was > first) { const id = S[was].id; run.times[id] = Math.round(((run.times[id] || 0) + (now - arrive) / 1000) * 10) / 10 }
-    arrive = now; ls(PARR, arrive); pmsg = "";
-    if (run) { if (cur <= first && was > first) return finish(); ls(PRUN, run) } }
-  async function finish(){
-    if (cur > first) { const id = S[cur].id; run.times[id] = Math.round(((run.times[id] || 0) + (Date.now() - arrive) / 1000) * 10) / 10; arrive = Date.now() }
-    const times = run.times, total = Math.round(Object.values(times).reduce((a, b) => a + b, 0)); run = null; ls(PRUN, null);
-    if (total < 30) { pmsg = "Practice too short to keep"; return pace() }
-    const rec = {date: new Date().toISOString(), total, times}, apply = d => { d.sections.forEach(s => s.points.forEach(p => { if (times[p.id] != null) p.seconds = Math.round(times[p.id]) })); d.lastPractice = {date: rec.date, total} };
-    apply(D); S.forEach(x => { if (times[x.id] != null) x.seconds = Math.round(times[x.id]) }); setLen(); pmsg = "Saving practice (" + mmss(total) + ")…"; pace();
-    if (!token()) { ls(PBASE, rec); setLen(); pmsg = "Practice saved on this computer (" + mmss(total) + "). Open Edit once to connect GitHub and it will save to the site."; return pace() }
-    for (let k = 0; k < 4; k++) { try { const g = await GH.get(PATH + "/talk.json"), d = JSON.parse(g.text); apply(d);
-        await GH.put(PATH + "/talk.json", b64e(JSON.stringify(d, null, 2) + "\n"), g.sha, "Practice run for " + (d.title || FOLDER)); ls(PBASE, null); setLen();
-        pmsg = "Practice saved (" + mmss(total) + "). The real talk will compare against it."; return pace() }
-      catch (e) { if (e.status !== 409 && e.status !== 422) break } }
-    ls(PBASE, rec); setLen(); pmsg = "Couldn't reach GitHub; practice saved on this computer (" + mmss(total) + ")."; pace() }
+  function moved(){ arrive = Date.now(); ls(PARR, arrive); pmsg = "" }
+  function record(){ if (cur <= first) return; const p = S[cur], t = Math.max(1, Math.round((Date.now() - arrive) / 1000));
+    queue[p.id] = t; p.seconds = t; const f = findPt(D, p.id); if (f) f.p.seconds = t; setLen(); lastRec = p.label + " " + mmss(t);
+    clearTimeout(saveT); saveT = setTimeout(savePractice, 1200) }
+  async function savePractice(){ if (saving) { saveT = setTimeout(savePractice, 1000); return } const times = queue; queue = {}; if (!Object.keys(times).length) return; saving = true;
+    const date = new Date().toISOString(), apply = d => { d.sections.forEach(s => s.points.forEach(p => { if (times[p.id] != null) p.seconds = times[p.id] })); d.lastPractice = {date, total: talkSecs(d)} };
+    const local = () => { const l = ls(PBASE) || {times: {}}; Object.assign(l.times, times); l.date = date; ls(PBASE, l) };
+    try {
+      if (!token()) { local(); pmsg = "Times kept on this computer only. Open Edit once in this browser to connect GitHub."; return }
+      for (let k = 0; k < 4; k++) { try { const g = await GH.get(PATH + "/talk.json"), d = JSON.parse(g.text); apply(d);
+          await GH.put(PATH + "/talk.json", b64e(JSON.stringify(d, null, 1) + "\n"), g.sha, "Practice times for " + (d.title || FOLDER)); D.lastPractice = d.lastPractice; pmsg = ""; return }
+        catch (e) { if (e.status !== 409 && e.status !== 422) break } }
+      local(); pmsg = "Couldn't reach GitHub; times kept on this computer.";
+    } finally { saving = false; pace() } }
   function pace(){ const el = $("#pace"); if (!el) return; const b = hasPlan(), atStart = cur <= first;
-    let h = `<label class="pchk${!run && !atStart ? " off" : ""}" title="${run ? "Uncheck, or go back to 1.a, to finish and save" : atStart ? "Time each point while you practice" : "Go to the first point to start a practice"}"><input type="checkbox" id="pchk"${run ? " checked" : ""}${!run && !atStart ? " disabled" : ""}> Practice</label>`;
-    if (run) h += `<span class="pst rec">● Practicing${cur > first ? " · " + mmss((Date.now() - arrive) / 1000) + " on this point" + (planned(S[cur]) ? " (last time " + mmss(planned(S[cur])) + ")" : "") : " · starts at 1.b"}</span>`;
+    let h = `<label class="pchk" title="${run ? "Untick to stop practicing" : "Time each point: press Next when you finish a point"}"><input type="checkbox" id="pchk"${run ? " checked" : ""}> Practice</label>`;
+    if (run) h += `<span class="pst rec">● ${atEnd ? "End. Last point timed" : atStart ? "Practicing · timing starts at 1.b" : "Practicing · " + mmss((Date.now() - arrive) / 1000) + " on this point" + (planned(S[cur]) ? " (last " + mmss(planned(S[cur])) + ")" : "")}</span>${lastRec ? `<span class="pst">Saved ${E(lastRec)}</span>` : ""}${pmsg ? `<span class="pst">${E(pmsg)}</span>` : ""}`;
     else if (pmsg) h += `<span class="pst">${E(pmsg)}</span>`;
     else if (b && !atStart && TIMER.elapsed() != null) { let exp = 0; for (let j = first + 1; j < cur; j++) exp += planned(S[j]);
       exp += Math.min((Date.now() - arrive) / 1000, planned(S[cur])); const dl = TIMER.elapsed() - exp;
@@ -231,7 +236,7 @@ async function present(){
     else if (b && atStart) h += `<span class="pst">Planned ${mmss(S.reduce((a, p) => a + planned(p), 0))}${D.lastPractice ? " · practiced " + new Date(D.lastPractice.date).toLocaleDateString() : ""}</span>`;
     if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h } }
   document.addEventListener("change", e => { if (e.target.id !== "pchk") return;
-    if (e.target.checked) { if (cur > first) { e.target.checked = false; return } run = {times: {}}; pmsg = ""; ls(PRUN, run); pace() } else if (run) finish() });
+    run = e.target.checked; lastRec = ""; pmsg = ""; if (run) { ls(PRUN, 1); arrive = Date.now(); ls(PARR, arrive) } else { ls(PRUN, null); if (atEnd) { atEnd = false; main(); nav(); push() } clearTimeout(saveT); savePractice() } pace() });
   setInterval(pace, 500);
   $("#b").onclick = back; $("#n").onclick = next;
   $("#nav").onclick = e => { const b = e.target.closest("[data-i]"); if (b) go(+b.dataset.i) };
@@ -507,8 +512,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=10"><link rel="stylesheet" href="../common/countdown.css?v=10"><link rel="stylesheet" href="../common/gate.css?v=10"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=10"></script><script src="../common/countdown.js?v=10"></script><script src="../common/gate.js?v=10"></script><script src="../common/app.js?v=10"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=11"><link rel="stylesheet" href="../common/countdown.css?v=11"><link rel="stylesheet" href="../common/gate.css?v=11"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=11"></script><script src="../common/countdown.js?v=11"></script><script src="../common/gate.js?v=11"></script><script src="../common/app.js?v=11"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){

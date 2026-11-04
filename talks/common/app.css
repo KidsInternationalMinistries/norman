@@ -187,3 +187,4 @@ nav.cues .it:not(.cur) .dots b{opacity:1}
 .vmenu .vmh{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:4px 8px}
 .vmenu button{border:0;background:none;text-align:left;padding:7px 10px;border-radius:7px;font-size:15px}
 .vmenu button.on,.vmenu button:hover{background:var(--cue);color:var(--cue-ink)}
+.slide.blank{background:#000}
