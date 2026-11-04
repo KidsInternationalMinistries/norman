@@ -97,7 +97,7 @@
      "ttW": 72,
      "sbAlign": "center",
      "ttAlign": "center",
-     "seconds": 11
+     "seconds": 2
     },
     {
      "id": "p1f",
@@ -140,7 +140,7 @@
      "sbX": 8.2,
      "sbY": 54.9,
      "sbW": 56,
-     "seconds": 2
+     "seconds": 1
     }
    ]
   },
@@ -913,7 +913,7 @@
   }
  ],
  "lastPractice": {
-  "date": "2026-11-04T12:29:21.970Z",
-  "total": 258
+  "date": "2026-11-04T12:29:24.459Z",
+  "total": 248
  }
 }
