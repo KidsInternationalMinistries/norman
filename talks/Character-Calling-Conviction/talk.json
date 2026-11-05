@@ -210,6 +210,19 @@
      "seconds": 2
     },
     {
+     "id": "pmw3ak3b6h1u",
+     "cue": "New point",
+     "eyebrow": "",
+     "slideTitle": "",
+     "slide": "",
+     "layout": "left",
+     "image": "",
+     "keyPoints": [],
+     "verses": [],
+     "script": "",
+     "scriptDraft": false
+    },
+    {
      "id": "pmw3ajak8z40",
      "cue": "New point",
      "eyebrow": "",
@@ -296,19 +309,6 @@
      "sbX": 7.8,
      "sbY": 53.9,
      "sbW": 56
-    },
-    {
-     "id": "pmw3ak3b6h1u",
-     "cue": "New point",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [],
-     "verses": [],
-     "script": "",
-     "scriptDraft": false
     }
    ]
   },
