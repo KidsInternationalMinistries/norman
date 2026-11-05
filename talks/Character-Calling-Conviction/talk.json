@@ -656,9 +656,9 @@
      "layout": "left",
      "image": "",
      "keyPoints": [
-      "I'm not the strong one; I never was",
-      "Same pattern as Peter, as my dad",
-      "🔁 Character, calling, conviction. We don't make them. His power makes them in our weakness."
+      "[@85q6gnqz] I'm not the strong one; I never was",
+      "[@85q6n60q] Same pattern as Peter, as my dad",
+      "[@85q6qojx] 🔁 Character, calling, conviction. We don't make them. His power makes them in our weakness."
      ],
      "verses": [
       {
@@ -667,8 +667,8 @@
        "version": "NIV"
       }
      ],
-     "script": "So that's what I learned. I'm not the strong one. I never was. It's the same pattern we saw in Peter, and in my dad. God let the strength run out, so He could be the strength.\n\nPaul says suffering produces perseverance, and perseverance produces character. Character isn't something you build on a good day.\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.",
-     "scriptDraft": true,
+     "script": "So that's what I learned. I'm not the strong one. I never was. It's the same pattern we saw in Peter, and in my dad. God let the strength run out, so He could be the strength.\n\nPaul says suffering produces perseverance, and perseverance produces character. Character isn't something you build on a good day.\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.\n[@85q6gnqz]\n[@85q6n60q]\n[@85q6qojx]",
+     "scriptDraft": false,
      "seconds": 1
     }
    ]
