@@ -62,15 +62,6 @@
      "seconds": 1,
      "slides": [
       {
-       "name": "Slide 2",
-       "type": "plain",
-       "slideTitle": "adfafs",
-       "eyebrow": "",
-       "slide": "xdfdf",
-       "layout": "center",
-       "image": ""
-      },
-      {
        "name": "Slide 3",
        "type": "image",
        "slideTitle": "",
