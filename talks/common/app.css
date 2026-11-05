@@ -406,3 +406,30 @@ ul.kp li{white-space:pre-line}
 .vchip.ghost.no{opacity:.45;filter:grayscale(1)}
 .ftext .rich.big{min-height:8em}
 .ftext .rich.big.lm{border-color:transparent}
+/* Key points come from bullet tags in the full text (Nov 5) */
+ul.kp.bl li.l2{padding-left:1.9em;font-size:.92em}
+ul.kp.bl li .kn{min-width:2.1em}
+ul.kp.bl li.l2 .kn{min-width:2.4em}
+.kplist.ro{padding:6px 10px 8px}
+.kplist.ro ul.kp li{border-radius:8px;padding:1px 8px;margin:2px 0 2px -8px;cursor:pointer}
+.kplist.ro ul.kp li:hover{background:color-mix(in srgb,var(--surface) 60%,transparent)}
+.kplist.ro ul.kp li.cur{background:color-mix(in srgb,#E9B949 30%,transparent)}
+.kplist.ro .kpnone{margin:4px 0}
+.rich.big .vchip.bul,.ftext .vchip.bul{border:1.5px solid #b7860b;background:color-mix(in srgb,#E9B949 22%,var(--surface));color:var(--ink,#222);border-radius:6px;padding:0 8px 0 3px;font:600 13px/1.6 system-ui,sans-serif;cursor:grab;max-width:30em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:-3px}
+.rich.big .vchip.bul.l2{border-style:dashed;margin-left:1.2em;font-weight:500}
+.vchip.bul b{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:#E9B949;color:#000;font-size:12px;margin-right:6px}
+.vchip.bul.l2 b{background:color-mix(in srgb,#E9B949 55%,#fff)}
+.vchip.bul i{font-style:normal;font-weight:700;color:var(--accent);margin-left:8px}
+.rich.big .vchip.bul.on{outline:3px solid #E9B949;outline-offset:1px}
+::highlight(kpcur){background-color:rgba(233,185,73,.30)}
+.script .seg.cur{background:color-mix(in srgb,#E9B949 26%,transparent);box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:4px}
+.script .bmark{display:inline-block;font:700 12px/1.5 system-ui,sans-serif;background:color-mix(in srgb,#E9B949 45%,var(--surface));color:#000;border-radius:10px;padding:0 7px;margin:0 4px 0 0;vertical-align:3px;cursor:pointer}
+.script .bmark.l2{background:color-mix(in srgb,#E9B949 22%,var(--surface))}
+.script .seg.cur .bmark{background:#E9B949}
+.bud .lvl{gap:18px}
+.bud .vtags{display:flex;flex-wrap:wrap;gap:6px}
+.bud .vtags button{border:1.5px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:2px 12px;font:600 14px/1.5 system-ui,sans-serif;cursor:pointer}
+.bud .vtags button.on{background:var(--accent);color:#fff}
+.bud .vtags button.stop{border-color:var(--muted);color:var(--muted)}.bud .vtags button.stop.on{background:var(--muted);color:#fff}
+.bud .vtags button.main{border-style:dashed}
+.vmenu .bulo{font-weight:700}
