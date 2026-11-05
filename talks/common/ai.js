@@ -205,12 +205,13 @@ function voiceHTML(d){ const v = d.voice || "";
     <p class="note">Used by Listen and the narrated version. Your own ElevenLabs voices (a clone of your voice, for example) show up here too.</p>
     <div class="row"><select id="aitv" style="flex:1"><option value="${E(v)}">${E(v ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI settings)")}</option></select><button type="button" class="btn small" id="aitvp">▶ Preview</button><span class="aimsg" id="aitvm"></span></div></div>` }
 async function talkVoices(){ const sl = $("#aitv"); if (!sl || sl.dataset.loaded) return; sl.dataset.loaded = 1; const m = $("#aitvm"); m.textContent = "Loading voices…";
-  try { const key = await need("eleven"); let list = STD_VOICES.map(([voice_id, name]) => ({voice_id, name}));
-    try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) { const j = await r.json(); if ((j.voices || []).length) list = j.voices } } catch (e) {}
+  try { const key = await need("eleven"); let list = STD_VOICES.map(([voice_id, name]) => ({voice_id, name})), why = "";
+    try { const r = await fetch("https://api.elevenlabs.io/v1/voices?t=" + Date.now(), {headers: {"xi-api-key": key}, cache: "no-store"}); if (r.ok) { const j = await r.json(); if ((j.voices || []).length) list = j.voices } else why = r.status === 401 ? "This ElevenLabs key isn't allowed to list voices, so only the standard ones show. Turn on Voices (read) for the key, or paste your voice's ID." : "Couldn't list your voices (" + r.status + ")." } catch (e) { why = "Couldn't list your voices." }
     const d = T.ed.D(), mine = x => x.category && !/premade|professional_library/.test(x.category);
     list.sort((a, b) => (mine(b) ? 1 : 0) - (mine(a) ? 1 : 0));
     sl.innerHTML = `<option value="">Default voice (from ✨ AI settings)</option>` + list.map(x => `<option value="${E(x.voice_id)}"${x.voice_id === d.voice ? " selected" : ""}>${E(x.name)}${mine(x) ? " (yours)" : ""}</option>`).join("");
-    if (d.voice && !list.some(x => x.voice_id === d.voice)) sl.insertAdjacentHTML("beforeend", `<option value="${E(d.voice)}" selected>${E(d.voiceName || "Chosen voice")}</option>`); m.textContent = "" }
+    if (d.voice && !list.some(x => x.voice_id === d.voice)) sl.insertAdjacentHTML("beforeend", `<option value="${E(d.voice)}" selected>${E(d.voiceName || "Chosen voice")}</option>`);
+    sl.insertAdjacentHTML("beforeend", `<option value="__id">Paste a voice ID…</option><option value="__re">↻ Refresh the list</option>`); m.textContent = why }
   catch (e) { sl.dataset.loaded = ""; m.textContent = ""; fail(e) } }
 document.addEventListener("focusin", e => { if (e.target.id === "aitv") talkVoices() });
 // Preview: a short line from this talk in the chosen voice.
@@ -225,7 +226,10 @@ document.addEventListener("click", async e => { const b = e.target.closest && e.
     PV = new Audio(URL.createObjectURL(await r.blob())); PV.onended = () => { PV = null; b.textContent = "▶ Preview" }; await PV.play(); b.textContent = "■ Stop"; m.textContent = "" }
   catch (err) { m.textContent = ""; fail(err) } finally { b.disabled = false } });
 document.addEventListener("pointerdown", e => { if (e.target.id === "aitv") talkVoices() });
-document.addEventListener("change", e => { if (e.target.id !== "aitv") return; const sl = e.target, o = sl.selectedOptions[0];
+document.addEventListener("change", e => { if (e.target.id !== "aitv") return; const sl = e.target; let o = sl.selectedOptions[0]; const d = T.ed.D();
+  if (sl.value === "__re") { sl.dataset.loaded = ""; sl.value = d.voice || ""; talkVoices(); return }
+  if (sl.value === "__id") { const id = (prompt("Paste the voice ID from ElevenLabs (My Voices, then the voice's ⋯ menu, then Copy voice ID):") || "").trim(); if (!/^[A-Za-z0-9]{10,40}$/.test(id)) { sl.value = d.voice || ""; return }
+    const nm = (prompt("A name for this voice:", "My voice") || "My voice").trim(); sl.insertAdjacentHTML("beforeend", `<option value="${E(id)}">${E(nm)}</option>`); sl.value = id; o = sl.selectedOptions[0] }
   T.ed.op({t: "talk", f: "voice", v: sl.value}); T.ed.op({t: "talk", f: "voiceName", v: sl.value && o ? o.textContent.replace(/ \(yours\)$/, "") : ""}); toast("Voice saved for this talk") });
 function styleHTML(d){ const ref = d.imageStyleRef || "";
   return `<div class="aibox"><div class="pgh"><b>✨ Picture style for this talk</b></div>
