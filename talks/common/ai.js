@@ -474,34 +474,34 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
     const r = w.getBoundingClientRect(); if (r.top < innerHeight * .35 || r.bottom > innerHeight - 90) window.scrollBy({top: r.top - innerHeight * .45, behavior: "smooth"}) }
   raf = requestAnimationFrame(glow);
   function point(k, at){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; run++;
-    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; lastW = null;
+    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; curQ = -1; lastW = null;
     if (at && at.blk) { q = seek(plan, at.blk, at.key || ""); for (let m = 0; m < q; m++) if (plan[m].step) ed.stepTo(plan[m].step) } warm(plan, q);
     const nx = L[i + 1] && ed.findPt(L[i + 1].id); if (nx) warm(speakPlan(nx.p), 0); go(run) }
   async function go(r){ while (alive && r === run && q < plan.length && (plan[q].step || plan[q].pause)) { const it = plan[q];
       if (it.step) ed.stepTo(it.step); else { lab.textContent = head() + " · pause"; await new Promise(ok => setTimeout(ok, it.pause * 1000 / (+$("#ailr").value || 1))); if (!alive || r !== run) return } q++ }
     if (!alive || r !== run) return; if (q >= plan.length) return point(i + 1);
     const it = plan[q]; lab.textContent = head() + " · getting the voice…";
-    try { const a = await tts(it.say, it.vs); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
+    try { const a = await tts(it.say, it.vs); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; curQ = q; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
     catch (e) { if (!alive || r !== run) return; lab.textContent = ""; fail(e); if (e.quiet && LS) LS.stop() } }
   au.onended = () => { q++; go(run) }; $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
   bar.onclick = e => { const b = e.target.closest("[data-l]"); if (!b) return; const a = b.dataset.l;
     if (a === "x") LS.stop(); else if (a === "next") { au.pause(); point(i + 1) } else if (a === "prev") { au.pause(); point(q > 0 || au.currentTime > 3 ? i : i - 1) }
-    else if (a === "play") { if (held) resume(); else if (!au.paused) hold(); else { au.play(); b.textContent = "❚❚" } } };
+    else if (a === "play") { if (held) resume(); else hold() } };
   // Pause to edit: the text opens for changes; ▶ picks up again where it stopped, reading your changed text.
-  let held = null;
-  function hold(){ au.pause(); const it = plan[q]; let ci = 0;
-    if (it && it.say) { if (cur && cur.starts) { const S = cur.starts, t = au.currentTime; while (ci + 1 < S.length && S[ci + 1] <= t) ci++ } else if (au.duration) ci = Math.floor(it.say.length * au.currentTime / au.duration) }
-    const same = it && it.say ? plan.slice(0, q).filter(x => x.say && x.blk === it.blk).length : 0;
-    held = {pid: L[i].id, it, ci, same, t: au.currentTime}; run++; if (lastW) lastW.classList.remove("say"); lastW = null; ed.listenMode(false);
+  let held = null, curQ = -1;
+  function hold(){ au.pause(); let qq = q; while (qq < plan.length && !plan[qq].say) qq++; const it = plan[qq]; let ci = 0; const live = curQ === q && qq === q && !au.ended;   // between parts (voice still loading, or a pause cue) nothing has been said yet
+    if (it && it.say && live) { if (cur && cur.starts) { const S = cur.starts, t = au.currentTime; while (ci + 1 < S.length && S[ci + 1] <= t) ci++ } else if (au.duration) ci = Math.floor(it.say.length * au.currentTime / au.duration) }
+    const same = it && it.say ? plan.slice(0, qq).filter(x => x.say && x.blk === it.blk).length : 0;
+    held = {pid: L[i].id, it, ci, same, t: live ? au.currentTime : 0}; run++; if (lastW) lastW.classList.remove("say"); lastW = null; ed.listenMode(false);
     bar.querySelector('[data-l="play"]').textContent = "▶"; lab.textContent = head() + " · paused. Make your changes, then ▶ to go on." }
   function resume(){ const h = held; held = null; const a = document.activeElement; if (a && a.blur) a.blur(); ed.listenMode(true);
     let k = L.findIndex(x => x.id === h.pid); if (k < 0) return point(i); i = k; if (ed.sel().id !== h.pid) ed.go({k: "pt", id: h.pid});
     const f = ed.findPt(h.pid); if (!f) return point(i + 1); plan = speakPlan(f.p); const r = ++run, it = h.it;
-    if (!it || !it.say) { q = 0; return go(r) }
+    if (!it || !it.say) return point(i + 1);
     const list = plan.map((x, n) => [x, n]).filter(([x]) => x.say && x.blk === it.blk); if (!list.length) { q = 0; return go(r) }
     const exact = list.find(([x]) => x.say === it.say && JSON.stringify(x.vs) === JSON.stringify(it.vs)), [x, n] = exact || list[Math.min(h.same, list.length - 1)];
     for (let m = 0; m < n; m++) if (plan[m].step) ed.stepTo(plan[m].step);
-    if (exact) { q = n; lab.textContent = head(); tts(x.say, x.vs).then(a => { if (!alive || r !== run) return; cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value;
+    if (exact) { q = n; curQ = n; lab.textContent = head(); tts(x.say, x.vs).then(a => { if (!alive || r !== run) return; cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value;
         au.onloadedmetadata = () => { au.onloadedmetadata = null; au.currentTime = Math.max(0, h.t - .4) }; au.play().catch(() => {}); bar.querySelector('[data-l="play"]').textContent = "❚❚" }).catch(fail); return }
     // The text changed: start again at the sentence that was being read.
     const from = it.say.slice(0, h.ci + 1).search(/[^.!?]*[.!?]?\s*$/), key = it.say.slice(Math.max(0, from), from + 30).trim(); let cut = key ? x.say.indexOf(key) : -1;
