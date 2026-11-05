@@ -176,6 +176,19 @@
    "minutes": "7",
    "points": [
     {
+     "id": "pmw3b5fgubjq",
+     "cue": "New point",
+     "eyebrow": "",
+     "slideTitle": "",
+     "slide": "",
+     "layout": "left",
+     "image": "",
+     "keyPoints": [],
+     "verses": [],
+     "script": "",
+     "scriptDraft": false
+    },
+    {
      "id": "p2a",
      "cue": "... And then",
      "eyebrow": "",
@@ -279,19 +292,6 @@
      "sbX": 7.8,
      "sbY": 53.9,
      "sbW": 56
-    },
-    {
-     "id": "pmw3b5fgubjq",
-     "cue": "New point",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [],
-     "verses": [],
-     "script": "",
-     "scriptDraft": false
     }
    ]
   },
