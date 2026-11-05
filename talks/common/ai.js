@@ -44,6 +44,9 @@ async function need(k){
     try { Object.assign(KEYS, await decrypt(blob, pw)); saveLocal() } catch (e) { throw new Error("Couldn't unlock the saved keys.") } if (KEYS[k]) return KEYS[k] }
   settings(); throw quiet("Add the " + ({openai: "OpenAI", eleven: "ElevenLabs", esv: "ESV"}[k] || k) + " key in Settings first.") }
 const quiet = m => { const e = new Error(m); e.quiet = true; return e };
+// ElevenLabs keys can be limited to speech only; then the voice list is refused (401) and these standard voices are offered.
+const STD_VOICES = [["JBFqnCBsd6RMkjVDRZzb", "George (warm, British)"], ["nPczCjzI2devNBz1zQrb", "Brian (deep, American)"], ["pNInz6obpgDQGcFmaJgB", "Adam (American)"], ["TxGEqnHWrfWFTfGW9XjX", "Josh (American)"], ["onwK4e9ZLuTAKqWW03F9", "Daniel (British)"], ["21m00Tcm4TlvDq8ikWAM", "Rachel (American)"], ["EXAVITQu4vr4xnAQ5dPS", "Bella (American)"]];
+async function elErr(r){ let m = ""; try { const j = await r.json(), d = j.detail || j; m = d.message || d.status || (typeof d === "string" ? d : "") } catch (e) {} return m }
 const mask = v => v ? "Saved · ends …" + v.slice(-4) : "Not set";
 function settings(){
   const d = dlg("aiset", `<form method="dialog" class="ed"><div class="pgh"><h3 style="margin:0">✨ AI settings</h3><button type="button" class="btn small" id="aisx">Close</button></div>
@@ -59,12 +62,15 @@ function settings(){
   $("#aisx").onclick = () => d.close();
   const collect = () => { const o = {...KEYS}; d.querySelectorAll("[data-key]").forEach(i => { if (i.value.trim()) o[i.dataset.key] = i.value.trim() });
     const vs = $("#aivoice"); o.voice = vs.value; o.voiceName = vs.selectedOptions[0] ? vs.selectedOptions[0].textContent : ""; o.imageQuality = $("#aiq").value; o.textModel = $("#aitm").value.trim(); return o };
-  async function loadVoices(k){ if (!k) return; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": k}}); if (!r.ok) return; const j = await r.json(), vs = $("#aivoice");
+  async function loadVoices(k){ if (!k) return; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": k}}); const vs = $("#aivoice"), j = r.ok ? await r.json() : {voices: STD_VOICES.map(([voice_id, name]) => ({voice_id, name}))};
     vs.innerHTML = (j.voices || []).map(v => `<option value="${E(v.voice_id)}"${v.voice_id === KEYS.voice ? " selected" : ""}>${E(v.name)}</option>`).join("") } catch (e) {} }
   loadVoices(KEYS.eleven); d.querySelector('[data-key="eleven"]').addEventListener("change", e => loadVoices(e.target.value.trim()));
   $("#aist").onclick = async () => { const o = collect(); msg("Testing…"); const out = [];
     if (o.openai) { try { const r = await fetch("https://api.openai.com/v1/models", {headers: {Authorization: "Bearer " + o.openai}}); out.push("OpenAI: " + (r.ok ? "✓ works" : r.status === 401 ? "✗ key not accepted (expired?)" : "✗ " + r.status)) } catch (e) { out.push("OpenAI: ✗ can't reach it") } }
-    if (o.eleven) { try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": o.eleven}}); out.push("ElevenLabs: " + (r.ok ? "✓ works" : "✗ " + r.status)) } catch (e) { out.push("ElevenLabs: ✗ can't reach it") } }
+    if (o.eleven) { try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": o.eleven}});
+        if (r.ok) out.push("ElevenLabs: ✓ works");
+        else { const why = await elErr(r), t = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${o.voice || STD_VOICES[0][0]}?output_format=mp3_44100_128`, {method: "POST", headers: {"xi-api-key": o.eleven, "Content-Type": "application/json"}, body: JSON.stringify({text: "Hi.", model_id: "eleven_multilingual_v2"})});
+          out.push(t.ok ? "ElevenLabs: ✓ works for speech (this key can't list your voices, so the standard voices are offered)" : "ElevenLabs: ✗ " + t.status + " " + ((await elErr(t)) || why) + (t.status === 401 ? ". In ElevenLabs, edit the key and turn on Text to Speech (and Voices: Read)." : "")) } } catch (e) { out.push("ElevenLabs: ✗ can't reach it") } }
     if (o.esv) { try { const r = await fetch("https://api.esv.org/v3/passage/text/?q=John+11:35", {headers: {Authorization: "Token " + o.esv}}); out.push("ESV: " + (r.ok ? "✓ works" : "✗ " + r.status)) } catch (e) { out.push("ESV: ✗ can't reach it from the browser (verses will come from the AI, marked to check)") } }
     msg(out.length ? out.map(E).join("<br>") : "No keys to test.") };
   $("#aisf").onclick = () => { try { localStorage.removeItem(LK) } catch (e) {} KEYS = {...DEF}; d.querySelectorAll("[data-km]").forEach(b => b.textContent = mask("")); msg("Forgotten on this browser. The shared copy is still saved.") };
@@ -343,10 +349,10 @@ function speakText(p){ const vs = p.verses || [];
   if (!t) t = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); return t }
 function tts(text){ if (!AUD[text]) { AUD[text] = tts0(text); AUD[text].catch(() => delete AUD[text]) } return AUD[text] }
 async function tts0(text){ const key = await need("eleven"); let voice = KEYS.voice;
-  if (!voice) { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); const j = r.ok ? await r.json() : {}; voice = ((j.voices || [])[0] || {}).voice_id; if (!voice) throw new Error("No ElevenLabs voice found. Pick one in ✨ AI, Settings."); KEYS.voice = voice; saveLocal() }
+  if (!voice) { let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {} voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; KEYS.voice = voice; saveLocal() }
   const chunks = []; let cur = ""; for (const para of text.split(/\n+/)) { if ((cur + para).length > 4000 && cur) { chunks.push(cur); cur = "" } cur += (cur ? "\n" : "") + para } if (cur) chunks.push(cur);
   const blobs = []; for (const c of chunks) { const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {method: "POST", headers: {"xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg"}, body: JSON.stringify({text: c, model_id: "eleven_multilingual_v2"})});
-    if (!r.ok) { let m = ""; try { m = (await r.json()).detail; m = m && (m.message || m) } catch (e) {} throw new Error("ElevenLabs: " + (m || r.status)) } blobs.push(await r.blob()) }
+    if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status) + (r.status === 401 ? ". In ElevenLabs, edit the key and turn on Text to Speech." : "")) } blobs.push(await r.blob()) }
   return URL.createObjectURL(new Blob(blobs, {type: "audio/mpeg"})) }
 let LS = null;
 function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0);
