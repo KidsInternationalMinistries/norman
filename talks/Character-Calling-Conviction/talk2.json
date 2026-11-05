@@ -443,6 +443,13 @@
    "layout": "center",
    "image": "",
    "bullets": ""
+  },
+  {
+   "name": "Verse 50",
+   "type": "verse",
+   "ref": "",
+   "text": "",
+   "version": "ESV"
   }
  ],
  "times": {
