@@ -397,7 +397,7 @@ body[data-mode="edit"] .kpi:hover .kbar button,body[data-mode="edit"] .kpi:focus
 ul.kp li{white-space:pre-line}
 
 /* Full text: one box; numbered key-point markers sit where each point starts (Nov 5) */
-.rich.big .vchip.kpm,.ftext .vchip.kpm{border:1.5px solid #b7860b;background:color-mix(in srgb,#E9B949 22%,var(--surface));color:var(--ink,#222);border-radius:6px;padding:0 8px 0 3px;font:600 13px/1.6 system-ui,sans-serif;cursor:grab;max-width:24em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:2px}
+.rich.big .vchip.kpm,.ftext .vchip.kpm{border:1.5px solid #b7860b;background:color-mix(in srgb,#E9B949 22%,var(--surface));color:var(--ink,#222);border-radius:6px;padding:0 8px 0 3px;font:600 13px/1.6 system-ui,sans-serif;cursor:grab;max-width:24em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;position:relative;top:-.08em}
 .vchip.kpm b{display:inline-grid;place-items:center;min-width:19px;height:19px;border-radius:50%;background:#E9B949;color:#000;font-size:12px;margin-right:6px}
 .rich.big .vchip.kpm.ooo{border-color:#d35400;background:color-mix(in srgb,#f39c12 30%,var(--surface))}
 .rich.big .vchip.kpm.ooo::after{content:" ⚠ out of order";color:#d35400;font-weight:700}
