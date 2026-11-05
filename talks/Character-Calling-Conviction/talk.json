@@ -176,6 +176,27 @@
    "minutes": "7",
    "points": [
     {
+     "id": "pmw3ak3b6h1u",
+     "cue": "Acts 1:8",
+     "eyebrow": "",
+     "slideTitle": "",
+     "slide": "",
+     "layout": "left",
+     "image": "",
+     "keyPoints": [
+      "[@k9tagcjq] Acts 1:8"
+     ],
+     "verses": [
+      {
+       "ref": "Acts 1:8",
+       "text": "But you will receive power when the Holy Spirit comes on you; and you will be my witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.",
+       "version": "NIV"
+      }
+     ],
+     "script": "[@k9tagcjq]Jesus knew they needed more than thier effort to have true Character, Calling and Conviction.  I think that is why, when he left, he said the following.\n\nActs 1:8 - But you will receive power when the Holy Spirit comes on you; and you will be my witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.",
+     "scriptDraft": false
+    },
+    {
      "id": "p2a",
      "cue": "Acts 1:6–8",
      "eyebrow": "",
@@ -208,27 +229,6 @@
      "ttY": 25.9,
      "ttW": 56,
      "seconds": 2
-    },
-    {
-     "id": "pmw3ak3b6h1u",
-     "cue": "Acts 1:8",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [
-      "[@k9tagcjq] Acts 1:8"
-     ],
-     "verses": [
-      {
-       "ref": "Acts 1:8",
-       "text": "But you will receive power when the Holy Spirit comes on you; and you will be my witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.",
-       "version": "NIV"
-      }
-     ],
-     "script": "[@k9tagcjq]Jesus knew they needed more than thier effort to have true Character, Calling and Conviction.  I think that is why, when he left, he said the following.\n\nActs 1:8 - But you will receive power when the Holy Spirit comes on you; and you will be my witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.",
-     "scriptDraft": false
     },
     {
      "id": "pmw3ajak8z40",
