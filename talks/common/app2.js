@@ -207,6 +207,7 @@ async function edit(){
   // ---- saving: the whole file, a moment after the last change ----
   function changed(snap){ if (snap !== false) { hist.push(snap); if (hist.length > 100) hist.shift(); $("#undo").disabled = false }
     P = parse(d); S = build(P); SH = S.map(x => x.slide); if (k >= S.length) k = Math.max(0, S.length - 1); dirty = true; setSave("Saving…"); clearTimeout(timer); timer = setTimeout(flush, 900); redraw() }
+  const changed0 = s => changed(s), slideEdit0 = (i, f) => slideEdit(i, f);
   const snapshot = () => JSON.stringify({text: d.text, slides: d.slides});
   async function flush(){ if (saving || !dirty) return; saving = true; dirty = false; const body = JSON.stringify(d, null, 1) + "\n";
     try { SHA = await GH.put(FILE, b64e(body), SHA, "Edit " + d.title + " (new version)"); setSave(dirty ? "Saving…" : "Saved. The live pages update in about a minute.") }
@@ -288,7 +289,7 @@ async function edit(){
     const off = e => { if (!m.contains(e.target)) { m.remove(); removeEventListener("mousedown", off) } }; setTimeout(() => addEventListener("mousedown", off), 0);
     m.onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; m.remove(); removeEventListener("mousedown", off); const t = b.dataset.t; let n = d.slides.length + 1, nm; do { nm = (t === "verse" ? "Verse " : "Slide ") + n++ } while (d.slides.some(s => s.name === nm));
       const s = snapshot(), o = {name: nm, type: t}; if (t === "verse") Object.assign(o, {ref: "", text: "", version: "ESV"}); else if (t === "quote") Object.assign(o, {quote: "", by: ""}); else if (t === "video") Object.assign(o, {url: "", video: "", autoNext: true}); else Object.assign(o, {slideTitle: "", slide: "", eyebrow: "", layout: "center", image: "", bullets: ""});
-      d.slides.push(o); changed(s); slideEdit(d.slides.length - 1, done) } }
+      draft = o; slideEdit(-1, done) } }      // a new slide is only a draft until Save
   // The / menu's "Slide…": every slide as a small picture with its name; pick one to put it in the text.
   function slidePick(done){ const dl = $("#pdlg");
     dl.innerHTML = `<div class="ed"><div class="pgh"><b>Put a slide in the text</b><input class="pf" placeholder="Find a slide…" aria-label="Find a slide"><button type="button" class="btn small" id="pcan">Cancel</button></div>
@@ -299,9 +300,10 @@ async function edit(){
     dl.onclick = e => { const b = e.target.closest(".pt"); if (!b) return; dl.close(); if (b.dataset.new) slideNew(done); else done(d.slides[+b.dataset.si].name) };
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } f.focus() }
   function renameIn(a, b){ const rep = x => x.split("[" + a + "]").join(b ? "[" + b + "]" : ""); d.text = rep(d.text || "") }
-  function slideEdit(i, onSave){ const dl = $("#sdlg"), o = d.slides[i]; if (!o) return; const A = f => `data-f="${f}"`;
+  let draft = null, editCtx = null;      // draft: a new slide being made (not in the talk until Save); editCtx: the slide editor that's open
+  function slideEdit(i, onSave){ const dl = $("#sdlg"), o = i < 0 ? draft : d.slides[i]; if (!o) return; editCtx = {i, onSave}; const isNew = i < 0, commit = s => { if (!isNew) changed(s) }; const A = f => `data-f="${f}"`;
     const fld = (f, lb, ta, ph) => ta ? `<label>${lb}<textarea class="auto" ${A(f)} placeholder="${E(ph || "")}">${E(o[f])}</textarea></label>` : `<label>${lb}<input ${A(f)} value="${E(o[f])}" placeholder="${E(ph || "")}"></label>`;
-    let h = `<div class="ed"><div class="pgh"><b>${E(TYPES[o.type] || "Slide")}</b><button type="button" class="btn small pri" id="sdone">Done</button></div>
+    let h = `<div class="ed"><div class="pgh"><b>${E(TYPES[o.type] || "Slide")}</b>${isNew ? '<span class="note">New slide</span><button type="button" class="btn small" id="scancel">Cancel</button><button type="button" class="btn small pri" id="ssave">Save</button>' : '<button type="button" class="btn small pri" id="sdone">Done</button>'}</div>
       <div class="row"><label style="flex:1 1 220px">Name (its tag in the text)<input id="sname" value="${E(o.name)}"></label><label style="flex:0 1 200px">Kind<select ${A("type")}>${Object.entries(TYPES).map(([t, n]) => `<option value="${t}"${t === (o.type || "image") ? " selected" : ""}>${E(n)}</option>`).join("")}</select></label></div>
       <div class="prev" id="prev">${slideHTML(o, d)}</div>` + slideAIRow(o);
     const ty = o.type || "image";
@@ -312,21 +314,23 @@ async function edit(){
     else h += fld("eyebrow", "Small line on top") + fld("slideTitle", "Title", true) + fld("slide", "Subtitle", true) + `<label>Style<select ${A("layout")}><option value="left"${o.layout !== "center" ? " selected" : ""}>Gold title, white subtitle (left)</option><option value="center"${o.layout === "center" ? " selected" : ""}>White title, gold subtitle (centered)</option></select></label>`;
     if (ty === "image" || ty === "bulletsimg") h += `<div class="row"><span class="tag">Picture (no words in it)</span><label class="btn small">${o.image ? "Replace" : "Add"} picture<input type="file" accept="image/*" id="simg" hidden></label>${o.image ? '<button type="button" class="btn small" id="sdelimg">Remove picture</button>' : ""}<span class="note" id="smsg"></span></div>`;
     h += `<label class="chk"><input type="checkbox" ${A("keep")}${o.keep ? " checked" : ""}> Keep it up until another slide comes (even after its point ends)</label>
-      <div class="row"><span class="note" style="flex:1">Used ${usesOf(o.name)}× in the text.</span><button type="button" class="btn small danger" id="sdel">Delete this slide</button></div></div>`;
+      ${isNew ? "" : `<div class="row"><span class="note" style="flex:1">Used ${usesOf(o.name)}× in the text.</span><button type="button" class="btn small danger" id="sdel">Delete this slide</button></div>`}</div>`;
     dl.innerHTML = h; dl.dataset.si = i; dl.querySelectorAll("textarea.auto").forEach(t => { t.style.height = t.scrollHeight + 4 + "px" });
     const pv = () => { $("#prev").innerHTML = slideHTML(o, d) };
     dl.oninput = e => { const f = e.target.dataset.f; if (!f || e.target.type === "checkbox") return; o[f] = e.target.value; if (f === "text") delete o.aiText; pv() };
     dl.onchange = e => { const el = e.target, f = el.dataset.f; if (el.id === "sname") { const nv = el.value.replace(/[\[\]\n]+/g, " ").trim(); if (!nv || nv === o.name) { el.value = o.name; return }
         if (d.slides.some(s => s !== o && s.name === nv) || /^stop$/i.test(nv) || /^#[1-4]/.test(nv) || CUETAG[nv.toLowerCase()]) { el.value = o.name; el.setCustomValidity("That name is taken"); el.reportValidity(); setTimeout(() => el.setCustomValidity(""), 2000); return }
-        const s = snapshot(); renameIn(o.name, nv); o.name = nv; changed(s); drawText(); return }
-      if (!f) return; const s = snapshot(); o[f] = el.type === "checkbox" ? el.checked : el.value; changed(s); if (f === "type") slideEdit(i, onSave); else pv() };
-    $("#sdone").onclick = () => dl.close();
-    $("#sdel").onclick = e => { const b = e.target; if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = "Tap again: also removes it from the text"; return } const s = snapshot(); renameIn(o.name, null); d.slides.splice(d.slides.indexOf(o), 1); dl.close(); changed(s); drawText() };
+        if (isNew) { o.name = nv; return } const s = snapshot(); renameIn(o.name, nv); o.name = nv; changed(s); drawText(); return }
+      if (!f) return; const s = snapshot(); o[f] = el.type === "checkbox" ? el.checked : el.value; commit(s); if (f === "type") slideEdit(i, onSave); else pv() };
+    let saved = false;
+    if (isNew) { $("#scancel").onclick = () => dl.close(); $("#ssave").onclick = () => { const s = snapshot(); d.slides.push(o); draft = null; saved = true; changed(s); dl.close() } }
+    else $("#sdone").onclick = () => dl.close();
+    if ($("#sdel")) $("#sdel").onclick = e => { const b = e.target; if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = "Tap again: also removes it from the text"; return } const s = snapshot(); renameIn(o.name, null); d.slides.splice(d.slides.indexOf(o), 1); dl.close(); changed(s); drawText() };
     const fi = $("#simg"); if (fi) fi.onchange = async () => { const file = fi.files && fi.files[0]; if (!file) return; $("#smsg").textContent = "Uploading…";
-      try { const url = await toJpeg(file), path = `slides/s2-${Date.now().toString(36)}.jpg`; await GH.put(PATH + "/" + path, url.split(",")[1], null, "Slide picture"); LOCALIMG[path] = url; const s = snapshot(); o.image = path; changed(s); slideEdit(i, onSave) }
+      try { const url = await toJpeg(file), path = `slides/s2-${Date.now().toString(36)}.jpg`; await GH.put(PATH + "/" + path, url.split(",")[1], null, "Slide picture"); LOCALIMG[path] = url; const s = snapshot(); o.image = path; commit(s); slideEdit(i, onSave) }
       catch (err) { $("#smsg").textContent = "Upload failed: " + (err.detail || err.message) } };
-    const di = $("#sdelimg"); if (di) di.onclick = () => { const s = snapshot(); o.image = ""; changed(s); slideEdit(i, onSave) };
-    dl.onclose = () => { dl.onclose = null; redraw(); if (onSave) onSave(o.name) };
+    const di = $("#sdelimg"); if (di) di.onclick = () => { const s = snapshot(); o.image = ""; commit(s); slideEdit(i, onSave) };
+    dl.onclose = () => { dl.onclose = null; editCtx = null; if (isNew) { draft = null; redraw(); if (saved && onSave) onSave(o.name); return } redraw(); if (onSave) onSave(o.name) };
     if (!dl.open) try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } }
   // ---- dragging: slides from the panel into the text or into a new order; chips inside the text ----
   const caretAt = (x, y) => { if (document.caretRangeFromPoint) return document.caretRangeFromPoint(x, y); const c = document.caretPositionFromPoint && document.caretPositionFromPoint(x, y); if (!c) return null; const r = document.createRange(); r.setStart(c.offsetNode, c.offset); r.collapse(true); return r };
@@ -474,7 +478,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     let at = n.end; const w = String(j.start || "").replace(/\s+/g, " ").trim().toLowerCase().split(" ").slice(0, 5).join(" ");
     if (w.length > 6) { let x = "", map = []; for (let i = n.end; i < n.last; i++) { const c = d.text[i]; if (c === "[") { const e = d.text.indexOf("]", i); if (e > 0) { i = e; continue } } const ch = /\s/.test(c) ? " " : c.toLowerCase(); if (ch === " " && x.endsWith(" ")) continue; x += ch; map.push(i) }
       const f = x.indexOf(w); if (f >= 0) at = map[f] }
-    const s = snapshot(); d.slides.push(o); d.text = d.text.slice(0, at) + "[" + nm + "]" + (at === n.end ? "\n" : " ") + d.text.slice(at); changed(s); drawText(); slideEdit(d.slides.length - 1) }
+    draft = o; slideEdit(-1, name => { const s = snapshot(); d.text = d.text.slice(0, at) + "[" + name + "]" + (at === n.end ? "\n" : " ") + d.text.slice(at); changed(s); drawText() }) }      // Save puts it in the text
   function nodeAI(n, act){ saveText(); n = P.nodes.find(x => x.at === n.at) || n; const run = {flow: () => lineEdit(n.end, n.last, "grammar"), tight: () => tighten(n), slide: () => slideFor(n), cues: () => lineEdit(n.end, n.last, "cues")}[act]; if (run) Promise.resolve(run()).catch(aiFail) }
   // ---- on the whole talk ----
   const SLF = {image: ["eyebrow", "slideTitle", "slide"], bulletsimg: ["slideTitle", "bullets"], bullets: ["slideTitle", "bullets"], plain: ["eyebrow", "slideTitle", "slide"], quote: ["quote", "by"]};
@@ -486,7 +490,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   // ---- on a slide ----
   function slideAIRow(o){ const ty = o.type || "image", b = (a, t, tip) => `<button type="button" class="btn small aib" data-ai2="${a}" title="${E(tip || "")}">${t}</button>`;
     return `<div class="row ai2row">${ty === "verse" ? b("verse", "✨ Get the verse text", "The AI fills in the text for this reference and version; check it, and you can still change it") : ""}${ty === "image" || ty === "bulletsimg" ? b("pic", o.image ? "✨ Change the picture" : "✨ Create a picture") : ""}${SLF[ty] ? b("words", "✨ Suggest the words", "From the text where this slide is used") + b("spell", "✨ Check spelling") : ""}</div>` }
-  async function slideAI(i, act){ const o = d.slides[i]; if (!o) return; const k0 = K(), redo = () => slideEdit(i), use = firstUse(o.name), ctx = use ? around(use.at, 1400) : "", nd = use ? use.node : null;
+  async function slideAI(i, act){ const o = i < 0 ? draft : d.slides[i]; if (!o) return; const k0 = K(), oS = editCtx && editCtx.onSave, redo = () => slideEdit(i, oS), changed = s => { if (i >= 0) changed0(s) }, use = firstUse(o.name), ctx = use ? around(use.at, 1400) : "", nd = use ? use.node : null;
     if (act === "verse") { const ref = (o.ref || "").trim(), ver = ((o.version || "").trim().replace(/\s*\(check\)$/i, "")) || "ESV"; if (!ref) { k0.toast("Type the reference first"); return }
       const stop = busy("Getting " + ref + " (" + ver + ")…");
       try { const j = await k0.chat(`Quote the Bible passage word for word in the ${ver} translation. Plain text, no verse numbers, no headings, no reference. Keep the translation's own wording and punctuation exactly. Return JSON {"text": "...", "ref": "the reference written out in full, e.g. John 15:5"}.`, ref + " (" + ver + ")", {effort: "low"});
@@ -497,7 +501,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
         const s = snapshot(); fl.forEach(f => { if (j[f] != null) o[f] = Array.isArray(j[f]) ? j[f].join("\n") : String(j[f]) }); changed(s); redo() } catch (e) { aiFail(e) } finally { stop() } return }
     if (act === "spell") { const stop = busy("Checking…"); let ch; try { ch = await slideSpell([o]) } catch (e) { stop(); aiFail(e); return } stop(); review("✨ Spelling · " + o.name, ch, acc => { const s = snapshot(); acc.forEach(c => c.apply()); changed(s); redo() }); return }
     if (act === "pic") picture(i, ctx, nd) }
-  function picture(i, ctx, nd){ const k0 = K(), o = d.slides[i]; let results = [];
+  function picture(i, ctx, nd){ const k0 = K(), o = i < 0 ? draft : d.slides[i], oS = editCtx && editCtx.onSave, changed = s => { if (i >= 0) changed0(s) }, slideEdit = (j) => slideEdit0(j, oS); let results = [];
     const dl = k0.dlg("ai2pic", `<div class="ed"><div class="pgh"><b>✨ Picture · ${E(o.name)}</b><button type="button" class="btn small" data-x>Close</button></div>
       <div class="aiimg"><div class="aicur">${o.image ? `<img alt="Current picture" src="${E(LOCALIMG[o.image] || o.image)}"><label class="chk"><input type="checkbox" id="a2base" checked> Start from this picture</label>` : '<div class="aiempty">No picture yet</div>'}</div>
       <div class="aiask"><label>What do you want? (or leave it empty)<textarea id="a2want" rows="3" placeholder="e.g. A potter's hands shaping clay, warm light. Or: same scene at sunrise."></textarea></label>
