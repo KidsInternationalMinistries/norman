@@ -183,9 +183,11 @@
      "slide": "",
      "layout": "left",
      "image": "",
-     "keyPoints": [],
+     "keyPoints": [
+      "[@644fini9] Act"
+     ],
      "verses": [],
-     "script": "",
+     "script": "[@644fini9]",
      "scriptDraft": false
     },
     {
