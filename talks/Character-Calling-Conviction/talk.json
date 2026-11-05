@@ -617,7 +617,16 @@
      ],
      "script": "We are building a high school on land in a poor community, and it is still not finished. There are classrooms full of kids, and there are still more stories and an auditorium to go. People ask me how we are going to finish it. I don't know. When we first walked that land, I asked myself, if God's love is extravagant, why shouldn't the school be?\n\nHebrews says faith is confidence in what we hope for and assurance about what we do not see. If I can already see how it gets done, if the money is in the bank and the plan is on the spreadsheet, I don't need faith. I need a calculator.\n\nI have learned this: if I can do it myself, it isn't faith.",
      "scriptDraft": true,
-     "seconds": 1
+     "seconds": 1,
+     "slides": [
+      {
+       "name": "Slide 2",
+       "type": "video",
+       "url": "",
+       "video": "",
+       "autoNext": true
+      }
+     ]
     },
     {
      "id": "p4g",
