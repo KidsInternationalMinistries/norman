@@ -40,13 +40,13 @@ for si, s in enumerate(d["sections"], 1):
             n = uniq(x["name"], lab); ren[x["name"].strip()] = n; o = dict(x); o["name"] = n; slides.append(o)
         if main: ren["Main slide"] = main
         sc = p.get("script") or ""
-        # key-point bullets become sub points (#3) and details (#4); their {Ref} slide tags go right after them unless the same tag is already in that part
+        # key-point bullets are dropped (the outline stays at movement/point level); their {Ref} slide tags stay in place unless the same tag is already in that part
         parts = re.split(r"(\[#[12](?: [^\[\]\n]*)?\])", sc); buf = parts[0]
         for i in range(1, len(parts), 2):
             m = re.match(r"\[#([12])(?: ([^\[\]\n]*))?\]", parts[i]); lvl = int(m.group(1)) + 2; txt = m.group(2) or ""; body = parts[i + 1]
             refs = [r.strip() for r in re.findall(r"\{([^{}\n]+)\}", txt)]; txt = re.sub(r"\s*\{[^{}\n]+\}", "", txt)
             add = "".join(f"[{r}]" for r in refs if f"[{r}]" not in body)
-            buf += tag(lvl, txt) + add + body
+            buf += add + body
         sc = buf
         def rt(m):
             r = m.group(1).strip()

@@ -350,7 +350,7 @@ async function edit(){
     $("#olc").onclick = () => dl.close(); try { dl.showModal() } catch (e) {}
     const has = P.nodes.length;
     const j = await TALKAI.chat(`You build the speaking outline for a talk by a Christian ministry leader. He talks from the outline, glancing at it, not reading the text.
-Read the whole text and mark where each part starts. Levels: 1 = movement (a big section of the talk), 2 = point (a few minutes, a 2-6 word cue), 3 = sub point, 4 = detail. Keep every phrase short (2 to 8 words), in his words where possible, in the order of the text. Every point is inside a movement, every sub point inside a point, every detail inside a sub point. Each starts at the beginning of a sentence.
+The outline is only a memory hint for stretches of talk, so keep it sparse. Read the whole text and mark where each part starts. Levels: 1 = movement (a big section of the talk, usually 5 to 15 minutes), 2 = point (one stretch of talk, usually 30 seconds to 4 minutes, roughly 80 to 600 words; a 2-6 word cue). Use level 3 (sub point) only rarely, when a long point has clearly separate parts, and never level 4. Never mark single sentences or small ideas. Keep every phrase short (2 to 6 words), in his words where possible, in the order of the text. Every point is inside a movement. Each starts at the beginning of a sentence.
 For each give "start": the first 6 to 10 words of the sentence where it starts, copied exactly from the text.
 Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.stringify({title: d.title, text: PM.x}), {effort: "medium"});
     const L = Array.isArray(j.outline) ? j.outline : []; let from = 0; const out = [];
