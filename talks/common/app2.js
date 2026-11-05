@@ -361,7 +361,7 @@ async function edit(){
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
-    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}</div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
+    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}</div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
     $("#aikeys").onclick = () => { try { K().settings() } catch (e) { aiFail(e) } };
     dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
@@ -507,21 +507,32 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   document.addEventListener("click", e => { const b = e.target.closest("[data-ai2]"); if (!b) return; const i = +($("#sdlg").dataset.si); slideAI(i, b.dataset.ai2).catch(aiFail) });
   // ---- Listen from here: reads each stretch of text in the talk's voice and steps along as it goes ----
   const LS = {on: false, run: 0, au: null, paused: false};
-  function partsOf(st, mode){ const out = [], t = d.text.slice(st.a, st.b); let last = 0;
-    const say = x => { const s = x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim(); if (s) out.push({say: s, vs: K().voiceOf(mode)}) };
-    for (const m of t.matchAll(RE_TAG)) { say(t.slice(last, m.index)); last = m.index + m[0].length; const c = CUETAG[m[0].slice(1, -1).trim().toLowerCase()]; if (!c) continue; const q = c.cue;
-      if (q === "pause" || q === "long pause") out.push({pause: q === "pause" ? 1.2 : 2.5}); else if (q === "normal") { mode.speed = ""; mode.tone = "" } else if (q === "slow" || q === "fast") mode.speed = q; else mode.tone = q }
-    say(t.slice(last)); return out }
+  // How a stretch is read. A cue covers the next sentence only, then the voice goes back by itself ([Normal] still ends it early).
+  // Pieces are only split where the voice really changes, so it doesn't jump at tags. The expressive voice (v3) gets one piece with the cues inside.
+  const V3TAG = {excited: "[excited]", exclaim: "[excited]", calm: "[calm]", gentle: "[softly]", slow: "[slowly]", fast: "[quickly]", pause: "...", "long pause": "[long pause]"};
+  const clean = x => x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n");
+  function partsOf(st){ const t = d.text.slice(st.a, st.b), k0 = K();
+    if (d.voiceModel === "v3") { let x = t.replace(RE_TAG, m => { const c = CUETAG[m.slice(1, -1).trim().toLowerCase()]; return c && V3TAG[c.cue] ? " " + V3TAG[c.cue] + " " : " " }); x = x.replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
+      const out = []; while (x.length > 2800) { let cut = x.lastIndexOf(". ", 2800); if (cut < 800) cut = 2800; out.push({say: x.slice(0, cut + 1).trim(), v3: true}); x = x.slice(cut + 1) } if (x.trim()) out.push({say: x.trim(), v3: true}); return out }
+    const out = [], add = (x, m) => { const s = clean(x); if (!s.trim()) { if (out.length && !out[out.length - 1].pause) out[out.length - 1].say += s; return } const vs = k0.voiceOf(m), last = out[out.length - 1];
+      if (last && !last.pause && JSON.stringify(last.vs) === JSON.stringify(vs)) last.say += s; else out.push({say: s, vs}) };
+    const N = {speed: "", tone: ""}; let pos = 0, cue = null;      // cue: the mode for the sentence after a cue tag
+    const flush = to => { let x = t.slice(pos, to); pos = to; if (!cue) { add(x, N); return }
+      const m = x.replace(RE_TAG, q => " ".repeat(q.length)).match(/^[\s\S]*?(?:[.!?…]+["”’)]*(?=\s|$)|\n)/);   // the end of the sentence the cue covers
+      if (!m) { add(x, cue); return } add(x.slice(0, m[0].length), cue); cue = null; add(x.slice(m[0].length), N) };
+    for (const m of t.matchAll(RE_TAG)) { flush(m.index); pos = m.index + m[0].length; const c = CUETAG[m[0].slice(1, -1).trim().toLowerCase()]; if (!c) continue; const q = c.cue;
+      if (q === "pause" || q === "long pause") out.push({pause: q === "pause" ? 1.2 : 2.5}); else if (q === "normal") cue = null; else { cue = {...(cue || N)}; if (q === "slow" || q === "fast") cue.speed = q; else cue.tone = q } }
+    flush(t.length); out.forEach(o => { if (o.say) o.say = o.say.trim() }); return out.filter(o => o.pause || o.say) }
   const wait = ms => new Promise(r => setTimeout(r, ms));
   function lbar(){ let el = $("#lbar"); if (!LS.on) { if (el) el.remove(); return } if (!el) { el = document.createElement("div"); el.id = "lbar"; document.body.appendChild(el);
       el.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.l === "stop") stopListen(); else { LS.paused = !LS.paused; if (LS.au) LS.paused ? LS.au.pause() : LS.au.play(); lbar() } } }
     el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><button type="button" class="btn small" data-l="stop">■ Stop</button>` }
   function stopListen(){ LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
-  async function listen(){ if (LS.on) { stopListen(); return } saveText(); const k0 = K(); k0.setVoice(d.voice || ""); LS.on = true; LS.paused = false; const run = ++LS.run, mode = {speed: "", tone: ""};
+  async function listen(){ if (LS.on) { stopListen(); return } saveText(); const k0 = K(); k0.setVoice(d.voice || ""); LS.on = true; LS.paused = false; const run = ++LS.run;
     const ctxOf = (i, dir) => { const L = []; for (let q = i + dir; q >= 0 && q < S.length && L.join(" ").length < 400; q += dir) if (S[q].a != null) L[dir < 0 ? "unshift" : "push"](plain(d.text.slice(S[q].a, S[q].b))); return L.join("\n") };
     try { for (let i = k; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { await wait(1800); continue }
-        const parts = partsOf(st, mode), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
-        const jobs = parts.map((p, q) => p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
+        const parts = partsOf(st), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
+        const jobs = parts.map((p, q) => p.v3 ? k0.ttsV3(p.say) : p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
         for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue }
           const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.onended = ok; au.onerror = ok; if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }

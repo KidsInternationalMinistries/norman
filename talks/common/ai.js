@@ -418,6 +418,10 @@ let VOICE2 = "";   // the new version sets the talk's voice here
 const talkVoice = () => { if (VOICE2) return VOICE2; try { const d = T.ed ? T.ed.D() : T.D(); return (d && d.voice) || "" } catch (e) { return "" } };
 async function voiceId(key){ const tv = talkVoice(); if (tv) return tv; if (KEYS.voice) return KEYS.voice; let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {}
   KEYS.voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; saveLocal(); return KEYS.voice }
+// The expressive voice (ElevenLabs v3): one piece with the cues inside as audio tags ([excited], [softly], …); it reads feeling from the text itself.
+function ttsV3(text){ const k = "v3|" + text; if (!AUD[k]) { AUD[k] = (async () => { const key = await need("eleven"), voice = await voiceId(key);
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {method: "POST", headers: {"xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg"}, body: JSON.stringify({text, model_id: "eleven_v3", voice_settings: {stability: 0.5}})});
+    if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs (expressive voice): " + (m || r.status)) } const bl = await r.blob(); return {url: URL.createObjectURL(bl), blob: bl, starts: null} })(); AUD[k].catch(() => delete AUD[k]) } return AUD[k] }
 async function tts0(text, vs, ctx){ const key = await need("eleven"), voice = await voiceId(key);
   const o = {text, model_id: "eleven_multilingual_v2", seed: 7}; if (vs) o.voice_settings = vs; if (ctx && ctx.prev) o.previous_text = ctx.prev; if (ctx && ctx.next) o.next_text = ctx.next; const body = JSON.stringify(o), H = {"xi-api-key": key, "Content-Type": "application/json"};
   let r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {method: "POST", headers: H, body});
@@ -653,7 +657,7 @@ window.TALKAI = {html: {
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
 }, chat, image, settings, outline,
   // building blocks for the new version (app2.js)
-  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, wdiff, dlg, show, toast, ticker, fail, tts, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }}};
+  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }}};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
   m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="narr">Make the narrated version (share link)</button><button type="button" data-a="split">Key points from the text (points that have none)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";
