@@ -369,7 +369,7 @@ body[data-mode="edit"] .stagev .kplist{position:sticky;top:calc(var(--stk,150px)
 .kpi.linked .kedit{border-color:var(--accent);color:var(--accent)}
 body[data-mode="edit"] .kpi.linked .kbar{opacity:1}
 body[data-mode="edit"] .kpi.linked .kbar button:not(.kedit){opacity:0}
-body[data-mode="edit"] .kpi:hover .kbar button,body[data-mode="edit"] .kpi:focus-within .kbar button{opacity:1}
+body[data-mode="edit"] .kpi:hover .kbar button,body[data-mode="edit"] .kpi:focus-within .kbar button,body[data-mode="edit"] .kpi.linked:hover .kbar button:not(.kedit),body[data-mode="edit"] .kpi.linked:focus-within .kbar button:not(.kedit){opacity:1}
 .script .blkmark{display:inline}
 .ftext .btx .vchip{border-style:dotted;border-color:var(--muted);color:var(--muted);background:transparent}
 .ftext .btx .vchip.mir{border-style:solid;border-color:var(--accent);color:var(--accent)}
