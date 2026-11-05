@@ -391,3 +391,7 @@ body[data-mode="edit"] .kpi:hover .kbar button,body[data-mode="edit"] .kpi:focus
 #pstart button:disabled{opacity:.5;cursor:default}
 #pstart p{color:#fff;font-size:18px;margin:0;text-align:center;padding:0 16px}
 #again{margin-top:18px;font-size:20px}
+
+/* key points can hold more than one line (Shift+Enter) */
+.rich.kp{white-space:pre-wrap}
+ul.kp li{white-space:pre-line}

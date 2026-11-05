@@ -597,7 +597,7 @@ async function edit(){
   // Key points are a numbered list: type in a line, Enter adds the next one, Backspace on an empty one removes it; ↑ ↓ ✕ on hover.
   function kpItems(p){ const L = p.keyPoints && p.keyPoints.length ? p.keyPoints : [""], id = E(p.id);
     const B = splitBlocks(p.script);
-    return L.map((x, j) => `<div class="kpi${kpId(x) && trimBlk(B.text[kpId(x)]).trim() ? " linked" : ""}" data-j="${j}"><span class="kn">${j + 1}</span><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${id}" data-f="kpline" data-j="${j}" role="textbox" aria-label="Key point ${j + 1}" data-ph="${j ? "Key point" : "Key point. Type / for a slide tag"}">${richHTML(p, kpBody(x), false)}</div>
+    return L.map((x, j) => `<div class="kpi${kpId(x) && trimBlk(B.text[kpId(x)]).trim() ? " linked" : ""}" data-j="${j}"><span class="kn">${j + 1}</span><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${id}" data-f="kpline" data-j="${j}" role="textbox" aria-label="Key point ${j + 1}" data-ph="${j ? "Key point" : "Key point. Type / for a slide tag, Shift+Enter for a new line"}">${richHTML(p, kpBody(x), false)}</div>
       <span class="kbar"><button type="button" class="kedit" data-act="kedit" data-j="${j}" title="Edit what I'll say for this point">✎</button><button type="button" data-act="kmove" data-j="${j}" data-d="-1" title="Move up">↑</button><button type="button" data-act="kmove" data-j="${j}" data-d="1" title="Move down">↓</button><button type="button" data-act="kdel" data-j="${j}" title="Delete">✕</button></span></div>`).join("")
       + `<button type="button" class="btn small kadd" data-act="kadd" data-j="${L.length}">+ Key point</button>` }
   let kpBusy = false;      // while the list is redrawn, a box losing focus must not save its old line over the new list
@@ -625,7 +625,7 @@ async function edit(){
     walk(el); return out.replace(/\n$/, "") }
   let richT = null;
   function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return;
-    if (el.dataset.f === "kpline") { if (kpBusy || !el.isConnected) return; const j = +el.dataset.j, L = kpNow(f.p); while (L.length <= j) L.push(""); let v = richText(el).replace(/\s*\n\s*/g, " ").trim(); const id = kpId(L[j]); if (id) v = ("[@" + id + "] " + v).trim(); if (L[j] === v) return; L[j] = v;
+    if (el.dataset.f === "kpline") { if (kpBusy || !el.isConnected) return; const j = +el.dataset.j, L = kpNow(f.p); while (L.length <= j) L.push(""); let v = richText(el).replace(/[ \t]*\n[ \t]*/g, "\n").replace(/\n{2,}/g, "\n").trim(); const id = kpId(L[j]); if (id) v = ("[@" + id + "] " + v).trim(); if (L[j] === v) return; L[j] = v;
       op({t: "pt", pid: f.p.id, f: "keyPoints", v: L}); relabel(f.p); const bh = $(`#ftext .blk[data-blk="${kpId(f.p.keyPoints[j])}"] .bh`); if (bh) bh.innerHTML = `<span class="kn">${j + 1}</span>${E(kpText(f.p.keyPoints[j])) || "&nbsp;"}`; return }
     if (el.dataset.f === "block") { if (!el.isConnected || el.contentEditable !== "true") return; const txt = richText(el), cur = blockOf(f.p, el.dataset.blk); if (txt === cur) return;
       op({t: "pt", pid: f.p.id, f: "script", v: setBlock(f.p, el.dataset.blk, txt)}); const d = $("#m .fulltext .draft"); if (d) d.remove(); relabel(f.p); const it = [...document.querySelectorAll("#m .kpi")].find(k => kpId(f.p.keyPoints[+k.dataset.j]) === el.dataset.blk); if (it) it.classList.toggle("linked", !!txt.trim()); return }
@@ -696,7 +696,7 @@ async function edit(){
     if ((e.key === "Backspace" || e.key === "Delete") && el.dataset.f === "block") { const c = chipAt(el, e.key === "Delete" ? 1 : -1), f = c && findPt(D, el.dataset.id), v = f && tagOf(f.p, c.dataset.ref), line = f && (f.p.keyPoints || []).find(x => kpId(x) === el.dataset.blk);
       if (v && !v.anchor && line && lineCounts(f.p, line)[tagKey(v)]) { e.preventDefault(); c.classList.remove("nope"); void c.offsetWidth; c.classList.add("nope"); c.title = "This tag is in the key points. Drag it to move it; remove it from the key points to delete it"; return } }
     if (e.key === "/") setTimeout(() => openVmenu(el), 0);
-    else if (e.key === "Enter" && el.dataset.f === "kpline") { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ""); kpSet(f.p, L, j + 1) }
+    else if (e.key === "Enter" && el.dataset.f === "kpline" && !e.shiftKey) { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ""); kpSet(f.p, L, j + 1) }
     else if (e.key === "Backspace" && el.dataset.f === "kpline" && !richText(el).trim() && +el.dataset.j > 0) { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; const j = +el.dataset.j, L = kpNow(f.p); L.splice(j, 1); kpSet(f.p, L, j - 1, true) }
     else if (e.key === "ArrowUp" && el.dataset.f === "kpline" && +el.dataset.j > 0 && e.altKey) { e.preventDefault(); kmove(el.dataset.id, +el.dataset.j, -1) }
     else if (e.key === "ArrowDown" && el.dataset.f === "kpline" && e.altKey) { e.preventDefault(); kmove(el.dataset.id, +el.dataset.j, 1) }
@@ -980,8 +980,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=37"><link rel="stylesheet" href="../common/countdown.css?v=37"><link rel="stylesheet" href="../common/gate.css?v=37"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=37"></script><script src="../common/countdown.js?v=37"></script><script src="../common/gate.js?v=37"></script><script src="../common/app.js?v=37"></script>${mode === "edit" ? '<script src="../common/ai.js?v=37"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=38"><link rel="stylesheet" href="../common/countdown.css?v=38"><link rel="stylesheet" href="../common/gate.css?v=38"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=38"></script><script src="../common/countdown.js?v=38"></script><script src="../common/gate.js?v=38"></script><script src="../common/app.js?v=38"></script>${mode === "edit" ? '<script src="../common/ai.js?v=38"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
