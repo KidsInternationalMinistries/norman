@@ -385,12 +385,17 @@ const AUD = {};       // text → promise of an object URL, so replaying is inst
 const TONES = {excited: {stability: .3, style: .55, f: 1.05}, exclaim: {stability: .22, style: .8, f: 1}, calm: {stability: .8, style: 0, f: .93}, gentle: {stability: .72, style: .15, f: .9}};
 function voiceOf(m){ const v = {stability: .62, similarity_boost: .75, style: 0, speed: m.speed === "slow" ? .82 : m.speed === "fast" ? 1.15 : 1, use_speaker_boost: true}, t = TONES[m.tone];
   if (t) { v.stability = t.stability; v.style = t.style; v.speed *= t.f } v.speed = Math.max(.7, Math.min(1.2, Math.round(v.speed * 100) / 100)); return v }
+// ALL CAPS words get stressed: the voice already leans on capitals, and a small breath before the word (as a speaker would) makes it land.
+const ACRO = new Set("KIM USA UK ESV NIV KJV CEO TV OK PDF AI CCC DVD USB NASA FBI CIA ASAP RSVP".split(" "));
+const capWord = (t, i) => { if (i < 0) return ""; const m = t.slice(i).match(/^[A-Z][A-Z'’]+(?![A-Za-z])/); return m && !ACRO.has(m[0].replace(/['’].*$/, "")) ? m[0] : "" };
+const prevWordAt = (t, i) => { let j = i - 1; while (j >= 0 && /[\s,;:—-]/.test(t[j])) j--; if (j < 0 || /[.!?…]/.test(t[j])) return -1; while (j > 0 && /[A-Za-z'’]/.test(t[j - 1])) j--; return j };
 function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.script), mode = {speed: "", tone: ""}; let cv = voiceOf(mode);
   const seg = (blk, t) => { const n = {}; let last = 0;
     const say = (a, b) => { let x = "", map = [], sp = true; for (let i = a; i < b; i++) { const c = t[i];
         if (/\s/.test(c)) { if (!sp) { x += c === "\n" ? "\n" : " "; map.push(i); sp = true } else if (c === "\n" && x.endsWith(" ")) x = x.slice(0, -1) + "\n" }   // a paragraph break stays a break, so the voice pauses there
         else if (c === "." && t[i + 1] === "." && i + 1 < b) { let j = i; while (t[j + 1] === "." && j + 1 < b) j++; x += "…"; map.push(i); i = j; sp = false }   // ".." and "..." read as one trailing pause
-        else if (!/[🔑🔁]/u.test(c)) { x += c; map.push(i); sp = false } }
+        else if (!/[🔑🔁]/u.test(c)) { if (sp && x) { const w = capWord(t, i); const pj = prevWordAt(t, i); if (w && !(pj >= 0 && /^[A-Z][A-Z'’]*(?![A-Za-z])/.test(t.slice(pj)))) { if (/[A-Za-z0-9'"”’)]$/.test(x.trimEnd())) { const ws = x.slice(x.trimEnd().length); x = x.trimEnd() + "," + ws; map.splice(x.length - 1 - ws.length, 0, i) } } }
+          x += c; map.push(i); sp = false } }
       while (/\s$/.test(x)) { x = x.slice(0, -1); map.pop() }
       while (x.length > 3500) { let cut = x.lastIndexOf(". ", 3500); if (cut < 1000) cut = 3500; out.push({say: x.slice(0, cut + 1), blk, map: map.slice(0, cut + 1), vs: cv}); x = x.slice(cut + 1).replace(/^ /, ""); map = map.slice(map.length - x.length) }
       if (x) out.push({say: x, blk, map, vs: cv}) };
