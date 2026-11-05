@@ -351,3 +351,5 @@ body[data-mode="edit"] .stagev .kplist{position:sticky;top:calc(var(--stk,150px)
 .script .vtag.ref.on{outline:3px solid #E9B949;outline-offset:2px}
 .script .vtag.ref.mir{border-style:solid;border-color:var(--accent);color:var(--accent)}
 .rich.big .vchip.mir:not(.unplaced){border-style:solid;border-color:var(--accent);color:var(--accent)}
+@keyframes nope{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.vchip.nope{animation:nope .25s 2}

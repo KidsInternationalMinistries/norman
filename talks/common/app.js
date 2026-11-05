@@ -550,7 +550,18 @@ async function edit(){
   function relabel(p){ const n = {}, kc = kpCounts(p); document.querySelectorAll("#m .rich.big .vchip").forEach(c => { const v = tagOf(p, c.dataset.ref); if (!v) return;
     if (v.anchor) { c.textContent = ancLabel(p, v); c.classList.toggle("orphan", !(p.keyPoints || []).some(x => x.includes("[" + v.ref + "]"))) }
     if (v.unplaced) { delete c.dataset.mk; return } const k = tagKey(v); n[k] = (n[k] || 0) + 1; c.dataset.mk = v.anchor ? k : k + "#" + n[k]; c.classList.toggle("mir", !v.anchor && n[k] <= (kc[k] || 0)) }) }
-  document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
+  // A tag that's in the key points can't leave the full text: if one is removed (with a selection, cut, etc.) it's back at the top in red at once.
+  function restoreTags(box){ const f = findPt(D, box.dataset.id); if (!f) return; const need = kpCounts(f.p), have = {};
+    box.querySelectorAll(".vchip").forEach(c => { const v = tagOf(f.p, c.dataset.ref); if (v) { const k = tagKey(v); have[k] = (have[k] || 0) + 1 } });
+    const add = []; for (const k in need) for (let d = need[k] - (have[k] || 0); d > 0; d--) { const v = tagOf(f.p, "!" + k); if (v) add.push(chip(v, f.p, true)) }
+    if (!add.length) return; const t = document.createElement("template"); t.innerHTML = add.join(" ") + " "; box.prepend(t.content); relabel(f.p) }
+  // The tag right next to the caret, in the direction Backspace (-1) or Delete (+1) would remove.
+  function chipAt(box, dir){ const sl = getSelection(); if (!sl.rangeCount || !sl.isCollapsed) return null; let n = sl.anchorNode, o = sl.anchorOffset;
+    if (n.nodeType === 3) { const t = n.nodeValue; if (dir < 0 ? t.slice(0, o).replace(/\u200b/g, "") : t.slice(o).replace(/\u200b/g, "")) return null; n = dir < 0 ? n.previousSibling : n.nextSibling }
+    else n = n.childNodes[dir < 0 ? o - 1 : o];
+    while (n && n.nodeType === 3 && !n.nodeValue.replace(/\u200b/g, "")) n = dir < 0 ? n.previousSibling : n.nextSibling;
+    return n && n.nodeType === 1 && n.classList.contains("vchip") && box.contains(n) ? n : null }
+  document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; if (el.dataset.f === "script") restoreTags(el); clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
   document.addEventListener("focusout", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; saveRich(el); if (el.dataset.f === "script") setTimeout(() => { const f = findPt(D, el.dataset.id); if (f && !el.contains(document.activeElement)) ensureMirror(f.p) }, 0) });
   // Copy, cut and paste keep tags and links (so a key point can be moved by cutting and pasting its line).
   function selText(){ const sl = getSelection(); if (!sl.rangeCount) return ""; const d = document.createElement("div"); d.appendChild(sl.getRangeAt(0).cloneContents()); return richText(d) }
@@ -595,6 +606,8 @@ async function edit(){
       if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pickV(vmenu.k); return }
       closeVmenu(); if (e.key === "Escape") { e.preventDefault(); return } }
     const el = e.target.closest && e.target.closest(".rich"); if (!el) return;
+    if ((e.key === "Backspace" || e.key === "Delete") && el.dataset.f === "script") { const c = chipAt(el, e.key === "Delete" ? 1 : -1), f = c && findPt(D, el.dataset.id), v = f && tagOf(f.p, c.dataset.ref);
+      if (v && kpCounts(f.p)[tagKey(v)]) { e.preventDefault(); c.classList.remove("nope"); void c.offsetWidth; c.classList.add("nope"); c.title = "This tag is in the key points. Drag it to move it; remove it from the key points to delete it"; return } }
     if (e.key === "/") setTimeout(() => openVmenu(el), 0);
     else if (e.key === "Enter" && el.dataset.f === "kpline") { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ""); kpSet(f.p, L, j + 1) }
     else if (e.key === "Backspace" && el.dataset.f === "kpline" && !richText(el).trim() && +el.dataset.j > 0) { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; const j = +el.dataset.j, L = kpNow(f.p); L.splice(j, 1); kpSet(f.p, L, j - 1, true) }
@@ -873,8 +886,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=30"><link rel="stylesheet" href="../common/countdown.css?v=30"><link rel="stylesheet" href="../common/gate.css?v=30"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=30"></script><script src="../common/countdown.js?v=30"></script><script src="../common/gate.js?v=30"></script><script src="../common/app.js?v=30"></script>${mode === "edit" ? '<script src="../common/ai.js?v=30"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=31"><link rel="stylesheet" href="../common/countdown.css?v=31"><link rel="stylesheet" href="../common/gate.css?v=31"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=31"></script><script src="../common/countdown.js?v=31"></script><script src="../common/gate.js?v=31"></script><script src="../common/app.js?v=31"></script>${mode === "edit" ? '<script src="../common/ai.js?v=31"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
