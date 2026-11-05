@@ -89,10 +89,22 @@ const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true}, STOP = "Stop", STO
 function tagOf(p, t){ t = t.trim(); if (/^@[a-z0-9]+$/.test(t)) return {ref: t, anchor: true, id: t.slice(1)}; const l = t.toLowerCase(); if (l === MAIN.toLowerCase()) return MAINTAG; if (l === STOP.toLowerCase()) return STOPTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || (p.slides || []).find(x => x && x.name && x.name.trim() === t) || null }
 // Extra slides on a point (p.slides): {name, type: "image" | "plain", eyebrow, slideTitle, slide, layout, image, placement…}. The tag is [name].
 // More types can be added here: give each a name, whether it has a picture, and how it draws.
-const SLIDE_TYPES = {image: "Image", plain: "Plain", bullets: "Bullets", bulletsimg: "Bullets on image", quote: "Quote"};
+const SLIDE_TYPES = {image: "Image", plain: "Plain", bullets: "Bullets", bulletsimg: "Bullets on image", quote: "Quote", video: "Video"};
 const hasPic = t => t === "image" || t === "bulletsimg", isBul = t => t === "bullets" || t === "bulletsimg";
 const isXS = v => !!(v && SLIDE_TYPES[v.type]);
-function xsHTML(v){ if (v.type === "quote") return quoteHTML(v); if (isBul(v.type)) return bulletsHTML(v); return v.type === "plain" ? slideBox({...v, image: ""}, " plain") : slideBox(v) }
+function xsHTML(v){ if (v.type === "video") return videoHTML(v); if (v.type === "quote") return quoteHTML(v); if (isBul(v.type)) return bulletsHTML(v); return v.type === "plain" ? slideBox({...v, image: ""}, " plain") : slideBox(v) }
+// A video slide plays from the start each time it comes up (sound on the slides screens, muted on Stage and in Edit).
+// If "next when it ends" is on, Stage moves to the next step when it finishes.
+function videoHTML(v){ return v.video ? `<div class="slide vid"><video data-p="${E(v.video)}" src="${E(LOCALIMG[v.video] || v.video)}" playsinline preload="auto"${v.autoNext !== false ? " data-next=\"1\"" : ""} onerror="__imgFallback(this)"></video></div>`
+  : '<div class="slide plain"><div class="tx" style="justify-content:center;align-items:center;opacity:.6;font-size:16px;color:#fff;left:0;width:100%;text-align:center">No video yet</div></div>' }
+function startVideo(vd){ if (vd.dataset.go) return; vd.dataset.go = 1; const mon = MODE === "monitor", inDlg = !!vd.closest("dialog");
+  vd.muted = !mon; if (inDlg) vd.controls = true; vd.currentTime = 0;
+  const p = vd.play(); if (p && p.catch) p.catch(() => { vd.muted = true; vd.play().catch(() => {});      // the browser blocked sound until someone clicks this page
+    if (mon && !document.getElementById("snd")) { const b = document.createElement("button"); b.id = "snd"; b.type = "button"; b.textContent = "🔊 Click for sound";
+      b.onclick = () => { b.remove(); document.querySelectorAll("video").forEach(x => { x.muted = false }) }; document.body.appendChild(b) } }) }
+new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; (n.matches("video") ? [n] : [...n.querySelectorAll("video")]).forEach(startVideo) }))).observe(document.documentElement, {childList: true, subtree: true});
+// Put new slide HTML in a box only if it changed, so a playing video isn't restarted by a redraw of the same slide.
+function setSlide(el, h){ if (!el) return; if (el.dataset.h === h && el.firstChild) return; el.dataset.h = h; el.innerHTML = h }
 // A quote: large words (fitted like a verse) and who said it.
 function quoteHTML(v){ return `<div class="slide verse-s quote"><div class="vs"><div class="vt">${(v.quote || "").trim() ? "“" + fmtVerse(v.quote.trim()) + "”" : ""}</div>${(v.by || "").trim() ? `<div class="vr">— ${E(v.by.trim())}</div>` : ""}</div></div>` }
 // A typical PowerPoint slide: a title at the top and bullet points (one per line), on a plain background or on a picture.
@@ -152,7 +164,7 @@ function slideHTML(S, i, d){
 }
 const KEEP = [];                                        // decoded images held in memory so slides appear instantly
 function preload(S, d){
-  const urls = [...new Set(S.flatMap(s => [s.image, ...(s.slides || []).map(x => x && x.image)]).concat([d.titleImage]).filter(Boolean))].filter(u => !LOCALIMG[u]);
+  const urls = [...new Set(S.flatMap(s => [s.image, ...(s.slides || []).flatMap(x => x ? [x.image, x.video] : [])]).concat([d.titleImage]).filter(Boolean))].filter(u => !LOCALIMG[u]);
   const swap = (u, b) => document.querySelectorAll("img[data-p]").forEach(im => { if (im.dataset.p === u && !im.src.startsWith("data:")) im.src = b });
   const get = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.blob() }).catch(() => fetch(RAW + PATH + "/" + u).then(r => { if (!r.ok) throw 0; return r.blob() }));
   let i = 0;
@@ -197,7 +209,7 @@ async function monitor(){
   const items = []; S.forEach((s, i) => { if (hasSlide(s)) items.push([i, 0]); verseRefsIn(s).forEach((v, k) => { if (!v.stop) items.push([i, k + 1]) }) });
   const st = $("#st");
   let pEnd = false, pk = null;
-  function show(){ const i = follow ? pres : local; const pv = follow && pk ? tagOf(S[i], pk) : null; $("#s").innerHTML = follow && pEnd ? '<div class="slide blank"></div>' : pv ? tagHTML(S, i, pv, D) : stepHTML(S, i, follow ? psub : lsub, D);
+  function show(){ const i = follow ? pres : local; const pv = follow && pk ? tagOf(S[i], pk) : null; setSlide($("#s"), follow && pEnd ? '<div class="slide blank"></div>' : pv ? tagHTML(S, i, pv, D) : stepHTML(S, i, follow ? psub : lsub, D));
     st.className = follow ? (connected || bcSeen ? "on" : "") : "local";
     st.lastChild.textContent = follow ? (connected || bcSeen ? "Following the presenter" : "Waiting for the presenter") : "Stepping here, snaps back when the presenter moves" }
   function fromPresenter(m){ if (!m || !m.point) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); if (m.point === "__end") { pEnd = true; follow = true; show(); return } const i = idx(m.point); if (i < 0) return; pEnd = false; pres = i; psub = +m.sub || 0; pk = m.pk || null; follow = true; show() }
@@ -251,14 +263,17 @@ async function present(){
       <div class="grid"><div>${kl ? `<div class="kpbox">${kl}</div>` : (cur === 0 ? '<p class="note">The timer starts when you move to 1.b.</p>' : "")}
       ${s.script ? `<div class="fulltext"><div class="rule"><span class="tag">Full text</span>${s.scriptDraft ? '<span class="draft">Draft</span>' : ""}</div><p class="script">${scriptHTML(s)}</p></div>` : ""}
       ${nx ? `<div class="next">Up next: <b>${E(nx.label)}</b> ${E(nx.cue)}${hasSlide(nx) && heldIdx(S, cur + 1) === cur + 1 ? " (new slide)" : ""}</div>` : '<div class="next">End of talk</div>'}</div>
-      <div class="scr-wrap"><div class="scr">${scrHTML()}</div><div class="cap">${capTxt()}</div></div></div>`;
+      <div class="scr-wrap"><div class="scr"></div><div class="cap">${capTxt()}</div></div></div>`; setSlide($("#m .scr"), scrHTML()); vidNext();
     $("#pos").textContent = (cur + 1) + " of " + S.length; markPk(); document.querySelectorAll("#m .script .anc").forEach(e => e.classList.toggle("on", e.dataset.anc === anc)); requestAnimationFrame(toStep) }
   // Clicking a tag shows its slide for a moment (a "peek"); Next or Back goes back to where you were.
   const scrHTML = () => peek ? tagHTML(S, cur, tagOf(S[cur], peek), D) : stepHTML(S, cur, sub, D);
   function capTxt(){ const s = S[cur], k = heldIdx(S, cur); if (peek) { const v = tagOf(s, peek); return "Showing " + E(v ? tagLabel(v) : peek) + " · Next or Back goes back" }
     return sub > 0 ? "Step " + sub + " of " + subCount(s) : k === cur && hasSlide(s) ? "New slide at this point" : k >= 0 ? "Slide from " + E(S[k].label) + " stays up" : "Title slide" }
   function markPk(){ document.querySelectorAll("#m [data-ref]").forEach(b => b.classList.toggle("pk", !!peek && b.dataset.ref === peek)) }
-  function updScr(){ const sc = $("#m .scr"), cp = $("#m .cap"); if (!sc || atEnd) return main(); sc.innerHTML = scrHTML(); cp.innerHTML = capTxt(); markPk() }
+  function updScr(){ const sc = $("#m .scr"), cp = $("#m .cap"); if (!sc || atEnd) return main(); setSlide(sc, scrHTML()); cp.innerHTML = capTxt(); markPk(); vidNext() }
+  // A video set to "next when it ends" presses Next for you when it finishes (a moment later, so the slides screens finish too).
+  function vidNext(){ const vd = $("#m .scr video[data-next]"); if (!vd || vd.dataset.hooked) return; vd.dataset.hooked = 1; const at = [cur, pos, peek];
+    vd.addEventListener("ended", () => setTimeout(() => { if (cur === at[0] && pos === at[1] && peek === at[2] && !atEnd) next() }, 1200)) }
   // Keep the step you're on at the top, just under the sticky header (the page has room below to allow it).
   // The key points stay at the top; Next on a linked key point scrolls the full text up to its spot, just under them (there's room below to allow it).
   function toStep(){ const tb = $(".top"), hd = $("#m .head"), kb = $("#m .kpbox"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0);
@@ -522,7 +537,7 @@ async function edit(){
     m.onclick = e => { const b = e.target.closest("[data-new]"); if (!b) return; m.remove(); amenu = null; if (sel.k !== "pt") return;
       if (b.dataset.new === "verse") verseEdit(sel.id, "new"); else openSlide(addSlide(sel.id, b.dataset.new)) } }
   function addSlide(pid, type){ const f = findPt(D, pid); let n = (f.p.slides || []).length + 2, name; do { name = "Slide " + n++ } while (tagOf(f.p, name));
-    op({t: "xadd", pid, s: type === "quote" ? {name, type, quote: "", by: ""} : {name, type, slideTitle: "", ...(isBul(type) ? {bullets: ""} : {eyebrow: "", slide: "", layout: "center"}), image: ""}}); return f.p.slides.length - 1 }
+    op({t: "xadd", pid, s: type === "video" ? {name, type, video: "", autoNext: true} : type === "quote" ? {name, type, quote: "", by: ""} : {name, type, slideTitle: "", ...(isBul(type) ? {bullets: ""} : {eyebrow: "", slide: "", layout: "center"}), image: ""}}); return f.p.slides.length - 1 }
   // Renaming a verse or slide renames its tags in the text; removing it (b empty) removes its tags.
   function renameTag(pid, a, b){ const f = findPt(D, pid); if (!f || !a) return; const rep = t => t.split("[" + a + "]").join(b ? "[" + b + "]" : "");
     const kp = (f.p.keyPoints || []).map(x => rep(x).replace(/  +/g, " ").trim()).filter(Boolean), sc = rep(f.p.script || "");
@@ -543,7 +558,7 @@ async function edit(){
     if (esub > 0) { const v = verseRefsIn(p)[esub - 1]; return `Step ${esub} of ${n}${v ? " · " + E(tagLabel(v)) + editLink(v) : ""}` }
     if (hasSlide(p)) return `<button type="button" class="linkbtn" data-act="sedit">Edit slide</button>`;
     const k = heldIdx(L, i); return (k >= 0 ? "Slide from " + E(L[k].label) + " stays up" : "No slide yet") + ` · <button type="button" class="linkbtn" data-act="sedit">Add a slide here</button>` }
-  function updSmall(){ const f = sel.k === "pt" && findPt(D, sel.id), ps = $("#prevs"), pc = $("#pcap"); if (!f) return; if (ps) ps.innerHTML = smallHTML(f.p); if (pc) pc.innerHTML = capHTML(f.p);
+  function updSmall(){ const f = sel.k === "pt" && findPt(D, sel.id), ps = $("#prevs"), pc = $("#pcap"); if (!f) return; if (ps) setSlide(ps, smallHTML(f.p)); if (pc) pc.innerHTML = capHTML(f.p);
     document.querySelectorAll("#m .rich .vchip").forEach(c => c.classList.toggle("pk", !!epeek && c.dataset.ref === epeek)) }
   // Click a tag (in Key points or Full text) to show its slide; Next or Back puts back what was showing.
   function peekAt(ref){ const f = findPt(D, sel.id), v = f && tagOf(f.p, ref); if (!v || v.stop) return; epeek = epeek === ref ? null : ref; atEnd = false; updSmall() }
@@ -586,7 +601,11 @@ async function edit(){
     if (xs) h += `<div class="row"><label style="flex:1 1 200px">Name (its tag in your text)<input ${A} data-f="name" value="${E(o.name)}"></label>
       <label style="flex:0 1 220px">Type<select ${A} data-f="type">${Object.entries(SLIDE_TYPES).map(([k, n]) => `<option value="${k}"${k === ty ? " selected" : ""}>${E(n)}</option>`).join("")}</select></label></div>`;
     h += `<div class="prev" id="prev">${prevOf(t, o)}</div><div class="slideed" id="slideed">`;
-    if (ty === "quote") h += `<label>Quote<textarea class="auto" ${A} data-f="quote" placeholder="The words, without quote marks. Use **bold** or __underline__ if you like.">${E(o.quote)}</textarea></label>
+    if (ty === "video") h += `<div class="row"><span class="tag">Video file (MP4 works best; keep it under about 50 MB)</span>
+      <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${o.video ? "Replace" : "Add"} video<input type="file" accept="video/mp4,video/webm,video/quicktime,video/*" data-vid="${E(t.pid)}" data-i="${t.i}" hidden></label><span class="note" id="imgmsg"></span></div>
+      <label class="chk"><input type="checkbox" ${A} data-f="autoNext"${o.autoNext !== false ? " checked" : ""}> When the video ends, go to the next slide (like pressing Next)</label>
+      <p class="note">It plays from the start every time the slide comes up, with sound on the slides screens. On Stage it plays muted, so you can see where it is.</p>`;
+    else if (ty === "quote") h += `<label>Quote<textarea class="auto" ${A} data-f="quote" placeholder="The words, without quote marks. Use **bold** or __underline__ if you like.">${E(o.quote)}</textarea></label>
       <label>Who said it<input ${A} data-f="by" value="${E(o.by)}" placeholder="e.g. Corrie ten Boom"></label>`;
     else if (bul) h += `<label>Title<textarea class="auto" ${A} data-f="slideTitle">${E(o.slideTitle)}</textarea></label>
       <label>Bullet points (one per line)<textarea class="auto" ${A} data-f="bullets" placeholder="First point&#10;Second point">${E(o.bullets)}</textarea></label>${posOf(t, o)}`;
@@ -716,6 +735,13 @@ async function edit(){
   });
   document.addEventListener("change", async ev => {
     const el = ev.target;
+    if (el.dataset.vid) { const file = el.files && el.files[0]; if (!file) return; const pid = el.dataset.vid, T = {pid, i: +el.dataset.i}, msg = $("#imgmsg");
+      if (file.size > 95e6) { if (msg) msg.textContent = "That video is too big for GitHub (over 95 MB). Shrink it and try again."; return }
+      if (msg) msg.textContent = `Uploading ${Math.round(file.size / 1e6)} MB…`;
+      try { const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = no; r.readAsDataURL(file) });
+        const ext = (file.name.match(/\.([a-z0-9]{2,5})$/i) || [, "mp4"])[1].toLowerCase(), path = `slides/video/${pid}-${Date.now().toString(36)}.${ext}`;
+        await GH.put(PATH + "/" + path, b64, null, "Video for " + pid); LOCALIMG[path] = URL.createObjectURL(file); setOp(T, "video", path, true) }
+      catch (e) { if (msg) msg.textContent = "Upload failed: " + (e.detail || e.message) } return }
     if (el.dataset.img) { const file = el.files && el.files[0]; if (!file) return; const pid = el.dataset.img, msg = $("#imgmsg"); if (msg) msg.textContent = "Uploading…";
       const T = {pid, i: el.dataset.i != null && el.dataset.i !== "" ? +el.dataset.i : null};
       try { const url = await toJpeg(file), path = `slides/${pid}-${Date.now().toString(36)}.jpg`;
@@ -730,7 +756,7 @@ async function edit(){
       op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
       if (el.dataset.f === "script") { const d = el.parentElement.querySelector(".draft"); if (d) d.remove() }
       if (SLF.includes(el.dataset.f)) { if (!dlgT || dlgT.pid !== el.dataset.id || dlgT.i != null) dlgT = {pid: el.dataset.id, i: null}; refreshSlide() } if (el.dataset.f === "cue") { const h = $(".ed h2"); if (h) h.lastChild.textContent = v } }
-    else if (t === "xs") { const T = elT(el), o = tObj(T), f = el.dataset.f; if (!o) return;
+    else if (t === "xs") { const T = elT(el), o = tObj(T), f = el.dataset.f; if (!o) return; if (el.type === "checkbox") { setOp(T, f, el.checked); return }
       if (f === "name") { const nv = v.trim(), pt = findPt(D, T.pid); if (!nv || nv === o.name) { el.value = o.name; return }
         if (tagOf(pt.p, nv) || /^(main slide|stop)$/i.test(nv)) { el.value = o.name; const m = $("#imgmsg") || el.parentElement; el.setCustomValidity("That name is already used on this point"); el.reportValidity(); setTimeout(() => el.setCustomValidity(""), 2500); return }
         renameTag(T.pid, o.name, nv); setOp(T, "name", nv); refreshSlide(); return }
@@ -751,8 +777,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=25"><link rel="stylesheet" href="../common/countdown.css?v=25"><link rel="stylesheet" href="../common/gate.css?v=25"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=25"></script><script src="../common/countdown.js?v=25"></script><script src="../common/gate.js?v=25"></script><script src="../common/app.js?v=25"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=26"><link rel="stylesheet" href="../common/countdown.css?v=26"><link rel="stylesheet" href="../common/gate.css?v=26"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=26"></script><script src="../common/countdown.js?v=26"></script><script src="../common/gate.js?v=26"></script><script src="../common/app.js?v=26"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
