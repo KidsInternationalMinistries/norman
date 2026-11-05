@@ -123,3 +123,23 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 .vpick button{display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
 .vpick button:hover{border-color:var(--accent)}
 .vpick button span{color:var(--muted);font-size:14px}
+::highlight(kpword){background-color:#E9B949;color:#000}
+/* talking points */
+.tp{border:1px solid var(--line);border-radius:10px;background:var(--surface);display:flex;flex-direction:column}
+.tph{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px}
+.tph #tpt{flex:1 1 100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpb{display:flex;gap:2px}
+.tpb button{min-width:28px;height:26px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;cursor:pointer;font-size:13px}
+.tpb button:hover{border-color:var(--accent)}
+.tph #tpai{margin-left:auto}
+.tpe{min-height:130px;max-height:40vh;overflow:auto;padding:8px 12px;font-size:16px;line-height:1.45;outline:none}
+.tpe:empty::before{content:attr(data-ph);color:var(--muted)}
+.tpe ul,.tpe ol,.tpn ul,.tpn ol{margin:2px 0;padding-left:1.3em}
+/* Stage: slide on top, talking points below, in the right column */
+.lay.v2s{grid-template-columns:minmax(200px,260px) minmax(0,1fr) minmax(360px,36vw)}
+.v2s .side .olbox{position:static;max-height:none;flex:1 1 auto;flex-shrink:1;overflow:auto;border:0;padding:6px 2px;min-height:120px}
+.v2s .side .olh{font-size:24px;padding:8px 14px}
+.tpn{font-size:26px;line-height:1.4;padding:4px 6px}
+.tpn ul,.tpn ol{padding-left:1.2em}
+.tpn li{margin:4px 0}
+.v2s ul.ol{font-size:22px}

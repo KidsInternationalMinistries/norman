@@ -19,6 +19,8 @@ const FOLDER = decodeURIComponent(parts[parts.length - 1] || ""), PATH = C.root 
 const LV = ["", "Section", "Point", "Sub point", "Detail"];
 const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video"};
 const STOP = {name: "Stop", stop: true};
+// Each outline tag can carry a short id ([#2 Joke|k3f9]) so its talking points (d.notes[id]) stay with it when it moves or is renamed.
+const newId = () => Math.random().toString(36).slice(2, 7);
 
 // ---------- reading the text ----------
 // Every tag in order: outline nodes, slides, stops and cues, with where they sit in the text.
@@ -26,7 +28,7 @@ function parse(d){ const t = d.text || "", toks = [], nodes = [], cnt = [0, 0, 0
   for (const m of t.matchAll(TAG)) { const r = m[1].trim(), nm = r.match(/^#([1-4])(?:\s+([\s\S]*))?$/), at = m.index, end = at + m[0].length;
     if (nm) { const lvl = +nm[1]; cnt[lvl]++; for (let k = lvl + 1; k <= 4; k++) cnt[k] = 0; while (stack.length && stack[stack.length - 1].lvl >= lvl) stack.pop();
       const lab = lvl === 1 ? String(cnt[1]) : lvl === 2 ? (cnt[1] || 0) + "." + letter(cnt[2] - 1) : lvl === 3 ? String(cnt[3]) : letter(cnt[4] - 1);
-      const n = {j: nodes.length, lvl, text: (nm[2] || "").trim(), at, end, lab, parent: stack[stack.length - 1] || null, top: lvl === 1 ? null : null, slides: []};
+      const tw = (nm[2] || "").match(/^([\s\S]*?)(?:\|([a-z0-9]{2,12}))?$/), n = {j: nodes.length, lvl, text: tw[1].trim(), id: tw[2] || "", at, end, lab, parent: stack[stack.length - 1] || null, top: lvl === 1 ? null : null, slides: []};
       n.full = lvl <= 2 ? lab : (stack.find(x => x.lvl === 2) ? stack.find(x => x.lvl === 2).lab + " · " : "") + lab;
       nodes.push(n); stack.push(n); toks.push({k: "node", node: n, at, end, ref: r}); continue }
     const cue = CUETAG[r.toLowerCase()]; if (cue) { toks.push({k: "cue", cue, at, end, ref: r}); continue }
@@ -118,6 +120,14 @@ function textHTML(d, P, inEdit, S, blocks){ const t = P.t; let h = "", pos = 0, 
     if (blocks && x.k === "node") { h += (open ? "</div>" : "") + `<div class="sg l${x.node.lvl}" data-seg="1">`; open = true }
     h += tok(x); pos = x.end }
   words(t.length); if (open) h += "</div>"; return h }
+// Talking points: free-form notes per outline tag, kept as simple HTML (bold, underline, italics, lists, indents).
+function cleanHTML(h){ const tp = document.createElement("template"); tp.innerHTML = h || ""; const OK = /^(B|STRONG|U|I|EM|UL|OL|LI|BR|DIV|P|BLOCKQUOTE)$/;
+  const walk = n => { for (const c of [...n.childNodes]) { if (c.nodeType === 3) continue; if (c.nodeType !== 1) { c.remove(); continue } walk(c);
+      if (!OK.test(c.tagName)) { c.replaceWith(...c.childNodes); continue } for (const a of [...c.attributes]) c.removeAttribute(a.name) } };
+  walk(tp.content); const out = tp.innerHTML.trim(); return out.replace(/<br>$/, "").replace(/<(div|p)><br><\/\1>/g, "<br>") }
+const noteText = h => (h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").trim();
+// The notes for a step: its own outline tag's, else the nearest one above it that has some.
+function noteFor(d, n){ for (let p = n; p; p = p.parent) { const h = p.id && d.notes && d.notes[p.id]; if (h && noteText(h)) return {n: p, h} } return null }
 // The light box behind the words being read: from the top of the first line to the bottom of the last, across the text column.
 function hlBox(host, col, r){ let el = host.querySelector(":scope > .hlb"); const L = r ? [...r.getClientRects()].filter(x => x.width > 1 && x.height > 1) : [];
   if (!L.length) { if (el) el.hidden = true; return } if (!el) { el = document.createElement("div"); el.className = "hlb"; host.appendChild(el) }
@@ -139,8 +149,8 @@ async function present(){
   const P = parse(d), S = build(P), SH = S.map(x => x.slide);
   let k = 0, peek = null, end = false, showText = true; try { const v = +localStorage.getItem("pres2-" + FOLDER); if (v >= 0 && v < S.length) k = v; showText = localStorage.getItem("pres2-text") !== "0" } catch (e) {}
   document.body.innerHTML = topBar(d, "present") + `<div class="lay v2s"><nav class="cues" id="nav"></nav><main class="pane" id="m">
-      <div class="olbox" id="ol"></div><div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><div class="script" id="sc"></div></div></main>
-      <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></aside></div>
+      <div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><div class="script" id="sc"></div></div></main>
+      <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="olbox" id="ol"></div><div class="nxt" id="nx"></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
@@ -155,7 +165,8 @@ async function present(){
       h = `<div class="olh">${E(b.lab)} ${E(b.text)}</div><ul class="ol">` + list.filter(x => x !== b).map(x => `<li class="l${x.lvl}${x === n ? " cur" : ""}" data-n="${x.j}"><span class="kn">${E(x.lab)}</span>${E(x.text)}${x.slides.filter(q => q.slide && !q.slide.stop).map(q => { return ` <button type="button" class="vtag${q.step === k || (SH[k] === q.slide && q.step <= k) ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("")}</li>`).join("") + "</ul>";
       const own = b.slides.filter(q => q.slide && !q.slide.stop); if (own.length) h = h.replace("</div>", " " + own.map(q => { return `<button type="button" class="vtag${SH[k] === q.slide && q.step <= k ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("") + "</div>");
       if (n === b) h = h.replace('class="olh"', 'class="olh cur"') }
-    $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`;
+    const nt = n ? noteFor(d, n) : null; if (nt) h = `<div class="olh${n === nt.n ? " cur" : ""}">${E(nt.n.full)} ${E(nt.n.text)}</div><div class="tpn">${cleanHTML(nt.h)}</div>`;
+    $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`; $("#ol").scrollTop = 0;
     document.querySelectorAll("#nav [data-n]").forEach(e => e.classList.toggle("cur", !!b && +e.dataset.n === b.j));
     const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
     const ck = end ? null : $(`#sc .ck[data-s="${k}"]`); requestAnimationFrame(() => { let r = null; if (ck && showText) { r = document.createRange(); r.selectNodeContents(ck) } hlBox($("#ft"), $("#sc"), r) });
@@ -164,7 +175,7 @@ async function present(){
     const nx = S.slice(k + 1).find(z => z.node && z.node !== n); $("#nx").innerHTML = nx ? `Up next: <b>${E(nx.node.lab)}</b> ${E(nx.node.text)}` : "End of the talk";
     $("#pos").textContent = (k + 1) + " of " + S.length; vid();
     requestAnimationFrame(() => { const el = ck || (n && $(`#sc .bmark[data-n="${n.j}"]`)); const ol = $("#ol"), tb = $(".top");
-      if (showText && el) { const top = (tb ? tb.offsetHeight : 0) + (ol ? ol.offsetHeight : 0) + 20, bar = $(".bar"); scrollToPart(el.getBoundingClientRect(), top, bar ? bar.getBoundingClientRect().top : innerHeight) } }) }
+      if (showText && el) { const top = (tb ? tb.offsetHeight : 0) + 20, bar = $(".bar"); scrollToPart(el.getBoundingClientRect(), top, bar ? bar.getBoundingClientRect().top : innerHeight) } }) }
   function vid(){ const v = $(".side .slide.vid[data-next]"); if (!v || v.dataset.hooked) return; v.dataset.hooked = 1; const at = k; v.addEventListener("vidend", () => setTimeout(() => { if (k === at && !peek) next() }, 1200)) }
   async function push(){ const m = {v: 2, step: k, at: Date.now()}; if (peek) m.pk = peek; if (end) m.end = 1; try { localStorage.setItem("pres2-" + FOLDER, k) } catch (e) {}
     if (bc) try { bc.postMessage(m) } catch (e) {} const se = $("#sync");
@@ -200,6 +211,8 @@ async function edit(){
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main>
     <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div>
+      <div class="tp"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button></div>
+        <div class="tpe" id="tpe" contenteditable="true" spellcheck="true" data-ph="What you glance at while you talk: a few short lines. Bold, underline and bullets work."></div></div>
       <div class="ptabs"><button type="button" data-tab="lib" class="on">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd">+ New slide</button></div><div class="plist" id="plist"></div></aside></div>
     <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog><dialog class="sdlg pdlg" id="pdlg"></dialog>`;
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
@@ -208,13 +221,13 @@ async function edit(){
   function changed(snap){ if (snap !== false) { hist.push(snap); if (hist.length > 100) hist.shift(); $("#undo").disabled = false }
     P = parse(d); S = build(P); SH = S.map(x => x.slide); if (k >= S.length) k = Math.max(0, S.length - 1); dirty = true; setSave("Saving…"); clearTimeout(timer); timer = setTimeout(flush, 900); redraw() }
   const changed0 = s => changed(s), slideEdit0 = (i, f) => slideEdit(i, f);
-  const snapshot = () => JSON.stringify({text: d.text, slides: d.slides});
+  const snapshot = () => JSON.stringify({text: d.text, slides: d.slides, notes: d.notes || {}});
   async function flush(){ if (saving || !dirty) return; saving = true; dirty = false; const body = JSON.stringify(d, null, 1) + "\n";
     try { SHA = await GH.put(FILE, b64e(body), SHA, "Edit " + d.title + " (new version)"); setSave(dirty ? "Saving…" : "Saved. The live pages update in about a minute.") }
     catch (e) { if (e.status === 409 || e.status === 422) { try { SHA = (await GH.get(FILE)).sha; dirty = true } catch (_) {} } else { dirty = true; setSave("Not saved (" + (e.detail || e.message) + "). Retrying…", true) } setTimeout(flush, e.status === 409 || e.status === 422 ? 200 : 5000) }
     saving = false; if (dirty) flush() }
   window.addEventListener("beforeunload", e => { if (dirty || saving) { e.preventDefault(); e.returnValue = "" } });
-  $("#undo").onclick = () => { const s = hist.pop(); if (!s) return; const o = JSON.parse(s); d.text = o.text; d.slides = o.slides; $("#undo").disabled = !hist.length; changed(false); drawText() };
+  $("#undo").onclick = () => { const s = hist.pop(); if (!s) return; const o = JSON.parse(s); d.text = o.text; d.slides = o.slides; d.notes = o.notes || {}; $("#undo").disabled = !hist.length; changed(false); drawText() };
 
   // ---- the text box ----
   const box = () => $("#ftext .rich.big");
@@ -263,7 +276,7 @@ async function edit(){
     setTimeout(() => f.focus(), 0) }
   function restore(){ const b = box(); if (!b || !mrange) return; b.focus(); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(mrange) }
   function pick(it){ closeMenu(); restore();
-    if (it.node) { nodeEdit({lvl: it.node, text: ""}, v => { restore(); insertAtCaret("#" + v.lvl + " " + v.text, true) }); return }
+    if (it.node) { nodeEdit({lvl: it.node, text: ""}, v => { restore(); insertAtCaret("#" + v.lvl + " " + v.text + "|" + newId(), true) }); return }
     if (it.pickSlide) { slidePick(nm => { restore(); insertAtCaret(nm, true) }); return }
     insertAtCaret(it.slide || it.cue, true) }
   document.addEventListener("keydown", e => { if (menu) return; const b = e.target.closest && e.target.closest("#ftext .rich.big"); if (!b) return;
@@ -360,7 +373,28 @@ async function edit(){
       }
     hlBox($("#ftext"), b, r); if (!quiet) { const tb = $(".top"), tl = $("#m .tools"); scrollToPart(r.getBoundingClientRect(), (tb ? tb.offsetHeight : 0) + (tl ? tl.offsetHeight : 0) + 12, innerHeight - 8) } }
   addEventListener("resize", () => hl(true));
-  function side(){ const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
+  // ---- talking points for the outline tag you're in ----
+  let tpKey = null, tpT = null; const keyOf = n => n ? (n.id || "@" + n.at) : "";
+  function tpNode(){ const st = S[k]; return st && st.node || null }
+  function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; if (!force && (keyOf(n) === tpKey || document.activeElement === e)) return; tpKey = keyOf(n);
+    $("#tpt").textContent = n ? "Talking points · " + n.full + " " + n.text : "Talking points (step into a point first)"; e.contentEditable = n ? "true" : "false";
+    e.innerHTML = n && n.id && d.notes && d.notes[n.id] ? cleanHTML(d.notes[n.id]) : "" }
+  function saveTP(){ clearTimeout(tpT); const e = $("#tpe"); if (!e) return; let n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const h = cleanHTML(e.innerHTML), has = !!noteText(h);
+    if ((n.id && (d.notes || {})[n.id] || "") === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
+    if (!n.id) { if (!has) return; const id = newId(); d.text = d.text.slice(0, n.end - 1) + "|" + id + d.text.slice(n.end - 1); n.id = id; tpKey = id; var redrawText = true }
+    if (has) d.notes[n.id] = h; else delete d.notes[n.id]; changed(s); if (redrawText) drawText() }
+  document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(saveTP, 700) } });
+  document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
+  document.addEventListener("keydown", e => { if (e.target.id !== "tpe" || e.key !== "Tab") return; e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent") });
+  document.addEventListener("mousedown", e => { const b = e.target.closest(".tpb [data-c]"); if (!b) return; e.preventDefault(); const t = $("#tpe"); if (document.activeElement !== t) t.focus(); document.execCommand(b.dataset.c); clearTimeout(tpT); tpT = setTimeout(saveTP, 400) });
+  $("#tpai").onclick = async () => { const n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const seg = d.text.slice(n.end, n.last); if (words(seg) < 15) { K().toast("There's not enough text in this part yet."); return }
+    const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the talking points that are there now?")) return; const stop = busy("Drafting the talking points…");
+    try { const j = await K().chat(`You turn part of a talk into the speaker's talking points: what he glances at on a screen while he speaks from memory. 3 to 7 very short lines (2 to 8 words each), in his words, in the order he says them; a sub line (level 2) only when it really helps. If a line in the text is clearly meant to be read word for word (a verse, a quote), add it as one line starting "Read:" with its first few words. Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]} with bold true only for the one or two lines that matter most.`,
+        `${brief()}\n\nThis part: ${n.full} ${n.text}\n\n${plain(seg)}`, {effort: "low"});
+      const L = (j.points || []).filter(x => x && x.text); let h = "<ul>", open2 = false;
+      for (const x of L) { const li = `<li>${x.bold ? "<b>" + E(x.text) + "</b>" : E(x.text)}`; if (+x.level === 2) { h += (open2 ? "</li>" : "<ul>") + li; open2 = true } else { h += (open2 ? "</li></ul></li>" : h === "<ul>" ? "" : "</li>") + li; open2 = false } }
+      h += (open2 ? "</li></ul></li>" : "</li>") + "</ul>"; e.innerHTML = cleanHTML(h); tpKey = keyOf(n); saveTP() } catch (err) { aiFail(err) } finally { stop() } };
+  function side(){ drawTP(); const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
   function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist(); hl(true) }
@@ -371,7 +405,7 @@ async function edit(){
   document.addEventListener("click", e => { const tg = e.target;
     const tn = tg.closest("#tree [data-n]"); if (tn) { const i = firstAt(S, P.nodes[+tn.dataset.n]); if (i >= 0) step(i); return }
     const nd = tg.closest("#ftext .vchip.nd"); if (nd) { if (dragged) return; saveText(); const v = nd.dataset.ref.match(/^#([1-4])\s*([\s\S]*)$/), ni = [...box().querySelectorAll(".vchip.nd")].indexOf(nd);
-      nodeEdit({lvl: +v[1], text: v[2] || "", node: P.nodes[ni]}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text; d.text = richText(box()); changed(s); drawText() }, true); return }
+      const nn = P.nodes[ni]; nodeEdit({lvl: +v[1], text: nn ? nn.text : (v[2] || ""), node: nn}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text + (nn && nn.id ? "|" + nn.id : ""); d.text = richText(box()); changed(s); drawText() }, true); return }
     const sc = tg.closest("#ftext .vchip.sl"); if (sc) { if (dragged || sc.classList.contains("stop")) return; const nm = sc.dataset.ref; peek = peek === nm ? null : nm; side(); return }
     const pe = tg.closest("[data-edit]"); if (pe) { const i = d.slides.findIndex(x => x.name === pe.dataset.edit); if (i >= 0) slideEdit(i); return }
     const pi = tg.closest(".pi[data-si]"); if (pi) { slideEdit(+pi.dataset.si); return }
@@ -405,7 +439,7 @@ Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.s
     if (!out.length) { $("#olm").textContent = "The AI's outline didn't match the text. Try again."; return }
     let n = [0, 0, 0, 0, 0]; $("#olm").textContent = (has ? `This replaces the ${has} outline tags there now. ` : "") + "Your words and slides stay as they are. Check it, then put it in:";
     $("#olb").innerHTML = `<div class="aisp">` + out.map(o => { n[o.lvl]++; for (let q = o.lvl + 1; q <= 4; q++) n[q] = 0; const lab = o.lvl === 1 ? n[1] : o.lvl === 2 ? n[1] + "." + letter(n[2] - 1) : o.lvl === 3 ? n[3] : letter(n[4] - 1); return `<p style="margin:2px 0 2px ${(o.lvl - 1) * 1.5}em"><b>${E(String(lab))}</b> ${E(o.text)}</p>` }).join("") + `</div>`;
-    const ok = $("#olok"); ok.disabled = false; ok.onclick = () => { let sc = clean, shift = 0; for (const o of out) { const at = o.at + shift, tg = "[#" + o.lvl + " " + o.text + "]", pre = at > 0 && !/[\n ]/.test(sc[at - 1]) ? " " : "", nl = o.lvl <= 2 ? "\n" : " ";
+    const ok = $("#olok"); ok.disabled = false; ok.onclick = () => { let sc = clean, shift = 0; for (const o of out) { const at = o.at + shift, tg = "[#" + o.lvl + " " + o.text + "|" + newId() + "]", pre = at > 0 && !/[\n ]/.test(sc[at - 1]) ? " " : "", nl = o.lvl <= 2 ? "\n" : " ";
         const before = o.lvl <= 2 && at > 0 && sc[at - 1] !== "\n" ? "\n" : pre; sc = sc.slice(0, at) + before + tg + nl + sc.slice(at).replace(/^ /, ""); shift += before.length + tg.length + nl.length }
       const s = snapshot(); d.text = sc; dl.close(); changed(s); drawText(); step(0) } }
   // =====================================================================
@@ -548,8 +582,13 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
       x = x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
       const out = []; while (x.length > 2800) { let cut = x.lastIndexOf(". ", 2800); if (cut < 800) cut = 2800; out.push({say: x.slice(0, cut + 1).trim(), v3: true}); x = x.slice(cut + 1) } if (x.trim()) out.push({say: x.trim(), v3: true}); return out }
     const out = [], N = {speed: "", tone: ""};
-    const add = (a0, b0, m) => { a0 = Math.max(a0, F); if (b0 <= a0) return; const sx = clean(t.slice(a0, b0)); if (!sx.trim()) { if (out.length && !out[out.length - 1].pause) out[out.length - 1].say += sx; return }
-      const vs = k0.voiceOf(m), last = out[out.length - 1]; if (last && !last.pause && JSON.stringify(last.vs) === JSON.stringify(vs)) last.say += sx; else out.push({say: sx, vs}) };
+    // the words from a0 to b0 as they're read (tags out, spaces tidied), with where each letter sits in the text (to light up the word being read)
+    const cm = (a0, b0) => { let x = "", map = [], ws = ""; const tg = [...t.slice(a0, b0).matchAll(RE_TAG)].map(m => [a0 + m.index, a0 + m.index + m[0].length]); let ti = 0;
+      for (let j = a0; j < b0; j++) { if (ti < tg.length && j === tg[ti][0]) { j = tg[ti][1] - 1; ti++; ws += " "; continue } const c = t[j];
+        if (/\s/.test(c)) { ws += c; continue } if (ws) { x += /\n/.test(ws) ? "\n" : " "; map.push(A + j - 1); ws = "" } x += c; map.push(A + j) }
+      if (ws) { x += /\n/.test(ws) ? "\n" : " "; map.push(A + b0 - 1) } return {x, map} };
+    const add = (a0, b0, m) => { a0 = Math.max(a0, F); if (b0 <= a0) return; const c = cm(a0, b0); if (!c.x.trim()) { const l = out[out.length - 1]; if (l && !l.pause) { l.say += c.x; l.map.push(...c.map) } return }
+      const vs = k0.voiceOf(m), last = out[out.length - 1]; if (last && !last.pause && JSON.stringify(last.vs) === JSON.stringify(vs)) { last.say += c.x; last.map.push(...c.map) } else out.push({say: c.x, map: c.map, vs}) };
     let pos = 0, cue = null, until = -1;      // cue: the voice after a cue tag; until: where it ends (its end tag), or -1 for "the next sentence"
     const flush = to => { if (!cue) { add(pos, to, N); pos = to; return }
       if (until >= 0) { add(pos, to, cue); pos = to; return }
@@ -560,12 +599,26 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
       if (q === "pause" || q === "long pause") { if (c.at - A >= F) out.push({pause: q === "pause" ? 1.2 : 2.5}); continue }
       if (q === "normal") { cue = null; continue }
       cue = {...(cue || N)}; if (q === "slow" || q === "fast") cue.speed = q; else cue.tone = q; until = pairEnd(c) }
-    flush(t.length); out.forEach(o => { if (o.say) o.say = o.say.trim() }); return out.filter(o => o.pause || o.say) }
+    flush(t.length); out.forEach(o => { if (!o.say) return; const l = o.say.length - o.say.trimStart().length; o.say = o.say.slice(l); o.map = o.map.slice(l); const r = o.say.length - o.say.trimEnd().length; if (r) { o.say = o.say.slice(0, -r); o.map = o.map.slice(0, -r) } }); return out.filter(o => o.pause || o.say) }
+  // A spot in d.text as a spot in the text box (the reverse of richText).
+  function domAt(abs){ const b = box(); if (!b) return null; let len = 0, last = "", hit = null;
+    const walk = n => { for (const c of n.childNodes) { if (hit) return;
+        if (c.nodeType === 3) { const v = c.nodeValue.replace(/\u200b/g, ""); if (abs <= len + v.length && v.length) { let q = 0, cnt = 0; while (q < c.nodeValue.length && cnt < abs - len) { if (c.nodeValue[q] !== "\u200b") cnt++; q++ } hit = [c, q]; return } len += v.length; if (v) last = v[v.length - 1] }
+        else if (c.nodeType === 1) { if (c.classList.contains("vchip")) { len += c.dataset.ref.length + 2; last = "]" } else if (c.tagName === "BR") { len++; last = "\n" }
+          else { if (/^(DIV|P)$/.test(c.tagName) && !c.dataset.seg && len && last !== "\n") { len++; last = "\n" } walk(c) } } } };
+    walk(b); return hit }
+  function wordLight(p, au, starts){ cancelAnimationFrame(LS.raf); const clear = () => { try { CSS.highlights && CSS.highlights.delete("kpword") } catch (e) {} };
+    if (!starts || !p.map || !window.Highlight || !CSS.highlights || !box()) { clear(); return } let lastW = -1;
+    const tick = () => { if (LS.au !== au) { clear(); return } LS.raf = requestAnimationFrame(tick); const tm = au.currentTime; let lo = 0, hi = Math.min(starts.length, p.say.length) - 1; if (hi < 0) return;
+      while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= tm) lo = mid; else hi = mid - 1 } let a = lo; while (a > 0 && /\S/.test(p.say[a - 1])) a--; let e = lo; while (e < p.say.length && /\S/.test(p.say[e])) e++;
+      if (a === lastW || e <= a) return; lastW = a; const x = domAt(p.map[a]), y = domAt(p.map[e - 1] + 1); if (!x || !y) return;
+      try { const r = document.createRange(); r.setStart(x[0], x[1]); r.setEnd(y[0], y[1]); CSS.highlights.set("kpword", new Highlight(r)) } catch (err) {} };
+    tick() }
   const wait = ms => new Promise(r => setTimeout(r, ms));
   function lbar(){ let el = $("#lbar"); if (!LS.on) { if (el) el.remove(); return } if (!el) { el = document.createElement("div"); el.id = "lbar"; document.body.appendChild(el);
       el.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.l === "stop") stopListen(); else { LS.paused = !LS.paused; if (LS.au) LS.paused ? LS.au.pause() : LS.au.play(); lbar() } } }
     el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><button type="button" class="btn small" data-l="stop">■ Stop</button>` }
-  function stopListen(){ LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
+  function stopListen(){ try { CSS.highlights && CSS.highlights.delete("kpword") } catch (e) {} LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
   let caretPos = null;      // the last spot of the cursor in the text (Listen starts there)
   document.addEventListener("selectionchange", () => { const b = box(), sl = getSelection(); if (!b || !sl.rangeCount || !b.contains(sl.anchorNode) || LS.on) return; caretPos = {node: sl.getRangeAt(0).startContainer, off: sl.getRangeAt(0).startOffset} });
   async function listen(from){ if (LS.on) { stopListen(); return } saveText();
@@ -576,7 +629,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
         const parts = partsOf(st, i === i0 ? from : null), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
         const jobs = parts.map((p, q) => p.v3 ? k0.ttsV3(p.say) : p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
         for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue }
-          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.onended = ok; au.onerror = ok; if (!LS.paused) au.play().catch(ok) }) } }
+          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.onended = ok; au.onerror = ok; wordLight(p, au, r.starts); if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
   // ---- ✨ on selected text: grammar, spelling, tighten, listen, and the voice for those words ----
   const VOICES = ["excited", "exclaim", "calm", "gentle", "slow", "fast"];
