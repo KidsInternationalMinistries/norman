@@ -267,14 +267,19 @@ const GEN_SHAPE = `JSON shape:
  "sections": [{"title": "movement title", "minutes": 5, "points": [{
    "cue": "2-6 word memory phrase the speaker glances at",
    "slideTitle": "short slide title (a few words)", "subtitle": "optional short line under it",
-   "keyPoints": ["short phrases the speaker talks from; put a verse tag like [John 15:5] or a slide tag like [Three marks] inside the key point where that slide should come up"],
-   "script": "the full text the speaker would say for this point, in paragraphs separated by \\n; it may also contain verse tags",
+   "keyPoints": [{"point": "short phrase the speaker talks from; put a verse tag like [John 15:5], a slide tag like [Three marks], or [Stop] in it where that slide should come up (only slide tags and [Stop] take a Next)",
+                  "say": "the full text the speaker says for this key point, paragraphs separated by \\n; put the same tags at the exact spot in the words where each slide should appear"}],
+   "script": "optional words before the first key point",
    "verses": ["John 15:5"],
    "slides": [{"type": "bullets | bulletsimg | quote | plain | image", "name": "short unique name used in its tag", "title": "...", "bullets": ["..."], "quote": "...", "by": "...", "imagePrompt": "only for bulletsimg/image"}],
    "imagePrompt": "what the point's background picture shows (scene, subject, light), no words in it"}]}]}
 Rules: every verse tag must exactly match an entry in that point's "verses" list. Every slide tag must match one of that point's slides by name. Verse references use full book names. Keep slide text short; the slide is not the script. The first point of the first movement is the opening/title slide (slideTitle = the talk title).`;
 let gid = 0; const uid = p => p + Date.now().toString(36) + (gid++).toString(36) + Math.random().toString(36).slice(2, 4);
 function toSection(s, first){ return {id: uid("s"), title: s.title || "Movement", minutes: s.minutes ? String(s.minutes) : "", points: (s.points || []).map((p, pi) => toPoint(p, first && pi === 0))} }
+// Key points with their own text: each gets a hidden id; its words go in its block of the full text.
+function blocksOf(p, clean){ const ids = [], text = {}, kp = [];
+  for (const k of p.keyPoints || []) { const pt = clean(typeof k === "string" ? k : k.point || ""), say = clean(typeof k === "string" ? "" : k.say || ""); if (!pt.trim()) continue; const id = uid("k").slice(-8); ids.push(id); kp.push("[@" + id + "] " + pt.trim()); text[id] = say.trim() }
+  return {keyPoints: kp, script: T.joinBlocks(clean(p.script || "").trim(), ids, text)} }
 function toPoint(p, isTitle){ const refs = [...new Set((p.verses || []).map(v => String(typeof v === "string" ? v : v.ref || "").trim()).filter(Boolean))];
   const xs = (p.slides || []).filter(x => x && x.name).map(x => { const ty = ["bullets", "bulletsimg", "quote", "plain", "image"].includes(x.type) ? x.type : "plain";
     if (ty === "quote") return {name: x.name, type: ty, quote: x.quote || "", by: x.by || ""};
@@ -282,7 +287,7 @@ function toPoint(p, isTitle){ const refs = [...new Set((p.verses || []).map(v =>
     return {name: x.name, type: ty, eyebrow: "", slideTitle: x.title || "", slide: x.subtitle || "", layout: "center", image: "", imagePrompt: ty === "image" ? x.imagePrompt || "" : ""} });
   const known = new Set([...refs, ...xs.map(x => x.name), "Stop", "Main slide"]), clean = t => String(t || "").replace(/\[([^\[\]\n]{1,60})\]/g, (a, r) => known.has(r.trim()) ? "[" + r.trim() + "]" : r);
   return {id: uid("p"), cue: p.cue || "Point", eyebrow: "", slideTitle: p.slideTitle || "", slide: p.subtitle || "", layout: isTitle ? "center" : "left", image: "", imagePrompt: p.imagePrompt || "",
-    keyPoints: (p.keyPoints || []).map(clean).filter(x => x.trim()), verses: refs.map(r => ({ref: r, text: "", version: "ESV"})), script: clean(p.script), scriptDraft: true, ...(xs.length ? {slides: xs} : {})} }
+    ...blocksOf(p, clean), verses: refs.map(r => ({ref: r, text: "", version: "ESV"})), scriptDraft: true, ...(xs.length ? {slides: xs} : {})} }
 // Fill verse text: the ESV API when there's a key and it can be reached, otherwise the AI (marked "ESV, check").
 async function esvText(ref){ const k = KEYS.esv; if (!k) return null;
   try { const r = await fetch("https://api.esv.org/v3/passage/text/?" + new URLSearchParams({q: ref, "include-headings": false, "include-footnotes": false, "include-verse-numbers": false, "include-short-copyright": false, "include-passage-references": false}), {headers: {Authorization: "Token " + k}});
@@ -345,40 +350,88 @@ Return JSON {"section": {...one entry of sections...}} using this ${GEN_SHAPE}`,
 // =====================================================================
 const AUD = {};       // text → promise of an object URL, so replaying is instant
 // A point as a list of things to do: say some text, or press Next at a tag (like the speaker does when they reach it).
-function speakPlan(p){ const vs = p.verses || [], t = (p.script || "").replace(/[🔑🔁]/gu, ""), out = [], n = {}; let last = 0;
-  const say = x => { x = x.replace(/[ \t]+/g, " ").trim(); if (x) out.push({say: x}) };
-  for (const m of t.matchAll(/\[([^\[\]\n]{1,60})\]/g)) { say(t.slice(last, m.index)); last = m.index + m[0].length; const r = m[1].trim(); if (r[0] === "!") continue;
-    const v = T.tagOf(p, r); if (!v) { say(m[0]); continue } const k = T.tagKey(v);
-    if (!v.anchor) n[k] = (n[k] || 0) + 1; out.push({step: v.anchor ? k : k + "#" + n[k]});
-    const vt = vs.find(x => x && x.ref && x.ref.trim() === r); if (vt && vt.text) say(vt.ref + ". " + vt.text.replace(/\*\*|__/g, "")) }
-  say(t.slice(last)); if (!out.some(x => x.say)) say((p.keyPoints || []).map(noTags).filter(Boolean).join(". ")); return out }
+function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.script);
+  const seg = (blk, t) => { const n = {}; let last = 0;
+    const say = (a, b) => { let x = "", map = [], sp = true; for (let i = a; i < b; i++) { const c = t[i]; if (/\s/.test(c)) { if (!sp) { x += " "; map.push(i); sp = true } } else if (!/[🔑🔁]/u.test(c)) { x += c; map.push(i); sp = false } }
+      while (x.endsWith(" ")) { x = x.slice(0, -1); map.pop() }
+      while (x.length > 3500) { let cut = x.lastIndexOf(". ", 3500); if (cut < 1000) cut = 3500; out.push({say: x.slice(0, cut + 1), blk, map: map.slice(0, cut + 1)}); x = x.slice(cut + 1).replace(/^ /, ""); map = map.slice(map.length - x.length) }
+      if (x) out.push({say: x, blk, map}) };
+    for (const m of t.matchAll(/\[([^\[\]\n]{1,60})\]/g)) { say(last, m.index); last = m.index + m[0].length; const r = m[1].trim(), v = T.tagOf(p, r.replace(/^!/, "")); if (!v || v.anchor) continue;
+      const key = T.tagKey(v); n[key] = (n[key] || 0) + 1; if (blk !== "intro") out.push({step: blk + "|" + key + "#" + n[key]});
+      const vt = vs.find(x => x && x.ref && x.ref.trim() === r.replace(/^!/, "")); if (vt && vt.text) out.push({say: vt.ref + ". " + vt.text.replace(/\*\*|__/g, "").replace(/\s+/g, " "), blk: null}) }
+    say(last, t.length) };
+  seg("intro", T.trimBlk(B.intro)); for (const x of p.keyPoints || []) { const id = T.kpId(x); if (id) seg(id, T.trimBlk(B.text[id])) }
+  if (!out.some(x => x.say)) { const k = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); if (k) out.push({say: k, blk: null}) }
+  return out }
+// Speech plus the time each character is spoken (ElevenLabs "with timestamps"), so the word being read can light up.
 function tts(text){ if (!AUD[text]) { AUD[text] = tts0(text); AUD[text].catch(() => delete AUD[text]) } return AUD[text] }
 async function tts0(text){ const key = await need("eleven"); let voice = KEYS.voice;
   if (!voice) { let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {} voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; KEYS.voice = voice; saveLocal() }
-  const chunks = []; let cur = ""; for (const para of text.split(/\n+/)) { if ((cur + para).length > 4000 && cur) { chunks.push(cur); cur = "" } cur += (cur ? "\n" : "") + para } if (cur) chunks.push(cur);
-  const blobs = []; for (const c of chunks) { const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {method: "POST", headers: {"xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg"}, body: JSON.stringify({text: c, model_id: "eleven_multilingual_v2"})});
-    if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status) + (r.status === 401 ? ". In ElevenLabs, edit the key and turn on Text to Speech." : "")) } blobs.push(await r.blob()) }
-  return URL.createObjectURL(new Blob(blobs, {type: "audio/mpeg"})) }
+  const body = JSON.stringify({text, model_id: "eleven_multilingual_v2"}), H = {"xi-api-key": key, "Content-Type": "application/json"};
+  let r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {method: "POST", headers: H, body});
+  let j = null; if (r.ok) try { j = await r.json() } catch (e) {}
+  if (j && j.audio_base64) { const a = j.alignment || {}; const bin = Uint8Array.from(atob(j.audio_base64 || ""), c => c.charCodeAt(0));
+    return {url: URL.createObjectURL(new Blob([bin], {type: "audio/mpeg"})), starts: a.character_start_times_seconds || null, chars: a.characters || null} }
+  if (r.status === 401) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status) + ". In ElevenLabs, edit the key and turn on Text to Speech.") }
+  r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {method: "POST", headers: {...H, Accept: "audio/mpeg"}, body});
+  if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status)) } return {url: URL.createObjectURL(await r.blob()), starts: null} }
 let LS = null;
-function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0), plan = [], q = 0, run = 0;
+function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0), plan = [], q = 0, run = 0, cur = null, raf = 0, lastW = null;
   if (LS) LS.stop(); const bar = document.createElement("div"); bar.id = "ailisten"; bar.innerHTML = `<button type="button" data-l="prev" title="Previous point">⏮</button><button type="button" data-l="play" title="Pause">❚❚</button><button type="button" data-l="next" title="Next point">⏭</button><span id="ailt"></span><select id="ailr" title="Speed">${[0.9, 1, 1.15, 1.3, 1.5].map(r => `<option value="${r}"${r === 1 ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" data-l="x" title="Stop">✕</button>`;
-  document.body.appendChild(bar); const au = new Audio(), lab = $("#ailt"); let alive = true;
-  LS = {stop(){ alive = false; au.pause(); bar.remove(); LS = null }};
+  document.body.appendChild(bar); const au = new Audio(), lab = $("#ailt"); let alive = true; ed.listenMode(true);
+  LS = {stop(){ alive = false; au.pause(); cancelAnimationFrame(raf); bar.remove(); LS = null; ed.listenMode(false) }};
   const head = () => `${L[i].label} ${L[i].cue || ""}`;
   const warm = (pl, from) => pl.slice(from).filter(x => x.say).slice(0, 2).forEach(x => tts(x.say).catch(() => {}));
+  // Light up the word being said: the time → the character → its place in the block → that word.
+  function glow(){ raf = requestAnimationFrame(glow); const it = plan[q]; if (!cur || !it || !it.blk || !cur.starts || au.paused) return; const t = au.currentTime, S = cur.starts;
+    let lo = 0, hi = S.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (S[mid] <= t) lo = mid; else hi = mid - 1 } const off = it.map[Math.min(lo, it.map.length - 1)]; if (off == null) return;
+    const ws = document.querySelectorAll(`#ftext [data-f="block"][data-blk="${CSS.escape(it.blk)}"] .w`); let w = null; for (const x of ws) { if (+x.dataset.o <= off) w = x; else break }
+    if (w === lastW) return; if (lastW) lastW.classList.remove("say"); lastW = w; if (!w) return; w.classList.add("say");
+    const r = w.getBoundingClientRect(); if (r.top < innerHeight * .35 || r.bottom > innerHeight - 90) window.scrollBy({top: r.top - innerHeight * .45, behavior: "smooth"}) }
+  raf = requestAnimationFrame(glow);
   function point(k){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; run++;
-    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; warm(plan, 0);
+    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; lastW = null; warm(plan, 0);
     const nx = L[i + 1] && ed.findPt(L[i + 1].id); if (nx) warm(speakPlan(nx.p), 0); go(run) }
   async function go(r){ while (alive && r === run && q < plan.length && plan[q].step) { ed.stepTo(plan[q].step); q++ }
     if (!alive || r !== run) return; if (q >= plan.length) return point(i + 1);
     const it = plan[q]; lab.textContent = head() + " · getting the voice…";
-    try { const u = await tts(it.say); if (!alive || r !== run) return; warm(plan, q + 1); au.src = u; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
+    try { const a = await tts(it.say); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
     catch (e) { if (!alive || r !== run) return; lab.textContent = ""; fail(e); if (e.quiet && LS) LS.stop() } }
   au.onended = () => { q++; go(run) }; $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
   bar.onclick = e => { const b = e.target.closest("[data-l]"); if (!b) return; const a = b.dataset.l;
     if (a === "x") LS.stop(); else if (a === "next") { au.pause(); point(i + 1) } else if (a === "prev") { au.pause(); point(q > 0 || au.currentTime > 3 ? i : i - 1) }
     else if (a === "play") { if (au.paused) { au.play(); b.textContent = "❚❚" } else { au.pause(); b.textContent = "▶" } } };
   point(i) }
+
+// =====================================================================
+// SPLIT: the full text of a point (written before the blocks existed) shared out to its key points, for you to check.
+// =====================================================================
+async function splitPlan(p){ const B = T.splitBlocks(p.script), intro = T.trimBlk(B.intro), paras = intro.split("\n"), kps = (p.keyPoints || []).map((x, j) => ({j, id: T.kpId(x), t: noTags(T.kpBody(x))})).filter(k => k.id);
+  if (!intro.trim() || !kps.length) return null;
+  const j = await chat(`You sort a speaker's talk text under their key points. The key points are in order; the text usually follows the same order.
+For each numbered paragraph, give the number of the key point it belongs to, or 0 if it comes before the first key point. Paragraphs for one key point are usually next to each other. Return JSON {"assign": [n, n, ...]} with exactly one number per paragraph.`,
+    JSON.stringify({keyPoints: kps.map((k, i) => (i + 1) + ". " + k.t), paragraphs: paras.map((x, i) => (i + 1) + ". " + noTags(x).slice(0, 600))}));
+  const A = Array.isArray(j.assign) && j.assign.length === paras.length ? j.assign.map(n => Math.max(0, Math.min(kps.length, Math.round(+n) || 0))) : null; if (!A) throw new Error("The AI's split didn't line up. Try again.");
+  const to = {}, keep = []; paras.forEach((x, i) => { if (!A[i]) keep.push(x); else (to[kps[A[i] - 1].id] = to[kps[A[i] - 1].id] || []).push(x) });
+  const text = {}; for (const k of kps) { const add = (to[k.id] || []).join("\n").trim(), old = T.trimBlk(B.text[k.id]); text[k.id] = [old, add].filter(x => x.trim()).join("\n") }
+  return {p, kps, keep, to, script: T.joinBlocks(keep.join("\n").trim(), kps.map(k => k.id), text)} }
+async function splitTalk(only){ const ed = T.ed, pts = only ? [ed.findPt(only).p] : ed.S().map(x => ed.findPt(x.id).p).filter(p => T.trimBlk(T.splitBlocks(p.script).intro).trim() && (p.keyPoints || []).some(x => T.kpId(x)));
+  if (!pts.length) { toast("Nothing to split: every point's text is already under its key points."); return }
+  const d = dlg("aisplit", `<div class="ed"><div class="pgh"><b id="aisph">✨ Split the full text into the key points</b><button type="button" class="btn small" data-x>Close</button></div><div id="aispb"><p class="aimsg">Reading ${pts.length} point${pts.length > 1 ? "s" : ""}…</p></div>
+    <div class="row"><span style="flex:1"></span><button type="button" class="btn small" id="aispskip">Skip</button><button type="button" class="btn small pri" id="aispok">Apply</button>${pts.length > 1 ? '<button type="button" class="btn small" id="aispall">Apply all the rest</button>' : ""}</div></div>`, "wide");
+  d.querySelector("[data-x]").onclick = () => d.close(); show(d); let k = 0, done = 0, plans = [];
+  const plansP = pts.map(p => splitPlan(p).catch(e => ({err: e})));
+  const apply = pl => { if (!pl || pl.err) return; const f = ed.findPt(pl.p.id); if (!f) return; ed.op({t: "pt", pid: pl.p.id, f: "script", v: pl.script}); ed.sync(f.p); done++ };
+  async function draw(){ if (k >= pts.length) { d.close(); return } const pl = await plansP[k]; plans[k] = pl; const p = pts[k], lab = (ed.S().find(x => x.id === p.id) || {}).label || "";
+    $("#aisph").textContent = `✨ Split the full text · ${lab} ${p.cue || ""}${pts.length > 1 ? ` (${k + 1} of ${pts.length})` : ""}`;
+    if (!pl || pl.err) { $("#aispb").innerHTML = `<p class="aimsg">${E(pl && pl.err ? pl.err.message : "Nothing to split here.")}</p>`; return }
+    const sn = x => E(noTags(x).slice(0, 140)) + (noTags(x).length > 140 ? "…" : "");
+    $("#aispb").innerHTML = (pl.keep.filter(x => x.trim()).length ? `<div class="aisp"><b>Before the key points</b>${pl.keep.filter(x => x.trim()).map(x => `<p>${sn(x)}</p>`).join("")}</div>` : "") +
+      pl.kps.map((q, i) => `<div class="aisp"><b>${q.j + 1}. ${E(q.t)}</b>${(pl.to[q.id] || []).filter(x => x.trim()).map(x => `<p>${sn(x)}</p>`).join("") || '<p class="note">(nothing)</p>'}</div>`).join("") }
+  $("#aispok").onclick = () => { apply(plans[k]); k++; draw() }; $("#aispskip").onclick = () => { k++; draw() };
+  if ($("#aispall")) $("#aispall").onclick = async () => { for (; k < pts.length; k++) apply(plans[k] || await plansP[k]); d.close() };
+  d.addEventListener("close", () => { if (done) { ed.render(); toast(`Split ${done} point${done > 1 ? "s" : ""} ✓ Check the text under each key point.`) } }, {once: true});
+  draw() }
 
 // =====================================================================
 // PREPARE: develop a new talk in a conversation, then create it (outline, text, verse slides, slides, pictures).
@@ -462,19 +515,21 @@ window.TALKAI = {html: {
   talk: d => styleHTML(d),
   sec: s => `<div class="row aisecrow"><button type="button" class="btn small aib" data-act="aisec" data-id="${E(s.id)}">✨ AI draft of this movement</button></div>`,
   navsec: () => ` <button type="button" class="btn small aib" data-act="aisec">✨ With AI</button>`,
+  split: () => ` <button type="button" class="btn small aib" data-act="aisplit">✨ Split into the key points</button>`,
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
 }, chat, image, settings, outline};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
-  m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
+  m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="split">Split the full text into the key points (whole talk)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";
   m.onclick = e => { const b = e.target.closest("[data-a]"); if (!b) return; m.remove(); const a = b.dataset.a;
-    if (a === "check") checkTalk(); else if (a === "listen") listen(); else if (a === "sec") sectionAI(null); else settings() } }
+    if (a === "check") checkTalk(); else if (a === "listen") listen(); else if (a === "split") splitTalk(null).catch(fail); else if (a === "sec") sectionAI(null); else settings() } }
 document.addEventListener("mousedown", e => { const m = $("#aimenu"); if (m && !m.contains(e.target) && !e.target.closest("#aibtn")) m.remove() });
 document.addEventListener("click", e => {
   if (e.target.closest("#aibtn")) { aiMenu(e.target.closest("#aibtn")); return }
   const b = e.target.closest("[data-act]"); if (!b) { if (e.target.closest("#aiesv")) esvFill(); return } const a = b.dataset.act;
   if (a === "aiimg") createImage({pid: b.dataset.id, i: b.dataset.t === "xs" ? +b.dataset.i : null}).catch(fail);
   else if (a === "aisec") sectionAI(b.dataset.id || null).catch(fail);
+  else if (a === "aisplit") splitTalk(T.ed.sel().id).catch(fail);
   else if (a === "aisample") styleSample();
   else if (a === "aistyledel") { T.ed.op({t: "talk", f: "imageStyleRef", v: ""}); T.ed.render() }
   else if (a === "aiset") settings() });

@@ -139,23 +139,51 @@ function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tag
 // Next on that key point scrolls the full text to the spot. A key point without a link (or slide tags) takes no Next.
 const ANC = /\[@([a-z0-9]+)\]/;
 const kpAnchor = (p, line) => { const m = (line || "").match(ANC); return m && (p.script || "").includes("[@" + m[1] + "]") ? m[1] : null };
-// Every tag in the key points is mirrored in the full text: added in the key points, it shows at the top of the full text in red
-// ([!name], "not placed yet") until it's dragged to where it's said; removed from the key points, it's removed there too.
-// Next on a tag shows its slide and scrolls the full text to its mirror. a = that spot's key ("@id" for a link, "name#n" for the n-th use of a tag).
+// Each key point owns a block of the full text. A key point starts with a hidden id, [@id], and the full text holds
+// [@id] where that point's block starts; blocks always run in key-point order (text before the first one is the point's intro).
+// Every tag in a key point is mirrored in its block: added in the key point, it shows at the top of the block in red
+// ([!name], "not placed yet") until it's dragged to where it's said; removed from the key point, it's removed there too.
+// Only slide tags and Stop take a Next: it shows the slide and scrolls the full text to that tag's spot in the block.
 const tagKey = v => v.anchor ? "@" + v.id : tagName(v);
-function kpCounts(p){ const c = {}; for (const x of p.keyPoints || []) for (const m of x.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v || v.unplaced) continue; const k = tagKey(v); c[k] = (c[k] || 0) + 1 } return c }
-function mirrorScript(p, before){ const now = kpCounts(p); let t = p.script || "";
-  const occ = k => [...t.matchAll(TAG)].filter(m => { const r = m[1].trim(); return r === k || r === "!" + k });
-  if (before) for (const k in before) { let d = before[k] - (now[k] || 0); while (d-- > 0) { const L = occ(k); if (!L.length) break; const m = L.find(x => x[1].trim()[0] === "!") || L[L.length - 1];
-    t = (t.slice(0, m.index).replace(/ $/, "") + (t.slice(m.index + m[0].length).startsWith(" ") && /\S$/.test(t.slice(0, m.index).replace(/ $/, "")) ? " " : "") + t.slice(m.index + m[0].length).replace(/^ /, "")) } }
-  let add = ""; for (const k in now) { let d = now[k] - occ(k).length; while (d-- > 0) add += "[!" + k + "] " }
-  return add ? add + t : t }
-function hasSpot(p, a){ const t = p.script || ""; if (a[0] === "@") return t.includes("[" + a + "]"); const i = a.lastIndexOf("#"), k = a.slice(0, i), n = +a.slice(i + 1); let c = 0;
-  for (const m of t.matchAll(TAG)) if (m[1].trim() === k) c++; return c >= n }
-function stepsOf(p){ const out = [{b: -1, sub: 0}]; let k = 0; const n = {};
-  (p.keyPoints || []).forEach((x, j) => { const a = kpAnchor(p, x), tags = [...x.matchAll(TAG)].map(m => tagOf(p, m[1])).filter(v => v && !v.anchor && !v.unplaced);
-    const at = v => { const key = tagKey(v); n[key] = (n[key] || 0) + 1; return key + "#" + n[key] };
-    if (a) out.push({b: j, sub: tags.length ? ++k : k, a: "@" + a, m: tags.length ? at(tags[0]) : null}); tags.slice(a ? 1 : 0).forEach(v => out.push({b: j, sub: ++k, a: at(v)})) });
+const KPID = /^\s*\[@([a-z0-9]+)\]\s*/;
+const kpId = line => { const m = (line || "").match(KPID); return m ? m[1] : null };
+const kpBody = line => (line || "").replace(KPID, "");
+const newKid = () => Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 6);
+function lineCounts(p, x){ const c = {}; for (const m of (x || "").matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v || v.anchor || v.unplaced) continue; const k = tagKey(v); c[k] = (c[k] || 0) + 1 } return c }
+function kpCounts(p){ const c = {}; for (const x of p.keyPoints || []) for (const [k, n] of Object.entries(lineCounts(p, x))) c[k] = (c[k] || 0) + n; return c }
+function splitBlocks(t){ t = t || ""; const out = {intro: "", order: [], text: {}}; let last = 0, cur = null;
+  const put = seg => { if (cur == null) out.intro += seg; else out.text[cur] += seg };
+  for (const m of t.matchAll(/\[@([a-z0-9]+)\]/g)) { put(t.slice(last, m.index)); cur = m[1]; if (!(cur in out.text)) { out.text[cur] = ""; out.order.push(cur) } last = m.index + m[0].length }
+  put(t.slice(last)); return out }
+const trimBlk = t => (t || "").replace(/^[ \t]*\n/, "").replace(/\s+$/, "");
+function joinBlocks(intro, ids, text){ let s = (intro || "").replace(/\s+$/, ""); for (const id of ids) s += (s ? "\n" : "") + "[@" + id + "]" + (text[id] || ""); return s }
+const blockOf = (p, id) => id === "intro" ? trimBlk(splitBlocks(p.script).intro) : trimBlk(splitBlocks(p.script).text[id]);
+function setBlock(p, id, txt){ const B = splitBlocks(p.script); if (id === "intro") B.intro = txt; else B.text[id] = txt; return joinBlocks(B.intro, (p.keyPoints || []).map(kpId).filter(Boolean), B.text) }
+// Puts the key points and the full text in step. before = the key points as they were (to remove the tags taken out of them).
+function normBlocks(p, before){ const L = [...(p.keyPoints || [])], seen = new Set();
+  L.forEach((x, j) => { if (!(x || "").trim()) return; let id = kpId(x), body = kpBody(x).trim(); const had = !!id;
+    if (!id) { const m = body.match(ANC); if (m) { id = m[1]; body = body.replace(m[0], "").replace(/\s{2,}/g, " ").trim() } }
+    if (!id || seen.has(id)) id = newKid(); seen.add(id); L[j] = body ? "[@" + id + "] " + body : had ? "[@" + id + "]" : "" });
+  const B = splitBlocks(p.script), ids = L.map(kpId).filter(Boolean), text = {};
+  const bc = {}; (before || []).forEach(x => { const id = kpId(x); if (id) bc[id] = lineCounts(p, x) });
+  const strip = (t, cnt) => { for (const k in cnt) { let d = cnt[k]; while (d-- > 0) { const O = [...t.matchAll(TAG)].filter(m => { const r = m[1].trim(); return r === k || r === "!" + k }); if (!O.length) break; const m = O.find(o => o[1].trim()[0] === "!") || O[O.length - 1]; t = t.slice(0, m.index) + t.slice(m.index + m[0].length).replace(/^ /, "") } } return t };
+  B.intro = B.intro.replace(/\[!([^\[\]\n]{1,60})\]\s?/g, "");          // red copies never belong before the key points
+  B.order.forEach((id, i) => { if (ids.includes(id)) return; let t = trimBlk(strip(B.text[id], bc[id] || {})); t = t.replace(/\[!([^\[\]\n]{1,60})\]\s?/g, "");   // its key point is gone: keep the words, in the block above
+    if (!t.trim()) return; const prev = B.order.slice(0, i).reverse().find(x => ids.includes(x)); if (prev) B.text[prev] = trimBlk(B.text[prev]) + "\n" + t; else B.intro = B.intro.replace(/\s+$/, "") + (B.intro.trim() ? "\n" : "") + t });
+  L.forEach(x => { const id = kpId(x); if (!id) return; const now = lineCounts(p, x); let t = trimBlk(B.text[id] || "");
+    if (bc[id]) { const gone = {}; for (const k in bc[id]) { const d = bc[id][k] - (now[k] || 0); if (d > 0) gone[k] = d } t = strip(t, gone) }
+    const occ = k => [...t.matchAll(TAG)].filter(m => { const r = m[1].trim(); return r === k || r === "!" + k });
+    for (const k in now) { let extra = occ(k).length - now[k]; while (extra-- > 0) { const u = occ(k).reverse().find(o => o[1].trim()[0] === "!"); if (!u) break; t = t.slice(0, u.index) + t.slice(u.index + u[0].length).replace(/^ /, "") } }
+    t = t.replace(/\[!([^\[\]\n]{1,60})\]\s?/g, (a, r) => now[r.trim()] ? a : "");
+    let add = ""; for (const k in now) for (let d = now[k] - occ(k).length; d > 0; d--) add += "[!" + k + "] ";
+    text[id] = add + t });
+  return {keyPoints: L, script: joinBlocks(B.intro, ids, text)} }
+// Spot keys: "<block id>|<tag>#<n>" = the n-th copy of that tag in that key point's block.
+function hasSpot(p, a){ const b = a.indexOf("|"), i = a.lastIndexOf("#"); if (b < 0 || i < 0) return false; const id = a.slice(0, b), k = a.slice(b + 1, i), n = +a.slice(i + 1);
+  const t = splitBlocks(p.script).text[id]; if (t == null) return false; let c = 0; for (const m of t.matchAll(TAG)) { const r = m[1].trim(); if (r === k || r === "!" + k) c++ } return c >= n }
+function stepsOf(p){ const out = [{b: -1, sub: 0}]; let k = 0;
+  (p.keyPoints || []).forEach((x, j) => { const id = kpId(x), n = {};
+    [...x.matchAll(TAG)].map(m => tagOf(p, m[1])).filter(v => v && !v.anchor && !v.unplaced).forEach(v => { const key = tagKey(v); n[key] = (n[key] || 0) + 1; out.push({b: j, sub: ++k, a: id ? id + "|" + key + "#" + n[key] : null}) }) });
   return out }
 const subCount = p => verseRefsIn(p).length;
 // Which step's slide is showing at step sub (a Stop keeps the slide before it).
@@ -182,14 +210,18 @@ const tagCls = v => v.anchor ? " anc" : v.main ? " main" : v.stop ? " stop" : is
 // Text with its tags as buttons; k counts steps across key points and full text.
 function taggedHTML(t, p, st){ let h = "", last = 0;
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue;
-    if (v.anchor) { h += E(t.slice(last, m.index)) + (kpAnchor(p, m[0]) ? `<span class="aglyph" title="Next scrolls the full text to this key point">↓</span>` : ""); last = m.index + m[0].length; continue }
+    if (v.anchor) { h += E(t.slice(last, m.index)); last = m.index + m[0].length; continue }
     st.k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${tagCls(v)}${st.k === st.sub ? " on" : ""}" data-sub="${st.k}" data-ref="${E(tagName(v))}">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
   return h + E(t.slice(last)) }
-function kpTagged(p, st, bt){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map((x, j) => (x || "").trim() ? `<li data-b="${j}" class="${/^(🔑|🔁|\[@[a-z0-9]+\]\s*(🔑|🔁))/u.test(x) ? "key" : ""}${j === bt ? " cur" : ""}"><span class="kn">${j + 1}</span>${taggedHTML(x, p, st)}</li>` : "").join("")}</ul>` : "" }
-function scriptHTML(p){ const t = p.script || ""; let h = "", last = 0; const n = {}, kc = kpCounts(p);     // Next scrolls here; clicking a tag shows its slide for a moment
-  for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; h += E(t.slice(last, m.index)); last = m.index + m[0].length; if (v.unplaced) continue;
-    if (v.anchor) { const live = (p.keyPoints || []).some(x => x.includes(m[0])); if (live) h += `<span class="anc" data-mk="@${E(v.id)}"></span>`; continue }
-    const key = tagKey(v); n[key] = (n[key] || 0) + 1; h += `<button type="button" class="vtag ref${tagCls(v)}${n[key] <= (kc[key] || 0) ? " mir" : ""}" data-ref="${E(tagName(v))}" data-mk="${E(key + "#" + n[key])}" title="Click to show this slide. Next or Back goes back">${E(tagLabel(v))}</button>` }
+function kpTagged(p, st, bt){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map((x, j) => kpBody(x).trim() ? `<li data-b="${j}" class="${/^(🔑|🔁|\[@[a-z0-9]+\]\s*(🔑|🔁))/u.test(x) ? "key" : ""}${j === bt ? " cur" : ""}"><span class="kn">${j + 1}</span>${taggedHTML(x, p, st)}</li>` : "").join("")}</ul>` : "" }
+// The full text on Stage: the intro, then each key point's block; each tag carries its spot key so Next can scroll to it.
+function scriptHTML(p){ const B = splitBlocks(p.script), L = p.keyPoints || []; let h = segHTML(p, trimBlk(B.intro), null);
+  L.forEach(x => { const id = kpId(x); if (!id) return; const t = trimBlk(B.text[id]); h += `${h ? "\n" : ""}<span class="blkmark" data-blk="${E(id)}"></span>` + segHTML(p, t, id, x) }); return h }
+function segHTML(p, t, blk, line){ let h = "", last = 0; const n = {}, need = blk ? lineCounts(p, line) : {};
+  for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; h += E(t.slice(last, m.index)); last = m.index + m[0].length; if (v.anchor) continue;
+    const key = tagKey(v); let mk = ""; if (blk) { n[key] = (n[key] || 0) + 1; mk = ` data-mk="${E(blk + "|" + key + "#" + n[key])}"` }
+    if (v.unplaced) { h += `<span class="umark"${mk}></span>`; continue }
+    h += `<button type="button" class="vtag ref${tagCls(v)}${blk && n[key] <= (need[key] || 0) ? " mir" : ""}" data-ref="${E(tagName(v))}"${mk} title="Click to show this slide. Next or Back goes back">${E(tagLabel(v))}</button>` }
   return h + E(t.slice(last)) }
 function slideHTML(S, i, d){
   const k = heldIdx(S, i), s = k >= 0 ? S[k] : null;
@@ -279,7 +311,7 @@ async function present(){
     <div id="pace"></div><div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   let cur = 0, sub = 0, pos = 0, bt = -1, anc = null, peek = null; try { const v = +localStorage.getItem("pres-" + FOLDER); if (v >= 0 && v < S.length) cur = v; const w = +localStorage.getItem("pres-pos-" + FOLDER); if (w > 0) pos = w } catch (e) {}
   // pos = which step of this point (see stepsOf): bt = its key point, sub = how many slide tags have shown, anc = the full-text spot to scroll to.
-  const spotOf = (p, L, k) => { for (let i = k; i > 0; i--) { const st = L[i]; for (const a of [st.a, st.m]) if (a && (p.script || "").length && hasSpot(p, a)) return a } return null };
+  const spotOf = (p, L, k) => { for (let i = k; i > 0; i--) { const st = L[i]; if (st.a && hasSpot(p, st.a)) return st.a } return null };
   const setPos = k => { const L = stepsOf(S[cur]); pos = Math.max(0, Math.min(L.length - 1, k)); bt = L[pos].b; sub = L[pos].sub; anc = spotOf(S[cur], L, pos) };
   setPos(pos);
   const first = S.findIndex(s => s.id !== "cover");
@@ -434,14 +466,31 @@ async function edit(){
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
   const saveEl = () => $("#save");
   function setSave(t, err){ const s = saveEl(); s.textContent = t; s.className = err ? "err" : "" }
-  function op(o, structural){ const f0 = o.t === "pt" && o.f === "keyPoints" && findPt(D, o.pid), before = f0 ? kpCounts(f0.p) : null;
+  function op(o, structural){ const f0 = o.t === "pt" && o.f === "keyPoints" && findPt(D, o.pid), before = f0 ? [...(f0.p.keyPoints || [])] : null;
     applyOp(D, o); pending.push(o); setSave("Saving…"); clearTimeout(timer); timer = setTimeout(flush, 900);
-    if (f0) { const sc = mirrorScript(f0.p, before); if (sc !== (f0.p.script || "")) { applyOp(D, {t: "pt", pid: o.pid, f: "script", v: sc}); pending.push({t: "pt", pid: o.pid, f: "script", v: sc}); redrawText(f0.p) } }
+    if (f0) syncBlocks(f0.p, before);
     structural ? render() : nav() }
-  // The full text box redrawn from the data (keeps the caret out of it; skipped while you're typing in it).
-  function redrawText(p){ const b = $("#m .rich.big"); if (!b || b.dataset.id !== p.id || b.contains(document.activeElement)) return; b.innerHTML = richHTML(p); relabel(p) }
-  // Tags missing from the full text (key points added elsewhere, or a tag deleted from the text) come back at its top, waiting to be placed.
-  function ensureMirror(p){ const sc = mirrorScript(p, null); if (sc !== (p.script || "")) { op({t: "pt", pid: p.id, f: "script", v: sc}); redrawText(p) } }
+  // Keep the key points (their hidden ids) and the blocks of the full text in step; returns true when something changed.
+  function syncBlocks(p, before, quiet){ const r = normBlocks(p, before); let ch = false;
+    if (JSON.stringify(r.keyPoints) !== JSON.stringify(p.keyPoints || [])) { applyOp(D, {t: "pt", pid: p.id, f: "keyPoints", v: r.keyPoints}); pending.push({t: "pt", pid: p.id, f: "keyPoints", v: r.keyPoints}); ch = true }
+    if (r.script !== (p.script || "")) { applyOp(D, {t: "pt", pid: p.id, f: "script", v: r.script}); pending.push({t: "pt", pid: p.id, f: "script", v: r.script}); ch = true }
+    if (ch) { clearTimeout(timer); timer = setTimeout(flush, 900); if (!quiet) redrawText(p) } return ch }
+  // The full text redrawn from the data; the block you're typing in is kept as it is.
+  function redrawText(p){ const box = $("#ftext"); if (!box || box.dataset.id !== p.id) return; const act = box.querySelector(".rich.big"), keep = act && act.contains(document.activeElement) ? act : null;
+    const t = document.createElement("div"); t.innerHTML = ftextHTML(p); if (keep) { const slot = t.querySelector(`[data-f="block"][data-blk="${keep.dataset.blk}"]`); if (slot) slot.replaceWith(keep) }
+    box.replaceChildren(...t.childNodes); relabel(p) }
+  function ensureMirror(p){ syncBlocks(p, null) }
+  // ---- The full text: one block per key point; the open one is edited, the rest are gray ----
+  let actB = null, lmode = false;
+  function ftextHTML(p){ const B = splitBlocks(p.script), L = p.keyPoints || [], intro = trimBlk(B.intro), has = L.some(x => kpId(x)); let h = "";
+    if (intro.trim() || !has) h += `<div class="blk intro${actB === "intro" ? " on" : ""}" data-blk="intro">${has ? `<div class="bh">Before the key points${AIH("split")}</div>` : ""}${btx(p, "intro", intro, null)}</div>`;
+    L.forEach((x, j) => { const id = kpId(x); if (!id) return; h += `<div class="blk${actB === id ? " on" : ""}" data-blk="${E(id)}"><div class="bh"><span class="kn">${j + 1}</span>${E(kpText(x)) || "&nbsp;"}</div>${btx(p, id, trimBlk(B.text[id]), x)}</div>` });
+    return h }
+  function btx(p, id, t, line){ const on = actB === id && !lmode;
+    return `<div class="${on ? "rich big" : "btx"}"${on ? ` contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="What I'll say"` : ""} data-ph="${id === "intro" ? "What I'll say" : "What I'll say for this point"}" data-id="${E(p.id)}" data-f="block" data-blk="${E(id)}">${richHTML(p, t, true, id === "intro" ? null : id)}</div>` }
+  function openBlock(id, x, y){ const f = sel.k === "pt" && findPt(D, sel.id); if (!f || lmode) return; const cur = $("#ftext .rich.big"); if (cur) saveRich(cur); actB = id; redrawText(f.p);
+    const el = $(`#ftext .rich.big`); if (!el) return; el.focus(); const r = x != null ? caretAt(x, y) : null, sl = getSelection(); sl.removeAllRanges();
+    if (r && el.contains(r.startContainer)) sl.addRange(r); else { const q = document.createRange(); q.selectNodeContents(el); q.collapse(false); sl.addRange(q) } }
   async function flush(){
     if (saving || !pending.length) return; saving = true; inflight = pending; pending = [];
     try { SHA = await GH.put(PATH + "/talk.json", b64e(JSON.stringify(D, null, 1) + "\n"), SHA, "Edit " + D.title); inflight = [];
@@ -489,7 +538,7 @@ async function edit(){
     } else {
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
       const p = f.p, L = S(), i = L.findIndex(x => x.id === p.id), lb = L[i].label, pv = L[i - 1], nx = L[i + 1];
-      if (p.id !== curPid) { const sc = mirrorScript(p, null); if (sc !== (p.script || "")) { applyOp(D, {t: "pt", pid: p.id, f: "script", v: sc}); pending.push({t: "pt", pid: p.id, f: "script", v: sc}); clearTimeout(timer); timer = setTimeout(flush, 900) } curPid = p.id; setE(p, nextSub ? 1e9 : 0); nextSub = 0; atEnd = false; epeek = null; arrive = Date.now() }
+      if (p.id !== curPid) { syncBlocks(p, null, true); actB = null; curPid = p.id; setE(p, nextSub ? 1e9 : 0); nextSub = 0; atEnd = false; epeek = null; arrive = Date.now() }
       const vt = (p.verses || []).map((v, vi) => v && v.ref ? `<button type="button" data-ve="${vi}">${E(v.ref)}</button>` : "").join("") + (p.slides || []).map((x, xi) => x && x.name ? `<button type="button" class="xs" data-xe="${xi}" title="${E(SLIDE_TYPES[x.type] || "")} slide">▣ ${E(x.name)}</button>` : "").join("");
       e = `<div class="ed stagev"><div class="sech">${E(L[i].sec || "")}</div>
         <div class="head"><div class="hc"><span>${E(lb)}</span><input class="cuein" data-t="pt" data-id="${E(p.id)}" data-f="cue" value="${E(p.cue)}" aria-label="Cue (your memory phrase)" placeholder="Cue"></div>
@@ -497,8 +546,8 @@ async function edit(){
           <div class="vtags">${vt}<button type="button" class="vplus" data-act="addmenu" title="Add a verse or a slide">+</button></div></div>
         <div class="grid"><div class="lcol">
           <div class="kplist" data-id="${E(p.id)}">${kpItems(p)}</div>
-          <div class="fulltext"><div class="rule"><span class="tag">Full text</span>${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Tags come from the key points: drag the red ones to where you say them (or type / there). Click a tag to show its slide</span></div>
-          <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say" data-ph="What I'll say">${richHTML(p)}</div></div>
+          <div class="fulltext"><div class="rule"><span class="tag">Full text</span>${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Each key point has its own text. Click one (or ✎) to edit it. Drag red tags to where you say them</span></div>
+          <div class="ftext" id="ftext" data-id="${E(p.id)}">${ftextHTML(p)}</div></div>
         <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
           <button class="btn small danger" type="button" data-act="pdel" data-id="${E(p.id)}">Delete point</button></div>
           <div class="pager">${pv ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(pv.id)}">← ${E(pv.label)} ${E(pv.cue)}</button>` : "<span></span>"}${nx ? `<button class="btn small" type="button" data-sel="pt" data-id="${E(nx.id)}">${E(nx.label)} ${E(nx.cue)} →</button>` : ""}</div></div>
@@ -513,8 +562,9 @@ async function edit(){
   // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
   // Key points are a numbered list: type in a line, Enter adds the next one, Backspace on an empty one removes it; ↑ ↓ ✕ on hover.
   function kpItems(p){ const L = p.keyPoints && p.keyPoints.length ? p.keyPoints : [""], id = E(p.id);
-    return L.map((x, j) => `<div class="kpi${kpAnchor(p, x) ? " linked" : ""}" data-j="${j}"><span class="kn">${j + 1}</span><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${id}" data-f="kpline" data-j="${j}" role="textbox" aria-label="Key point ${j + 1}" data-ph="${j ? "Key point" : "Key point. Type / for a slide tag"}">${richHTML(p, x, false)}</div>
-      <span class="kbar"><button type="button" data-act="kmove" data-j="${j}" data-d="-1" title="Move up">↑</button><button type="button" data-act="kmove" data-j="${j}" data-d="1" title="Move down">↓</button><button type="button" data-act="kdel" data-j="${j}" title="Delete">✕</button></span></div>`).join("")
+    const B = splitBlocks(p.script);
+    return L.map((x, j) => `<div class="kpi${kpId(x) && trimBlk(B.text[kpId(x)]).trim() ? " linked" : ""}" data-j="${j}"><span class="kn">${j + 1}</span><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${id}" data-f="kpline" data-j="${j}" role="textbox" aria-label="Key point ${j + 1}" data-ph="${j ? "Key point" : "Key point. Type / for a slide tag"}">${richHTML(p, kpBody(x), false)}</div>
+      <span class="kbar"><button type="button" class="kedit" data-act="kedit" data-j="${j}" title="Edit what I'll say for this point">✎</button><button type="button" data-act="kmove" data-j="${j}" data-d="-1" title="Move up">↑</button><button type="button" data-act="kmove" data-j="${j}" data-d="1" title="Move down">↓</button><button type="button" data-act="kdel" data-j="${j}" title="Delete">✕</button></span></div>`).join("")
       + `<button type="button" class="btn small kadd" data-act="kadd" data-j="${L.length}">+ Key point</button>` }
   let kpBusy = false;      // while the list is redrawn, a box losing focus must not save its old line over the new list
   function kpSet(p, L, focusJ, caretEnd){ op({t: "pt", pid: p.id, f: "keyPoints", v: L}); const box = $("#m .kplist"); kpBusy = true; if (box) box.innerHTML = kpItems(p); kpBusy = false; relabel(p); hlStep(true);
@@ -527,10 +577,12 @@ async function edit(){
     const tip = v.unplaced ? "Not placed yet: drag it to where you say it (or type / there)" : inText ? "Next on this key point shows its slide and scrolls the full text here. Drag to move it" : "";
     return v.anchor ? `<span class="vchip anc${un}${inText && p && !(p.keyPoints || []).some(x => x.includes("[" + v.ref + "]")) ? " orphan" : ""}" contenteditable="false" data-ref="${E(dr)}"${m} title="${E(tip || "Linked to a spot in the full text")}">${E(inText ? ancLabel(p, v) : "↓")}</span>`
       : `<span class="vchip${tagCls(v)}${un}" contenteditable="false" data-ref="${E(dr)}"${m}${tip ? ` title="${E(tip)}"` : ""}>${E(tagLabel(v))}</span>` };
-  function richHTML(p, text, inText){ let h = "", last = 0; if (inText == null) inText = text == null; const t = text != null ? text : p.script || "";
-    const n = {}; for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; let mk = ""; if (inText && !v.unplaced) { const k = tagKey(v); n[k] = (n[k] || 0) + 1; mk = v.anchor ? k : k + "#" + n[k] }
-      h += E(t.slice(last, m.index)) + chip(v, p, inText, mk); last = m.index + m[0].length }
-    return h + E(t.slice(last)) }
+  // In Listen mode each word is a span with its place in the block, so the word being read can light up.
+  const words = (t, base) => lmode ? t.replace(/[^\s]+/g, "\u0000$&\u0001").split(/(\u0000[^\u0001]*\u0001)/).map((x, i, a) => { const o = base + a.slice(0, i).join("").replace(/[\u0000\u0001]/g, "").length; return x[0] === "\u0000" ? `<span class="w" data-o="${o}">${E(x.slice(1, -1))}</span>` : E(x) }).join("") : E(t);
+  function richHTML(p, text, inText, blk){ let h = "", last = 0; if (inText == null) inText = text == null; const t = text != null ? text : p.script || "";
+    const n = {}; for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; let mk = ""; if (inText && blk && !v.anchor) { const k = tagKey(v); n[k] = (n[k] || 0) + 1; mk = blk + "|" + k + "#" + n[k] }
+      h += words(t.slice(last, m.index), last) + (v.anchor && inText ? "" : chip(v, p, inText, mk)); last = m.index + m[0].length }
+    return h + words(t.slice(last), last) }
   function richText(el){ let out = "";
     const walk = n => { for (const c of n.childNodes) {
       if (c.nodeType === 3) out += c.nodeValue.replace(/​/g, "");
@@ -539,19 +591,21 @@ async function edit(){
     walk(el); return out.replace(/\n$/, "") }
   let richT = null;
   function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return;
-    if (el.dataset.f === "kpline") { if (kpBusy || !el.isConnected) return; const j = +el.dataset.j, L = kpNow(f.p); while (L.length <= j) L.push(""); const v = richText(el).replace(/\s*\n\s*/g, " ").trim(); if (L[j] === v) return; L[j] = v;
-      op({t: "pt", pid: f.p.id, f: "keyPoints", v: L}); relabel(f.p); const it = el.closest(".kpi"); if (it) it.classList.toggle("linked", !!kpAnchor(f.p, v)); return }
+    if (el.dataset.f === "kpline") { if (kpBusy || !el.isConnected) return; const j = +el.dataset.j, L = kpNow(f.p); while (L.length <= j) L.push(""); let v = richText(el).replace(/\s*\n\s*/g, " ").trim(); const id = kpId(L[j]); if (id) v = ("[@" + id + "] " + v).trim(); if (L[j] === v) return; L[j] = v;
+      op({t: "pt", pid: f.p.id, f: "keyPoints", v: L}); relabel(f.p); const bh = $(`#ftext .blk[data-blk="${kpId(f.p.keyPoints[j])}"] .bh`); if (bh) bh.innerHTML = `<span class="kn">${j + 1}</span>${E(kpText(f.p.keyPoints[j])) || "&nbsp;"}`; return }
+    if (el.dataset.f === "block") { if (!el.isConnected || el.contentEditable !== "true") return; const txt = richText(el), cur = blockOf(f.p, el.dataset.blk); if (txt === cur) return;
+      op({t: "pt", pid: f.p.id, f: "script", v: setBlock(f.p, el.dataset.blk, txt)}); const d = $("#m .fulltext .draft"); if (d) d.remove(); relabel(f.p); const it = [...document.querySelectorAll("#m .kpi")].find(k => kpId(f.p.keyPoints[+k.dataset.j]) === el.dataset.blk); if (it) it.classList.toggle("linked", !!txt.trim()); return }
     const kp = el.dataset.f === "keyPoints", txt = richText(el);
     const v = kp ? txt.split("\n").map(x => x.trim()).filter(Boolean) : txt; if (JSON.stringify(v) === JSON.stringify(kp ? f.p.keyPoints || [] : f.p.script || "")) return;
     op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
     if (kp) { relabel(f.p); return } const d = el.previousElementSibling && el.previousElementSibling.querySelector(".draft"); if (d) d.remove();
     relabel(f.p) }
   function redrawKp(p){ const b = $("#m .kplist"); if (b && !b.contains(document.activeElement)) { kpBusy = true; b.innerHTML = kpItems(p); kpBusy = false } }
-  function relabel(p){ const n = {}, kc = kpCounts(p); document.querySelectorAll("#m .rich.big .vchip").forEach(c => { const v = tagOf(p, c.dataset.ref); if (!v) return;
-    if (v.anchor) { c.textContent = ancLabel(p, v); c.classList.toggle("orphan", !(p.keyPoints || []).some(x => x.includes("[" + v.ref + "]"))) }
-    if (v.unplaced) { delete c.dataset.mk; return } const k = tagKey(v); n[k] = (n[k] || 0) + 1; c.dataset.mk = v.anchor ? k : k + "#" + n[k]; c.classList.toggle("mir", !v.anchor && n[k] <= (kc[k] || 0)) }) }
+  function relabel(p){ document.querySelectorAll("#ftext [data-f=block]").forEach(bx => { const id = bx.dataset.blk, line = (p.keyPoints || []).find(x => kpId(x) === id), need = line ? lineCounts(p, line) : {}, n = {};
+    bx.querySelectorAll(".vchip").forEach(c => { const v = tagOf(p, c.dataset.ref); if (!v || v.anchor) return; const k = tagKey(v); if (!line) { delete c.dataset.mk; c.classList.remove("mir"); return }
+      n[k] = (n[k] || 0) + 1; c.dataset.mk = id + "|" + k + "#" + n[k]; c.classList.toggle("mir", !v.unplaced && n[k] <= (need[k] || 0)) }) }) }
   // A tag that's in the key points can't leave the full text: if one is removed (with a selection, cut, etc.) it's back at the top in red at once.
-  function restoreTags(box){ const f = findPt(D, box.dataset.id); if (!f) return; const need = kpCounts(f.p), have = {};
+  function restoreTags(box){ const f = findPt(D, box.dataset.id); if (!f) return; const line = (f.p.keyPoints || []).find(x => kpId(x) === box.dataset.blk); if (!line) return; const need = lineCounts(f.p, line), have = {};
     box.querySelectorAll(".vchip").forEach(c => { const v = tagOf(f.p, c.dataset.ref); if (v) { const k = tagKey(v); have[k] = (have[k] || 0) + 1 } });
     const add = []; for (const k in need) for (let d = need[k] - (have[k] || 0); d > 0; d--) { const v = tagOf(f.p, "!" + k); if (v) add.push(chip(v, f.p, true)) }
     if (!add.length) return; const t = document.createElement("template"); t.innerHTML = add.join(" ") + " "; box.prepend(t.content); relabel(f.p) }
@@ -561,8 +615,8 @@ async function edit(){
     else n = n.childNodes[dir < 0 ? o - 1 : o];
     while (n && n.nodeType === 3 && !n.nodeValue.replace(/\u200b/g, "")) n = dir < 0 ? n.previousSibling : n.nextSibling;
     return n && n.nodeType === 1 && n.classList.contains("vchip") && box.contains(n) ? n : null }
-  document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; if (el.dataset.f === "script") restoreTags(el); clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
-  document.addEventListener("focusout", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; saveRich(el); if (el.dataset.f === "script") setTimeout(() => { const f = findPt(D, el.dataset.id); if (f && !el.contains(document.activeElement)) ensureMirror(f.p) }, 0) });
+  document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; if (el.dataset.f === "block") restoreTags(el); clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
+  document.addEventListener("focusout", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; saveRich(el); if (el.dataset.f === "block") setTimeout(() => { const f = findPt(D, el.dataset.id); if (f && !el.contains(document.activeElement)) ensureMirror(f.p) }, 0) });
   // Copy, cut and paste keep tags and links (so a key point can be moved by cutting and pasting its line).
   function selText(){ const sl = getSelection(); if (!sl.rangeCount) return ""; const d = document.createElement("div"); d.appendChild(sl.getRangeAt(0).cloneContents()); return richText(d) }
   document.addEventListener("copy", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); e.clipboardData.setData("text/plain", selText()) });
@@ -570,14 +624,13 @@ async function edit(){
   document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); let t = (e.clipboardData || window.clipboardData).getData("text/plain"); const f = findPt(D, el.dataset.id);
     if (f && el.dataset.f === "kpline" && /\n/.test(t.trim())) { const lines = t.split(/\r?\n/).map(x => x.replace(/^\s*([-*•]|\d+[.)])\s+/, "").trim()).filter(Boolean); t = lines.shift() || "";
       if (lines.length) { document.execCommand("insertText", false, t); saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ...lines); kpSet(f.p, L, j + lines.length, true); return } }
-    if (f && [...t.matchAll(TAG)].some(m => tagOf(f.p, m[1]))) document.execCommand("insertHTML", false, richHTML(f.p, t, el.dataset.f === "script").replace(/\n/g, "<br>")); else document.execCommand("insertText", false, t) });
+    if (f && [...t.matchAll(TAG)].some(m => tagOf(f.p, m[1]))) document.execCommand("insertHTML", false, richHTML(f.p, t, el.dataset.f !== "kpline").replace(/\n/g, "<br>")); else document.execCommand("insertText", false, t) });
   let vmenu = null;
   function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
   function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? [...(f.p.verses || []).filter(v => v && v.ref), ...(f.p.slides || []).filter(x => x && x.name)] : []; const inKp = el.classList.contains("kp");
-    if (inKp) vs.push(STOPTAG, MAINTAG, {newLink: 1}, {newT: "verse"}, ...Object.keys(SLIDE_TYPES).map(k => ({newT: k})));
-    else if (f) { vs.length = 0;      // the full text only places tags that are in the key points (and links key points to spots)
-      [...el.querySelectorAll(".vchip.unplaced")].forEach(c => { const v = tagOf(f.p, c.dataset.ref); if (v) vs.push({place: c, v, label: v.anchor ? ancLabel(f.p, v).replace(/^↑ /, "") : tagLabel(v)}) });
-      vs.push(...(f.p.keyPoints || []).map((x, j) => ({kpLink: j, label: (j + 1) + " · " + kpText(x)})).filter(v => v.label.replace(/^\d+ · /, "") && !(f.p.keyPoints[v.kpLink].match(ANC) && el.querySelector(`.vchip.unplaced[data-ref="!@${(f.p.keyPoints[v.kpLink].match(ANC) || [])[1]}"]`)))) }
+    if (inKp) vs.push(STOPTAG, MAINTAG, {newT: "verse"}, ...Object.keys(SLIDE_TYPES).map(k => ({newT: k})));
+    else if (f) { vs.length = 0;      // the full text only places the red tags of this key point
+      [...el.querySelectorAll(".vchip.unplaced")].forEach(c => { const v = tagOf(f.p, c.dataset.ref); if (v) vs.push({place: c, v, label: tagLabel(v)}) }) }
     if (!vs.length) return;
     const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
     if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
@@ -597,7 +650,7 @@ async function edit(){
     insertChip(box, node, off, it) }
   function insertChip(box, node, off, v){ if (!v || !node.isConnected || node.nodeValue[off - 1] !== "/") return;
     const after = node.splitText(off); node.nodeValue = node.nodeValue.slice(0, -1);
-    const t = document.createElement("template"); t.innerHTML = chip(v, findPt(D, box.dataset.id)?.p, box.dataset.f === "script"); const c = t.content.firstChild; after.parentNode.insertBefore(c, after);
+    const t = document.createElement("template"); t.innerHTML = chip(v, findPt(D, box.dataset.id)?.p, box.dataset.f !== "kpline"); const c = t.content.firstChild; after.parentNode.insertBefore(c, after);
     if (!after.nodeValue.startsWith(" ")) after.nodeValue = "​" + after.nodeValue;
     const r = document.createRange(); r.setStart(after, after.nodeValue.startsWith("​") ? 1 : 0); r.collapse(true); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); box.focus(); saveRich(box) }
   document.addEventListener("keydown", e => {
@@ -606,8 +659,8 @@ async function edit(){
       if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pickV(vmenu.k); return }
       closeVmenu(); if (e.key === "Escape") { e.preventDefault(); return } }
     const el = e.target.closest && e.target.closest(".rich"); if (!el) return;
-    if ((e.key === "Backspace" || e.key === "Delete") && el.dataset.f === "script") { const c = chipAt(el, e.key === "Delete" ? 1 : -1), f = c && findPt(D, el.dataset.id), v = f && tagOf(f.p, c.dataset.ref);
-      if (v && kpCounts(f.p)[tagKey(v)]) { e.preventDefault(); c.classList.remove("nope"); void c.offsetWidth; c.classList.add("nope"); c.title = "This tag is in the key points. Drag it to move it; remove it from the key points to delete it"; return } }
+    if ((e.key === "Backspace" || e.key === "Delete") && el.dataset.f === "block") { const c = chipAt(el, e.key === "Delete" ? 1 : -1), f = c && findPt(D, el.dataset.id), v = f && tagOf(f.p, c.dataset.ref), line = f && (f.p.keyPoints || []).find(x => kpId(x) === el.dataset.blk);
+      if (v && !v.anchor && line && lineCounts(f.p, line)[tagKey(v)]) { e.preventDefault(); c.classList.remove("nope"); void c.offsetWidth; c.classList.add("nope"); c.title = "This tag is in the key points. Drag it to move it; remove it from the key points to delete it"; return } }
     if (e.key === "/") setTimeout(() => openVmenu(el), 0);
     else if (e.key === "Enter" && el.dataset.f === "kpline") { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ""); kpSet(f.p, L, j + 1) }
     else if (e.key === "Backspace" && el.dataset.f === "kpline" && !richText(el).trim() && +el.dataset.j > 0) { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; const j = +el.dataset.j, L = kpNow(f.p); L.splice(j, 1); kpSet(f.p, L, j - 1, true) }
@@ -617,7 +670,7 @@ async function edit(){
   // Drag a tag in the full text to where you say it (red ones aren't placed yet).
   let dragged = false;
   const caretAt = (x, y) => { if (document.caretRangeFromPoint) return document.caretRangeFromPoint(x, y); const c = document.caretPositionFromPoint && document.caretPositionFromPoint(x, y); if (!c) return null; const r = document.createRange(); r.setStart(c.offsetNode, c.offset); r.collapse(true); return r };
-  document.addEventListener("pointerdown", ev => { const c = ev.target.closest && ev.target.closest("#m .rich.big .vchip"); if (!c || ev.button) return; const box = c.closest(".rich.big"), x0 = ev.clientX, y0 = ev.clientY; let g = null, mark = null; ev.preventDefault();
+  document.addEventListener("pointerdown", ev => { const c = ev.target.closest && ev.target.closest("#ftext .rich.big .vchip"); if (!c || ev.button) return; const box = c.closest(".rich.big"), x0 = ev.clientX, y0 = ev.clientY; let g = null, mark = null; ev.preventDefault();
     const spot = e => { const r = caretAt(e.clientX, e.clientY); return r && box.contains(r.startContainer) && !c.contains(r.startContainer) && r.startContainer !== c ? r : null };
     const mv = e => { if (!g) { if (Math.hypot(e.clientX - x0, e.clientY - y0) < 6) return; g = c.cloneNode(true); g.classList.add("ghost"); document.body.appendChild(g); mark = document.createElement("div"); mark.className = "dropmark"; document.body.appendChild(mark); c.classList.add("dragging") }
       g.style.left = e.clientX + 10 + "px"; g.style.top = e.clientY + 10 + "px"; const r = spot(e), rc = r && r.getBoundingClientRect(); mark.hidden = !rc || !rc.height; if (rc && rc.height) { mark.style.left = rc.left + "px"; mark.style.top = rc.top + "px"; mark.style.height = rc.height + "px" }
@@ -650,7 +703,7 @@ async function edit(){
   let slideOpen = false;
   // ---- Step through slides like Stage (Back / Next, Page Up / Page Down), and practice timing ----
   let esub = 0, epos = 0, eanc = null, nextSub = 0, curPid = null, atEnd = false, run = false, arrive = Date.now(), lastRec = "", epeek = null;
-  function setE(p, k){ const L = stepsOf(p); epos = Math.max(0, Math.min(L.length - 1, k)); esub = L[epos].sub; eanc = null; for (let i = epos; i > 0 && !eanc; i--) for (const a of [L[i].a, L[i].m]) if (!eanc && a && hasSpot(p, a)) eanc = a }
+  function setE(p, k){ const L = stepsOf(p); epos = Math.max(0, Math.min(L.length - 1, k)); esub = L[epos].sub; eanc = null; for (let i = epos; i > 0 && !eanc; i--) if (L[i].a && hasSpot(p, L[i].a)) eanc = L[i].a }
   function smallHTML(p){ if (atEnd) return '<div class="slide blank"></div>'; const L = S(), i = L.findIndex(x => x.id === p.id); if (i < 0) return prevHTML(p);
     const pv = epeek && tagOf(p, epeek); return pv ? tagHTML(L, i, pv, D) : stepHTML(L, i, esub, D) }
   const editLink = v => v && !v.stop ? ` · <button type="button" class="linkbtn" data-act="tagedit" data-ref="${E(tagName(v))}">Edit</button>` : "";
@@ -660,15 +713,15 @@ async function edit(){
     if (hasSlide(p)) return `<button type="button" class="linkbtn" data-act="sedit">Edit slide</button>`;
     const k = heldIdx(L, i); return (k >= 0 ? "Slide from " + E(L[k].label) + " stays up" : "No slide yet") + ` · <button type="button" class="linkbtn" data-act="sedit">Add a slide here</button>` }
   function updSmall(){ const f = sel.k === "pt" && findPt(D, sel.id), ps = $("#prevs"), pc = $("#pcap"); if (!f) return; if (ps) setSlide(ps, smallHTML(f.p)); if (pc) pc.innerHTML = capHTML(f.p);
-    document.querySelectorAll("#m .rich .vchip").forEach(c => c.classList.toggle("pk", !!epeek && c.dataset.ref === epeek)) }
+    document.querySelectorAll("#m .rich .vchip, #ftext .vchip").forEach(c => c.classList.toggle("pk", !!epeek && c.dataset.ref === epeek)) }
   // Click a tag (in Key points or Full text) to show its slide; Next or Back puts back what was showing.
   function peekAt(ref){ const f = findPt(D, sel.id), v = f && tagOf(f.p, ref); if (!v || v.stop) return; epeek = epeek === ref ? null : ref; atEnd = false; updSmall() }
   function tagEdit(ref){ const f = findPt(D, sel.id), v = f && tagOf(f.p, ref); if (!v) return; if (v.main) openSlide(null); else if (isXS(v)) openSlide(f.p.slides.indexOf(v)); else if (!v.stop) verseEdit(sel.id, f.p.verses.indexOf(v)) }
   // Like Stage: the slide tag showing is lit in the key points, and a linked key point brings its spot in the full text to the top.
-  function hlStep(quiet){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (atEnd) return;
+  function hlStep(quiet){ document.querySelectorAll("#m .rich .vchip.on, #ftext .vchip.on").forEach(c => c.classList.remove("on")); if (atEnd) return;
     if (esub) { const c = document.querySelectorAll("#m .rich.kp .vchip:not(.anc)")[esub - 1]; if (c) c.classList.add("on") }
-    const fp = sel.k === "pt" && findPt(D, sel.id); if (!fp) return; const L = stepsOf(fp.p), st = L[epos], li = st && st.b >= 0 && (p => p && p.querySelectorAll(".vchip.anc").forEach(x => x.dataset.ref === st.a && x.classList.add("on")))($("#m .kplist"));
-    if (!eanc) return; const a = [...document.querySelectorAll("#m .rich.big .vchip[data-mk]")].find(c => c.dataset.mk === eanc); if (!a) return; a.classList.add("on"); if (quiet) return;
+    const fp = sel.k === "pt" && findPt(D, sel.id); if (!fp) return; const L = stepsOf(fp.p), st = L[epos], li = null;
+    if (!eanc) return; const a = [...document.querySelectorAll("#ftext .vchip[data-mk]")].find(c => c.dataset.mk === eanc); if (!a) return; document.querySelectorAll("#ftext .blk").forEach(b => b.classList.toggle("cur", b.contains(a))); a.classList.add("on"); if (quiet) return;
     const tb = $(".top"), hd = $("#m .head"), kl = $("#m .kplist"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + (kl ? kl.offsetHeight : 0) + 24; window.scrollTo({top: Math.max(0, a.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) }
   function updStep(){ const f = findPt(D, sel.id); if (!f) return; updSmall(); hlStep(); if (!epos || atEnd) window.scrollTo({top: 0, behavior: "smooth"}) }
   function record(p, i){ if (i <= 0) return; const t = Math.max(1, Math.round((Date.now() - arrive) / 1000)); op({t: "pt", pid: p.id, f: "seconds", v: t});
@@ -811,7 +864,9 @@ async function edit(){
     const v = ev.target.closest(".vtags [data-ve]"); if (v && sel.k === "pt") { verseEdit(sel.id, v.dataset.ve); return }
     const xe = ev.target.closest(".vtags [data-xe]"); if (xe && sel.k === "pt") { openSlide(+xe.dataset.xe); return }
     const ad = ev.target.closest('[data-act="addmenu"]'); if (ad) { addMenu(ad); return }
-    const ch = ev.target.closest("#m .rich .vchip"); if (ch && sel.k === "pt") { if (dragged) { dragged = false; return } peekAt(ch.dataset.ref); return }
+    const ch = ev.target.closest("#m .rich .vchip, #ftext .vchip"); if (ch && sel.k === "pt") { if (dragged) { dragged = false; return } peekAt(ch.dataset.ref.replace(/^!/, "")); return }
+    const bk = ev.target.closest("#ftext .btx"); if (bk && sel.k === "pt") { openBlock(bk.dataset.blk, ev.clientX, ev.clientY); return }
+    const ke = ev.target.closest('[data-act="kedit"]'); if (ke && sel.k === "pt") { const f = findPt(D, sel.id), id = f && kpId((f.p.keyPoints || [])[+ke.dataset.j]); if (id) { openBlock(id); const b = $(`#ftext .blk[data-blk="${id}"]`); if (b) { const tb = $(".top"), hd = $("#m .head"), kl = $("#m .kplist"); window.scrollTo({top: Math.max(0, b.getBoundingClientRect().top + scrollY - (tb ? tb.offsetHeight : 0) - (hd ? hd.offsetHeight : 0) - (kl ? kl.offsetHeight : 0) - 24), behavior: "smooth"}) } } return }
     const te = ev.target.closest('[data-act="tagedit"]'); if (te) { tagEdit(te.dataset.ref); return }
     if (ev.target.closest('[data-act="sedit"]')) { openSlide(null); return }
     if (ev.target.closest('[data-act="enext"]')) { enext(); return } if (ev.target.closest('[data-act="eprev"]')) { eprev(); return }
@@ -826,6 +881,11 @@ async function edit(){
     if (a === "kmove") { kmove(sel.id, +b.dataset.j, +b.dataset.d); return }
     if (a === "kdel") { const f = findPt(D, sel.id); if (!f) return; const j = +b.dataset.j, L = kpNow(f.p), id = kpAnchor(f.p, L[j]) || ((L[j] || "").match(ANC) || [])[1];
       if (!b.dataset.armed && (L[j] || "").trim()) { b.dataset.armed = 1; b.textContent = "Delete?"; b.classList.add("arm"); return }
+      const bid = kpId(L[j]), bt = bid ? blockOf(f.p, bid).replace(/\[!?[^\[\]\n]{1,60}\]/g, "").trim() : "";
+      if (bt && !b.dataset.how) { if (amenu) amenu.remove(); const m = document.createElement("div"); m.className = "vmenu"; amenu = m; m.innerHTML = `<div class="vmh">This point has text</div><button type="button" data-how="del">Delete the point and its text</button><button type="button" data-how="keep">Delete the point, keep its text (it joins the point above)</button>`;
+        document.body.appendChild(m); const r = b.getBoundingClientRect(); m.style.top = r.bottom + 4 + "px"; m.style.left = Math.max(8, Math.min(r.left - 200, innerWidth - 290)) + "px";
+        m.onclick = e2 => { const h = e2.target.closest("[data-how]"); if (!h) return; m.remove(); amenu = null; b.dataset.how = h.dataset.how; b.click() }; return }
+      if (b.dataset.how === "del" && bid) { const B = splitBlocks(f.p.script); B.text[bid] = ""; op({t: "pt", pid: f.p.id, f: "script", v: joinBlocks(B.intro, (f.p.keyPoints || []).map(kpId).filter(Boolean), B.text)}) }
       L.splice(j, 1); kpSet(f.p, L); return }
     if (a === "posreset") { const g = b.dataset.g, fs = g === "bul" ? ["ttSize", "ttColor", "blSize", "blColor"] : g === "all" ? POSF : ["X", "Y", "W", "Size", "Align", "Color"].map(x => g + x), T = elT(b);
       fs.forEach(k => setOp(T, k, "")); refreshSlide(); return }
@@ -872,7 +932,7 @@ async function edit(){
       setOp(T, f, v); if (f === "type") fillDlg(); else refreshSlide() }
     else if (t === "v") { op({t: "vset", pid: el.dataset.id, i: +el.dataset.i, f: el.dataset.f, v: el.dataset.f === "text" ? v : v.trim()}); if (el.dataset.f === "ref") { const tags = document.querySelector(".ed .vtags"); const f = findPt(D, el.dataset.id); if (f) { const nt = verseTags(f.p); if (tags) tags.outerHTML = nt || ""; else if (nt) $(".ed h2").insertAdjacentHTML("afterend", nt) } } }
   });
-  window.TALKAPP.ed = {stepTo(key){ const f = sel.k === "pt" && findPt(D, sel.id); if (!f) return false; const L = stepsOf(f.p), k = L.findIndex(x => x.a === key || x.m === key); if (k < 0) return false; epeek = null; setE(f.p, k); updStep(); return true },
+  window.TALKAPP.ed = {sync: p => syncBlocks(p, null), listenMode(on){ lmode = !!on; const f = sel.k === "pt" && findPt(D, sel.id); if (f) redrawText(f.p) }, openBlock, redrawText: () => { const f = sel.k === "pt" && findPt(D, sel.id); if (f) redrawText(f.p) }, stepTo(key){ const f = sel.k === "pt" && findPt(D, sel.id); if (!f) return false; const L = stepsOf(f.p), k = L.findIndex(x => x.a === key || x.m === key); if (k < 0) return false; epeek = null; setE(f.p, k); updStep(); return true },
     stepNext: () => enext(), steps: () => { const f = sel.k === "pt" && findPt(D, sel.id); return f ? stepsOf(f.p) : [] }, pos: () => epos, D: () => D, op, render, flush, sel: () => sel, go(s){ sel = s; render(); window.scrollTo(0, 0) }, findPt: id => findPt(D, id), S, newId, tObj, setOp, refreshSlide, fillDlg, dlgT: () => dlgT, setSave};
   render(); document.dispatchEvent(new Event("talk-edit-ready"));
 }
@@ -886,8 +946,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=31"><link rel="stylesheet" href="../common/countdown.css?v=31"><link rel="stylesheet" href="../common/gate.css?v=31"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=31"></script><script src="../common/countdown.js?v=31"></script><script src="../common/gate.js?v=31"></script><script src="../common/app.js?v=31"></script>${mode === "edit" ? '<script src="../common/ai.js?v=31"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=32"><link rel="stylesheet" href="../common/countdown.css?v=32"><link rel="stylesheet" href="../common/gate.css?v=32"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=32"></script><script src="../common/countdown.js?v=32"></script><script src="../common/gate.js?v=32"></script><script src="../common/app.js?v=32"></script>${mode === "edit" ? '<script src="../common/ai.js?v=32"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -916,6 +976,6 @@ async function index(){
   });
 }
 
-window.TALKAPP = {tagKey, C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
+window.TALKAPP = {tagKey, kpId, kpBody, splitBlocks, joinBlocks, trimBlk, normBlocks, lineCounts, C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
 ({monitor, present, edit, index}[MODE] || (() => {}))();
 })();

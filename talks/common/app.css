@@ -353,3 +353,26 @@ body[data-mode="edit"] .stagev .kplist{position:sticky;top:calc(var(--stk,150px)
 .rich.big .vchip.mir:not(.unplaced){border-style:solid;border-color:var(--accent);color:var(--accent)}
 @keyframes nope{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .vchip.nope{animation:nope .25s 2}
+/* Full text in blocks, one per key point (Edit) */
+.ftext{display:grid;gap:4px}
+.ftext .blk{border-left:3px solid transparent;padding:2px 0 6px 12px;border-radius:4px}
+.ftext .blk .bh{font:700 12px/1.4 system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center;margin:6px 0 2px}
+.ftext .blk .bh .kn{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:50%;background:color-mix(in srgb,var(--cue) 60%,transparent);color:var(--cue-ink);font-size:12px}
+.ftext .btx{font-family:Georgia,serif;font-size:21px;line-height:1.6;white-space:pre-wrap;color:var(--muted);opacity:.72;cursor:text;min-height:1.6em;border-radius:6px;padding:2px 4px}
+.ftext .btx:hover{opacity:1;background:color-mix(in srgb,var(--cue) 18%,transparent)}
+.ftext .btx:empty::before{content:attr(data-ph);opacity:.5;font-style:italic}
+.ftext .blk.on{border-left-color:var(--accent);background:var(--surface)}
+.ftext .blk.on .rich.big{min-height:3.2em}
+.ftext .blk.cur{border-left-color:#E9B949}
+.ftext .w.say{background:#E9B949;color:#000;border-radius:3px}
+.kbar .kedit{font-size:13px}
+.kpi.linked .kedit{border-color:var(--accent);color:var(--accent)}
+body[data-mode="edit"] .kpi.linked .kbar{opacity:1}
+body[data-mode="edit"] .kpi.linked .kbar button:not(.kedit){opacity:0}
+body[data-mode="edit"] .kpi:hover .kbar button,body[data-mode="edit"] .kpi:focus-within .kbar button{opacity:1}
+.script .blkmark{display:inline}
+.ftext .btx .vchip{border-style:dotted;border-color:var(--muted);color:var(--muted);background:transparent}
+.ftext .btx .vchip.mir{border-style:solid;border-color:var(--accent);color:var(--accent)}
+.ftext .btx .vchip.unplaced{border-style:solid;border-color:#c0392b;color:#fff;background:#c0392b}
+.ftext .vchip.on{background:var(--accent);color:#fff;opacity:1}
+.aisp{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:8px 0}.aisp b{font-size:14px}.aisp p{margin:3px 0;color:var(--muted);font-size:14px}
