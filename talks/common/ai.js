@@ -383,12 +383,15 @@ const AUD = {};       // text → promise of an object URL, so replaying is inst
 // A point as a list of things to do: say some text, or press Next at a tag (like the speaker does when they reach it).
 // How the voice reads: the reading cues ([Slow], [Excited], [Normal]…) set its speed and tone until the next cue.
 const TONES = {excited: {stability: .3, style: .55, f: 1.05}, exclaim: {stability: .22, style: .8, f: 1}, calm: {stability: .8, style: 0, f: .93}, gentle: {stability: .72, style: .15, f: .9}};
-function voiceOf(m){ const v = {stability: .5, similarity_boost: .75, style: 0, speed: m.speed === "slow" ? .82 : m.speed === "fast" ? 1.15 : 1, use_speaker_boost: true}, t = TONES[m.tone];
+function voiceOf(m){ const v = {stability: .62, similarity_boost: .75, style: 0, speed: m.speed === "slow" ? .82 : m.speed === "fast" ? 1.15 : 1, use_speaker_boost: true}, t = TONES[m.tone];
   if (t) { v.stability = t.stability; v.style = t.style; v.speed *= t.f } v.speed = Math.max(.7, Math.min(1.2, Math.round(v.speed * 100) / 100)); return v }
 function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.script), mode = {speed: "", tone: ""}; let cv = voiceOf(mode);
   const seg = (blk, t) => { const n = {}; let last = 0;
-    const say = (a, b) => { let x = "", map = [], sp = true; for (let i = a; i < b; i++) { const c = t[i]; if (/\s/.test(c)) { if (!sp) { x += " "; map.push(i); sp = true } } else if (!/[🔑🔁]/u.test(c)) { x += c; map.push(i); sp = false } }
-      while (x.endsWith(" ")) { x = x.slice(0, -1); map.pop() }
+    const say = (a, b) => { let x = "", map = [], sp = true; for (let i = a; i < b; i++) { const c = t[i];
+        if (/\s/.test(c)) { if (!sp) { x += c === "\n" ? "\n" : " "; map.push(i); sp = true } else if (c === "\n" && x.endsWith(" ")) x = x.slice(0, -1) + "\n" }   // a paragraph break stays a break, so the voice pauses there
+        else if (c === "." && t[i + 1] === "." && i + 1 < b) { let j = i; while (t[j + 1] === "." && j + 1 < b) j++; x += "…"; map.push(i); i = j; sp = false }   // ".." and "..." read as one trailing pause
+        else if (!/[🔑🔁]/u.test(c)) { x += c; map.push(i); sp = false } }
+      while (/\s$/.test(x)) { x = x.slice(0, -1); map.pop() }
       while (x.length > 3500) { let cut = x.lastIndexOf(". ", 3500); if (cut < 1000) cut = 3500; out.push({say: x.slice(0, cut + 1), blk, map: map.slice(0, cut + 1), vs: cv}); x = x.slice(cut + 1).replace(/^ /, ""); map = map.slice(map.length - x.length) }
       if (x) out.push({say: x, blk, map, vs: cv}) };
     for (const m of t.matchAll(/\[([^\[\]\n]{1,60})\]/g)) { say(last, m.index); last = m.index + m[0].length; const r = m[1].trim(), v = T.tagOf(p, r.replace(/^!/, "")); if (!v || v.anchor) continue;
@@ -398,14 +401,17 @@ function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.
     say(last, t.length) };
   seg("intro", T.trimBlk(B.intro)); for (const x of p.keyPoints || []) { const id = T.kpId(x); if (id) seg(id, T.trimBlk(B.text[id])) }
   if (!out.some(x => x.say)) { const k = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); if (k) out.push({say: k, blk: null, vs: voiceOf({})}) }
+  // Each part is voiced on its own, so give the voice the words around it; then the tone and pace carry on smoothly across parts.
+  const S = out.filter(x => x.say); S.forEach((x, k) => { x.prev = S.slice(0, k).map(y => y.say).join("\n").slice(-500); x.next = S.slice(k + 1).map(y => y.say).join("\n").slice(0, 300) });
   return out }
+const cutAt = (x, cut) => ({...x, say: x.say.slice(cut), map: x.map.slice(cut), prev: ((x.prev ? x.prev + "\n" : "") + x.say.slice(0, cut)).slice(-500)});
 // Speech plus the time each character is spoken (ElevenLabs "with timestamps"), so the word being read can light up.
-function tts(text, vs){ const k = text + "|" + JSON.stringify(vs || {}); if (!AUD[k]) { AUD[k] = tts0(text, vs); AUD[k].catch(() => delete AUD[k]) } return AUD[k] }
+function tts(text, vs, ctx){ const k = text + "|" + JSON.stringify(vs || {}); if (!AUD[k]) { AUD[k] = tts0(text, vs, ctx); AUD[k].catch(() => delete AUD[k]) } return AUD[k] }
 const talkVoice = () => { try { const d = T.ed ? T.ed.D() : T.D(); return (d && d.voice) || "" } catch (e) { return "" } };
 async function voiceId(key){ const tv = talkVoice(); if (tv) return tv; if (KEYS.voice) return KEYS.voice; let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {}
   KEYS.voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; saveLocal(); return KEYS.voice }
-async function tts0(text, vs){ const key = await need("eleven"), voice = await voiceId(key);
-  const body = JSON.stringify(vs ? {text, model_id: "eleven_multilingual_v2", voice_settings: vs} : {text, model_id: "eleven_multilingual_v2"}), H = {"xi-api-key": key, "Content-Type": "application/json"};
+async function tts0(text, vs, ctx){ const key = await need("eleven"), voice = await voiceId(key);
+  const o = {text, model_id: "eleven_multilingual_v2", seed: 7}; if (vs) o.voice_settings = vs; if (ctx && ctx.prev) o.previous_text = ctx.prev; if (ctx && ctx.next) o.next_text = ctx.next; const body = JSON.stringify(o), H = {"xi-api-key": key, "Content-Type": "application/json"};
   let r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {method: "POST", headers: H, body});
   let j = null; if (r.ok) try { j = await r.json() } catch (e) {}
   if (j && j.audio_base64) { const a = j.alignment || {}; const bin = Uint8Array.from(atob(j.audio_base64 || ""), c => c.charCodeAt(0));
@@ -433,10 +439,10 @@ function narrate(){ const ed = T.ed, share = new URL("./?play", location.href).h
       const points = {}, jobs = [];
       for (const s of ed.S()) { const f = ed.findPt(s.id); if (!f) continue; const st = T.stepsOf(f.p), items = [];
         for (const it of speakPlan(f.p)) { if (it.step) { const x = st.find(y => y.a === it.step); if (x) items.push({sub: x.sub}) } else if (it.pause) items.push({pause: it.pause});
-          else if (it.say) { const file = "voice/" + (await sha(voice + "|" + JSON.stringify(it.vs || {}) + "|" + it.say)).slice(0, 16) + ".mp3"; items.push({say: file}); if (!have.has(file) && !jobs.some(j => j.file === file)) jobs.push({file, text: it.say, vs: it.vs}) } }
+          else if (it.say) { const file = "voice/" + (await sha(voice + "|" + JSON.stringify(it.vs || {}) + "|" + it.say)).slice(0, 16) + ".mp3"; items.push({say: file}); if (!have.has(file) && !jobs.some(j => j.file === file)) jobs.push({file, text: it.say, vs: it.vs, ctx: it}) } }
         points[s.id] = items }
-      for (let k = 0; k < jobs.length; k++) { const j = jobs[k]; m.textContent = `Reading part ${k + 1} of ${jobs.length}…`; if (jobs[k + 1]) tts(jobs[k + 1].text, jobs[k + 1].vs).catch(() => {});
-        const a = await tts(j.text, j.vs), data = a.b64 || await blobB64(a.blob);
+      for (let k = 0; k < jobs.length; k++) { const j = jobs[k]; m.textContent = `Reading part ${k + 1} of ${jobs.length}…`; if (jobs[k + 1]) tts(jobs[k + 1].text, jobs[k + 1].vs, jobs[k + 1].ctx).catch(() => {});
+        const a = await tts(j.text, j.vs, j.ctx), data = a.b64 || await blobB64(a.blob);
         try { await GH.put(T.PATH + "/" + j.file, data, null, "Narration voice") } catch (e) { if (e.status !== 422) throw e } }
       m.textContent = "Saving…"; const N = {format: "narration/1", voice, voiceName: KEYS.voiceName || "", made: new Date().toISOString(), points};
       for (let a = 0; a < 3; a++) { try { await GH.put(T.PATH + "/narration.json", T.b64e(JSON.stringify(N, null, 1) + "\n"), osha, "Narrated version"); break } catch (e) { if (a === 2 || (e.status !== 409 && e.status !== 422)) throw e; try { osha = (await GH.get(T.PATH + "/narration.json")).sha } catch (_) { osha = null } } }
@@ -456,7 +462,7 @@ function seek(plan, blk, key){ const norm = t => t.replace(/\s+/g, " "), list = 
   const w = norm(key.slice(1)).trim(); if (!w) return list[0][1];
   for (const [x, n] of list) { const at = x.say.indexOf(w); if (at < 0) continue; const end = key[0] === "+" ? at : at + w.length - 1;
     let cut = 0; for (const m of x.say.slice(0, end).matchAll(/[.!?…]["”’)]*\s+/g)) cut = m.index + m[0].length;
-    if (cut > 0) plan[n] = {...x, say: x.say.slice(cut), map: x.map.slice(cut)}; return n }
+    if (cut > 0) plan[n] = cutAt(x, cut); return n }
   return list[0][1] }
 
 let LS = null;
@@ -465,7 +471,7 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
   document.body.appendChild(bar); const au = new Audio(), lab = $("#ailt"); let alive = true; ed.listenMode(true);
   LS = {stop(){ alive = false; au.pause(); cancelAnimationFrame(raf); bar.remove(); LS = null; ed.listenMode(false) }};
   const head = () => `${L[i].label} ${L[i].cue || ""}`;
-  const warm = (pl, from) => pl.slice(from).filter(x => x.say).slice(0, 2).forEach(x => tts(x.say, x.vs).catch(() => {}));
+  const warm = (pl, from) => pl.slice(from).filter(x => x.say).slice(0, 2).forEach(x => tts(x.say, x.vs, x).catch(() => {}));
   // Light up the word being said: the time → the character → its place in the block → that word.
   function glow(){ raf = requestAnimationFrame(glow); const it = plan[q]; if (!cur || !it || !it.blk || !cur.starts || au.paused) return; const t = au.currentTime, S = cur.starts;
     let lo = 0, hi = S.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (S[mid] <= t) lo = mid; else hi = mid - 1 } const off = it.map[Math.min(lo, it.map.length - 1)]; if (off == null) return;
@@ -481,7 +487,7 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
       if (it.step) ed.stepTo(it.step); else { lab.textContent = head() + " · pause"; await new Promise(ok => setTimeout(ok, it.pause * 1000 / (+$("#ailr").value || 1))); if (!alive || r !== run) return } q++ }
     if (!alive || r !== run) return; if (q >= plan.length) return point(i + 1);
     const it = plan[q]; lab.textContent = head() + " · getting the voice…";
-    try { const a = await tts(it.say, it.vs); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; curQ = q; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
+    try { const a = await tts(it.say, it.vs, it); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; curQ = q; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
     catch (e) { if (!alive || r !== run) return; lab.textContent = ""; fail(e); if (e.quiet && LS) LS.stop() } }
   au.onended = () => { q++; go(run) }; $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
   bar.onclick = e => { const b = e.target.closest("[data-l]"); if (!b) return; const a = b.dataset.l;
@@ -501,12 +507,12 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
     const list = plan.map((x, n) => [x, n]).filter(([x]) => x.say && x.blk === it.blk); if (!list.length) { q = 0; return go(r) }
     const exact = list.find(([x]) => x.say === it.say && JSON.stringify(x.vs) === JSON.stringify(it.vs)), [x, n] = exact || list[Math.min(h.same, list.length - 1)];
     for (let m = 0; m < n; m++) if (plan[m].step) ed.stepTo(plan[m].step);
-    if (exact) { q = n; curQ = n; lab.textContent = head(); tts(x.say, x.vs).then(a => { if (!alive || r !== run) return; cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value;
+    if (exact) { q = n; curQ = n; lab.textContent = head(); tts(x.say, x.vs, x).then(a => { if (!alive || r !== run) return; cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value;
         au.onloadedmetadata = () => { au.onloadedmetadata = null; au.currentTime = Math.max(0, h.t - .4) }; au.play().catch(() => {}); bar.querySelector('[data-l="play"]').textContent = "❚❚" }).catch(fail); return }
     // The text changed: start again at the sentence that was being read.
     const from = it.say.slice(0, h.ci + 1).search(/[^.!?]*[.!?]?\s*$/), key = it.say.slice(Math.max(0, from), from + 30).trim(); let cut = key ? x.say.indexOf(key) : -1;
     if (cut < 0) { const fr = h.ci / it.say.length; cut = Math.max(0, x.say.lastIndexOf(". ", Math.floor(x.say.length * fr)) + 1); while (x.say[cut] === " ") cut++ }
-    plan[n] = cut > 0 ? {...x, say: x.say.slice(cut), map: x.map.slice(cut)} : x; q = n; go(r) }
+    plan[n] = cut > 0 ? cutAt(x, cut) : x; q = n; go(r) }
   const c0 = CARET && L[i] && CARET.pid === L[i].id ? CARET : null; point(i, c0) }
 
 // =====================================================================
