@@ -82,6 +82,15 @@
        "slide": "",
        "layout": "center",
        "image": ""
+      },
+      {
+       "name": "Slide 4",
+       "type": "image",
+       "slideTitle": "",
+       "eyebrow": "",
+       "slide": "",
+       "layout": "center",
+       "image": ""
       }
      ]
     },
