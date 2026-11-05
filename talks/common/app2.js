@@ -92,7 +92,8 @@ async function slides(){
 // The outline: every outline tag, indented by level; cur = the node of the step you're on.
 function treeHTML(P, S, k, big){ const cur = S[k] && S[k].node; let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
-    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}" data-n="${n.j}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
+    const w = n.lvl <= 2 ? P.t.slice(n.end, n.last).replace(TAG, " ").split(/\s+/).filter(Boolean).length : 0, sec = Math.max(10, Math.round(w / 140 * 6) * 10), tm = !w ? "" : sec < 60 ? sec + "s" : Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}" data-n="${n.j}" title="${w ? "About " + tm + " at 140 words a minute" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
   return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a section, point or sub point, or use ✨ Outline.</p>` }
 // The text with every tag drawn: nodes as numbered chips (a section as a header with its words), slides as named chips, cues as small hints.
 // inEdit: chips are editable tags. S: wrap each stretch of words in a span (Stage). blocks: wrap each node's part in an indented block.
@@ -183,7 +184,7 @@ async function edit(){
   const hist = [];                 // earlier versions of the text and slides, for Undo
   document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2e"><nav class="cues tree" id="tree"></nav>
     <main class="pane" id="m"><div class="tools"><button type="button" class="btn small" id="det">Talk details</button><button type="button" class="btn small" id="undo" disabled title="Undo the last change">↶ Undo</button>
-      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button>
+      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button><button type="button" class="btn small aib" id="aisp" title="Spelling in the whole text and on every slide; you check each change">✨ Check spelling</button><button type="button" class="btn small" id="lis" title="The AI voice reads the talk from where you are; Next steps along">▶ Listen from here</button>
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main>
     <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div>
@@ -257,7 +258,9 @@ async function edit(){
   function nodeEdit(cur, done, canDel){ const dl = $("#ndlg");
     dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Outline</b></div><div class="row">${[1, 2, 3].concat(cur.lvl === 4 ? [4] : []).map(l => `<label class="chk"><input type="radio" name="nl" value="${l}"${l === cur.lvl ? " checked" : ""}> ${LV[l]}</label>`).join("")}</div>
       <label>Words (what you glance at while you speak)<input id="nx" autocomplete="off" value="${E(cur.text)}"></label>
+      ${cur.node ? `<div class="row ai2row"><span class="note">✨ For this ${E(LV[cur.node.lvl].toLowerCase())} and what's under it (about ${Math.max(1, Math.round(words(d.text.slice(cur.node.end, cur.node.last)) / 140 * 2) / 2)} min):</span><button type="button" class="btn small aib" data-nai="flow">✨ Grammar and flow</button><button type="button" class="btn small aib" data-nai="tight">✨ Tighten</button><button type="button" class="btn small aib" data-nai="slide">✨ Suggest a slide</button><button type="button" class="btn small aib" data-nai="cues">✨ Reading cues</button></div>` : ""}
       <div class="row"><span style="flex:1"></span>${canDel ? '<button class="btn small danger" type="button" id="ndel">Remove (keeps the text)</button>' : ""}<button class="btn small" type="button" id="ncan">Cancel</button><button class="btn small pri" type="submit">Save</button></div></form>`;
+    dl.querySelectorAll("[data-nai]").forEach(b => b.onclick = () => { dl.close(); nodeAI(cur.node, b.dataset.nai) });
     $("#ncan").onclick = () => dl.close(); if (canDel) $("#ndel").onclick = () => { dl.close(); done(null) };
     dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const v = {lvl: +dl.querySelector('[name="nl"]:checked').value, text: $("#nx").value.replace(/[\[\]\n]+/g, " ").replace(/\s+/g, " ").trim()}; dl.close(); if (v.text) done(v) };
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } $("#nx").focus() }
@@ -286,7 +289,7 @@ async function edit(){
     const fld = (f, lb, ta, ph) => ta ? `<label>${lb}<textarea class="auto" ${A(f)} placeholder="${E(ph || "")}">${E(o[f])}</textarea></label>` : `<label>${lb}<input ${A(f)} value="${E(o[f])}" placeholder="${E(ph || "")}"></label>`;
     let h = `<div class="ed"><div class="pgh"><b>${E(TYPES[o.type] || "Slide")}</b><button type="button" class="btn small pri" id="sdone">Done</button></div>
       <div class="row"><label style="flex:1 1 220px">Name (its tag in the text)<input id="sname" value="${E(o.name)}"></label><label style="flex:0 1 200px">Kind<select ${A("type")}>${Object.entries(TYPES).map(([t, n]) => `<option value="${t}"${t === (o.type || "image") ? " selected" : ""}>${E(n)}</option>`).join("")}</select></label></div>
-      <div class="prev" id="prev">${slideHTML(o, d)}</div>`;
+      <div class="prev" id="prev">${slideHTML(o, d)}</div>` + slideAIRow(o);
     const ty = o.type || "image";
     if (ty === "verse") h += fld("ref", "Reference") + fld("text", "Text (**bold**, __underline__)", true) + fld("version", "Version");
     else if (ty === "quote") h += fld("quote", "Quote", true) + fld("by", "Who said it");
@@ -296,7 +299,7 @@ async function edit(){
     if (ty === "image" || ty === "bulletsimg") h += `<div class="row"><span class="tag">Picture (no words in it)</span><label class="btn small">${o.image ? "Replace" : "Add"} picture<input type="file" accept="image/*" id="simg" hidden></label>${o.image ? '<button type="button" class="btn small" id="sdelimg">Remove picture</button>' : ""}<span class="note" id="smsg"></span></div>`;
     h += `<label class="chk"><input type="checkbox" ${A("keep")}${o.keep ? " checked" : ""}> Keep it up until another slide comes (even after its point ends)</label>
       <div class="row"><span class="note" style="flex:1">Used ${usesOf(o.name)}× in the text.</span><button type="button" class="btn small danger" id="sdel">Delete this slide</button></div></div>`;
-    dl.innerHTML = h; dl.querySelectorAll("textarea.auto").forEach(t => { t.style.height = t.scrollHeight + 4 + "px" });
+    dl.innerHTML = h; dl.dataset.si = i; dl.querySelectorAll("textarea.auto").forEach(t => { t.style.height = t.scrollHeight + 4 + "px" });
     const pv = () => { $("#prev").innerHTML = slideHTML(o, d) };
     dl.oninput = e => { const f = e.target.dataset.f; if (!f || e.target.type === "checkbox") return; o[f] = e.target.value; pv() };
     dl.onchange = e => { const el = e.target, f = el.dataset.f; if (el.id === "sname") { const nv = el.value.replace(/[\[\]\n]+/g, " ").trim(); if (!nv || nv === o.name) { el.value = o.name; return }
@@ -342,22 +345,25 @@ async function edit(){
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
   function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist() }
-  function step(i, quiet){ peek = null; k = Math.max(0, Math.min(S.length - 1, i)); redraw(); hl(quiet) }
+  function step(i, quiet, keep){ if (LS.on && !keep) stopListen(); peek = null; k = Math.max(0, Math.min(S.length - 1, i)); redraw(); hl(quiet) }
+  const stepTo = i => step(i, false, true);
   $("#en").onclick = () => { if (peek) { peek = null; side(); return } step(k + 1) }; $("#eb").onclick = () => { if (peek) { peek = null; side(); return } step(k - 1) };
   document.addEventListener("keydown", e => { if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable='true'],dialog")) return; if (["PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); $("#en").click() } else if (["PageUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); $("#eb").click() } });
   document.addEventListener("click", e => { const tg = e.target;
     const tn = tg.closest("#tree [data-n]"); if (tn) { const i = firstAt(S, P.nodes[+tn.dataset.n]); if (i >= 0) step(i); return }
-    const nd = tg.closest("#ftext .vchip.nd"); if (nd) { if (dragged) return; const v = nd.dataset.ref.match(/^#([1-4])\s*([\s\S]*)$/);
-      nodeEdit({lvl: +v[1], text: v[2] || ""}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text; d.text = richText(box()); changed(s); drawText() }, true); return }
+    const nd = tg.closest("#ftext .vchip.nd"); if (nd) { if (dragged) return; saveText(); const v = nd.dataset.ref.match(/^#([1-4])\s*([\s\S]*)$/), ni = [...box().querySelectorAll(".vchip.nd")].indexOf(nd);
+      nodeEdit({lvl: +v[1], text: v[2] || "", node: P.nodes[ni]}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text; d.text = richText(box()); changed(s); drawText() }, true); return }
     const sc = tg.closest("#ftext .vchip.sl"); if (sc) { if (dragged || sc.classList.contains("stop")) return; const nm = sc.dataset.ref; peek = peek === nm ? null : nm; side(); return }
     const pe = tg.closest("[data-edit]"); if (pe) { const i = d.slides.findIndex(x => x.name === pe.dataset.edit); if (i >= 0) slideEdit(i); return }
     const pi = tg.closest(".pi[data-si]"); if (pi) { slideEdit(+pi.dataset.si); return }
     const pr = tg.closest(".pi[data-step]"); if (pr) { step(+pr.dataset.step); return }
     const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); plist(); return } });
   $("#sadd").onclick = () => slideNew();
+  $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
-    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}</div>${f("bigIdea", "Big idea", true)}
+    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}</div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
+    $("#aikeys").onclick = () => { try { K().settings() } catch (e) { aiFail(e) } };
     dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } };
   // ---- ✨ Outline from the text ----
@@ -383,6 +389,142 @@ Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.s
     const ok = $("#olok"); ok.disabled = false; ok.onclick = () => { let sc = clean, shift = 0; for (const o of out) { const at = o.at + shift, tg = "[#" + o.lvl + " " + o.text + "]", pre = at > 0 && !/[\n ]/.test(sc[at - 1]) ? " " : "", nl = o.lvl <= 2 ? "\n" : " ";
         const before = o.lvl <= 2 && at > 0 && sc[at - 1] !== "\n" ? "\n" : pre; sc = sc.slice(0, at) + before + tg + nl + sc.slice(at).replace(/^ /, ""); shift += before.length + tg.length + nl.length }
       const s = snapshot(); d.text = sc; dl.close(); changed(s); drawText(); step(0) } }
+  // =====================================================================
+  // ✨ AI, where it acts: on a slide (picture, verse text, words, spelling), on an outline tag (grammar and flow,
+  // tighten, a slide for it, reading cues), on the whole talk (spelling of the text and every slide), and Listen from here.
+  // The building blocks (keys, OpenAI, ElevenLabs, ESV) come from ai.js as TALKAI.kit.
+  // =====================================================================
+  const K = () => { const k = window.TALKAI && TALKAI.kit; if (!k) throw new Error("The AI tools didn't load. Reload the page."); return k };
+  const aiFail = e => { try { K().fail(e) } catch (_) { alert((e && e.message) || "Something went wrong") } };
+  const RE_TAG = /\[[^\[\]\n]{1,300}\]/g, isCue = t => !!CUETAG[t.slice(1, -1).trim().toLowerCase()];
+  const plain = x => (x || "").replace(RE_TAG, " ").replace(/\s+/g, " ").trim();
+  const words = x => plain(x).split(" ").filter(Boolean).length;
+  const brief = () => [`Talk: ${d.title}`, d.audience ? "Audience: " + d.audience : "", d.bigIdea ? "Big idea: " + d.bigIdea : "", "Outline: " + P.nodes.filter(n => n.lvl <= 2).map(n => n.lab + " " + n.text).join("; ")].filter(Boolean).join("\n");
+  const around = (at, n) => plain((d.text || "").slice(Math.max(0, at - n), at + n));
+  const nodeAt = at => { let r = null; for (const n of P.nodes) if (n.at <= at) r = n; return r };
+  const firstUse = nm => P.toks.find(x => x.k === "slide" && x.slide.name === nm);
+  const RULES = "Keep every [tag] (anything in square brackets) exactly as written and in the same place in the sentence. Spoken style: keep the speaker's voice, wording and personality.";
+  // One walk-through for any list of suggested changes: Accept, Reject, Accept all. done(accepted) applies them.
+  function review(title, changes, done){ const k0 = K(); if (!changes.length) { k0.toast("No changes needed ✓"); return } let i = 0;
+    const dl = k0.dlg("ai2rev", `<div class="ed"><div class="pgh"><b id="arh"></b><button type="button" class="btn small" data-x>Close</button></div><div id="arb"></div>
+      <div class="row"><button type="button" class="btn small" id="arback">← Back</button><span style="flex:1"></span><button type="button" class="btn small" id="arrej">Reject</button><button type="button" class="btn small pri" id="aracc">Accept</button><button type="button" class="btn small" id="arall">Accept all the rest</button></div></div>`, "wide");
+    const tg = h => h.replace(/\[([^\[\]\n]{1,300})\]/g, (a, r) => `<span class="aitag">${/^#[1-4]/.test(r) ? r.replace(/^#(\d)\s*/, "$1 ") : r}</span>`);
+    const draw = () => { if (i >= changes.length) { dl.close(); return } const c = changes[i];
+      $("#arh").textContent = `${title} · ${i + 1} of ${changes.length}${c.label ? " · " + c.label : ""}`;
+      $("#arb").innerHTML = (c.pre ? `<p class="aictx">${tg(E(c.pre))}</p>` : "") + `<p class="aichg">${tg(c.after ? k0.wdiff(c.before, c.after) : `<del>${E(c.before)}</del>`)}</p>` + (c.post ? `<p class="aictx">${tg(E(c.post))}</p>` : "") + (c.why ? `<p class="note">${E(c.why)}</p>` : "") + (c.ok != null ? `<p class="note">${c.ok ? "Accepted ✓" : "Rejected"}</p>` : "");
+      $("#arback").disabled = i === 0 };
+    const fin = () => { const acc = changes.filter(c => c.ok); if (acc.length) { done(acc); k0.toast(`${acc.length} change${acc.length > 1 ? "s" : ""} put in ✓`) } };
+    dl.querySelector("[data-x]").onclick = () => dl.close(); $("#aracc").onclick = () => { changes[i].ok = true; i++; draw() }; $("#arrej").onclick = () => { changes[i].ok = false; i++; draw() };
+    $("#arback").onclick = () => { if (i > 0) { i--; draw() } }; $("#arall").onclick = () => { for (; i < changes.length; i++) if (changes[i].ok == null) changes[i].ok = true; dl.close() };
+    dl.addEventListener("close", fin, {once: true}); draw(); k0.show(dl) }
+  // A busy note while the AI works.
+  function busy(label){ const k0 = K(), dl = k0.dlg("ai2busy", `<div class="ed"><p class="aimsg" id="abm"></p></div>`); const stop = k0.ticker($("#abm"), label); k0.show(dl); return () => { stop(); dl.close() } }
+  // Line by line changes to the text from a to b (lines with words in them), checked so the tags stay as they were.
+  async function lineEdit(a, b, mode, opt = {}){ const t0 = d.text || "", seg = t0.slice(a, b), L = seg.split("\n"), items = [];
+    L.forEach((x, i) => { if (words(x) >= 3) items.push({i, text: x}) }); if (!items.length) { K().toast("There's no text there yet."); return }
+    const tagsKept = (x, y) => { const f = s => (s.match(RE_TAG) || []).filter(q => mode !== "cues" || !isCue(q)).join("|"); return f(x) === f(y) };
+    const ask = {
+      grammar: `Fix spelling, grammar and punctuation, and smooth the flow where a sentence is awkward or a transition is missing. Don't rewrite lines that are fine. ${RULES}`,
+      spelling: `Fix only spelling mistakes, typos and clearly missing or doubled words. Do not change style, grammar choices, punctuation style or wording otherwise. ${RULES}`,
+      tighten: `The speaker wants this part to take about ${opt.minutes} minutes when spoken (about ${opt.target} words; it is ${opt.now} words now). Tighten it: cut repetition and side remarks, shorten long lines, and you may drop a whole line (text "") if it holds no [tag]. Keep the stories, the key ideas and his voice. ${RULES}`,
+      cues: `Add reading cue tags where a good speaker would change delivery: ${Object.values(CUETAG).map(c => "[" + c.ref + "]").join(" ")}. A cue lasts until [Normal]. Use them sparingly, a few per minute at most, mostly [Pause] before a key line and [Slow] for a line that should land. Never change, add or remove any words or other tags.`}[mode];
+    const batches = []; let cur = [], len = 0; for (const it of items) { if (len > 5000 && cur.length) { batches.push(cur); cur = []; len = 0 } cur.push(it); len += it.text.length } if (cur.length) batches.push(cur);
+    const stop = busy(mode === "spelling" ? "Checking the spelling…" : mode === "tighten" ? "Tightening…" : mode === "cues" ? "Adding reading cues…" : "Checking grammar and flow…");
+    const out = []; try { let i = 0; await Promise.all(Array.from({length: Math.min(4, batches.length)}, async () => { while (i < batches.length) { const bt = batches[i++];
+        const j = await K().chat(`You help a Christian ministry leader polish the full text of a talk he gives out loud. ${ask}\nReturn JSON {"changes": [{"i": line number, "text": "the whole new line", "why": "a few words"}]} with only the lines you changed.`,
+          `${brief()}\n\nLines (JSON):\n${JSON.stringify(bt)}`, {effort: mode === "spelling" ? "low" : "medium"});
+        for (const c of (j.changes || [])) { const src = bt.find(x => x.i === +c.i); if (!src) continue; const after = String(c.text == null ? "" : c.text).replace(/\n+/g, " ");
+          if (after === src.text || !tagsKept(src.text, after)) continue; if (mode === "cues" && plain(after) !== plain(src.text)) continue; if (!after.trim() && mode !== "tighten") continue;
+          out.push({i: src.i, before: src.text, after, why: c.why || "", label: (nodeAt(a + seg.split("\n").slice(0, src.i).join("\n").length) || {}).lab || ""}) } } })) }
+    catch (e) { stop(); aiFail(e); return } stop();
+    out.sort((x, y) => x.i - y.i); out.forEach(c => { let p = c.i - 1; while (p >= 0 && !L[p].trim()) p--; let n = c.i + 1; while (n < L.length && !L[n].trim()) n++; c.pre = p >= 0 ? L[p] : ""; c.post = n < L.length ? L[n] : "" });
+    if (opt.extra) out.push(...opt.extra);
+    review({grammar: "✨ Grammar and flow", spelling: "✨ Spelling", tighten: "✨ Tighten", cues: "✨ Reading cues"}[mode], out, acc => {
+      const s = snapshot(), lines = acc.filter(c => c.i != null), others = acc.filter(c => c.apply);
+      if (lines.length) { const now = d.text || "", at = now.slice(a, b) === seg ? a : now.indexOf(seg); if (at < 0) { K().toast("The text changed meanwhile, so the text changes weren't put in.", true) }
+        else { const M = seg.split("\n"); for (const c of lines) if (M[c.i] === c.before) M[c.i] = c.after; let ns = M.join("\n"); if (mode === "tighten") ns = ns.replace(/\n{3,}/g, "\n\n"); d.text = now.slice(0, at) + ns + now.slice(at + seg.length) } }
+      others.forEach(c => c.apply()); changed(s); drawText() }) }
+  // ---- on an outline tag ----
+  async function tighten(n){ const now = words(d.text.slice(n.end, n.last)), m = prompt(`${n.lab} ${n.text} is about ${now} words, roughly ${Math.max(1, Math.round(now / 140 * 2) / 2)} minutes. How many minutes should it be?`, String(Math.max(.5, Math.round(now / 140 * 0.7 * 2) / 2)));
+    if (!m || !(+m > 0)) return; await lineEdit(n.end, n.last, "tighten", {minutes: +m, target: Math.round(+m * 140), now}) }
+  async function slideFor(n){ const seg = d.text.slice(n.end, n.last); if (words(seg) < 20) { K().toast("Add some text to this part first."); return } const stop = busy("Thinking of a slide…"); let j;
+    try { j = await K().chat(`You design one slide for a part of a talk by a Christian ministry leader. Slides show a few strong words, never the script. Pick the best kind: "image" (a picture with a short title and optional subtitle), "quote" (a striking line someone said), "bullets" (2-4 very short lines), or "verse" (only if a Bible verse is read there).
+Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse", "eyebrow": "", "slideTitle": "", "slide": "subtitle", "bullets": "lines separated by \\n", "quote": "", "by": "", "ref": "verse reference", "start": "the first 6-10 words of the sentence where the slide should come up, copied exactly from the text"}`,
+      `${brief()}\nExisting slide names: ${d.slides.map(s => s.name).join(", ")}\n\nThe part (${n.lab} ${n.text}):\n${plain(seg)}`, {effort: "low"}) } catch (e) { stop(); aiFail(e); return } stop();
+    let nm = String(j.name || "Slide").replace(/[\[\]\n]+/g, " ").trim() || "Slide", q = 2; const base = nm; while (d.slides.some(s => s.name === nm) || CUETAG[nm.toLowerCase()] || /^stop$/i.test(nm)) nm = base + " " + q++;
+    const ty = TYPES[j.type] ? j.type : "image", o = {name: nm, type: ty};
+    if (ty === "verse") Object.assign(o, {ref: j.ref || "", text: "", version: "ESV"}); else if (ty === "quote") Object.assign(o, {quote: j.quote || "", by: j.by || ""}); else Object.assign(o, {eyebrow: j.eyebrow || "", slideTitle: j.slideTitle || "", slide: j.slide || "", bullets: j.bullets || "", layout: "left", image: ""});
+    if (ty === "verse" && o.ref) { try { o.text = await K().esvText(o.ref) || "" } catch (e) {} }
+    // where it goes: the start of the sentence the AI named, else right after the tag
+    let at = n.end; const w = String(j.start || "").replace(/\s+/g, " ").trim().toLowerCase().split(" ").slice(0, 5).join(" ");
+    if (w.length > 6) { let x = "", map = []; for (let i = n.end; i < n.last; i++) { const c = d.text[i]; if (c === "[") { const e = d.text.indexOf("]", i); if (e > 0) { i = e; continue } } const ch = /\s/.test(c) ? " " : c.toLowerCase(); if (ch === " " && x.endsWith(" ")) continue; x += ch; map.push(i) }
+      const f = x.indexOf(w); if (f >= 0) at = map[f] }
+    const s = snapshot(); d.slides.push(o); d.text = d.text.slice(0, at) + "[" + nm + "]" + (at === n.end ? "\n" : " ") + d.text.slice(at); changed(s); drawText(); slideEdit(d.slides.length - 1) }
+  function nodeAI(n, act){ saveText(); n = P.nodes.find(x => x.at === n.at) || n; const run = {flow: () => lineEdit(n.end, n.last, "grammar"), tight: () => tighten(n), slide: () => slideFor(n), cues: () => lineEdit(n.end, n.last, "cues")}[act]; if (run) Promise.resolve(run()).catch(aiFail) }
+  // ---- on the whole talk ----
+  const SLF = {image: ["eyebrow", "slideTitle", "slide"], bulletsimg: ["slideTitle", "bullets"], bullets: ["slideTitle", "bullets"], plain: ["eyebrow", "slideTitle", "slide"], quote: ["quote", "by"]};
+  async function slideSpell(list){ const items = []; list.forEach(o => (SLF[o.type || "image"] || []).forEach(f => { if ((o[f] || "").trim()) items.push({id: d.slides.indexOf(o) + "." + f, text: o[f]}) }));
+    if (!items.length) return []; const j = await K().chat(`Fix only spelling mistakes and typos in these slide texts. Don't change wording, style or line breaks otherwise. Return JSON {"changes": [{"id": "...", "text": "..."}]} with only the ones you changed.`, JSON.stringify(items), {effort: "low"});
+    return (j.changes || []).map(c => { const it = items.find(x => x.id === c.id); if (!it || !c.text || c.text === it.text) return null; const [si, f] = it.id.split("."), o = d.slides[+si];
+      return {before: it.text, after: String(c.text), label: "Slide " + o.name, apply: () => { if (o[f] === it.text) o[f] = String(c.text) }} }).filter(Boolean) }
+  async function spellAll(){ saveText(); let extra = []; const stop = busy("Checking the slides…"); try { extra = await slideSpell(d.slides) } catch (e) { stop(); aiFail(e); return } stop(); await lineEdit(0, (d.text || "").length, "spelling", {extra}) }
+  // ---- on a slide ----
+  function slideAIRow(o){ const ty = o.type || "image", b = (a, t, tip) => `<button type="button" class="btn small aib" data-ai2="${a}" title="${E(tip || "")}">${t}</button>`;
+    return `<div class="row ai2row">${ty === "verse" ? b("verse", "✨ Look up the verse", "Fills the text for the reference and version; you can still change it") : ""}${ty === "image" || ty === "bulletsimg" ? b("pic", o.image ? "✨ Change the picture" : "✨ Create a picture") : ""}${SLF[ty] ? b("words", "✨ Suggest the words", "From the text where this slide is used") + b("spell", "✨ Check spelling") : ""}</div>` }
+  async function slideAI(i, act){ const o = d.slides[i]; if (!o) return; const k0 = K(), redo = () => slideEdit(i), use = firstUse(o.name), ctx = use ? around(use.at, 1400) : "", nd = use ? use.node : null;
+    if (act === "verse") { const ref = (o.ref || "").trim(); if (!ref) { k0.toast("Type the reference first"); return } const ver = (o.version || "ESV").trim(); const stop = busy("Looking up " + ref + "…");
+      try { let t = /^esv/i.test(ver) ? await k0.esvText(ref) : null, v = ver; if (!t) { const j = await k0.chat(`Quote the Bible passage word for word in the ${ver || "ESV"} translation, plain text, no verse numbers or headings. Return JSON {"text": "..."}.`, ref, {effort: "low"}); t = j.text; v = (ver || "ESV").replace(/\s*\(check\)$/i, "") + " (check)" }
+        if (t) { const s = snapshot(); o.text = String(t).trim(); o.version = v; changed(s); redo() } } catch (e) { aiFail(e) } finally { stop() } return }
+    if (act === "words") { const fl = SLF[o.type || "image"]; const stop = busy("Writing the slide…");
+      try { const j = await k0.chat(`You write the words on one presentation slide for a talk by a Christian ministry leader. Slides show a few strong words, never the script: a title of 2-7 words, an optional short subtitle, an optional small line on top; bullets are 2-4 lines of 1-5 words; a quote is one striking sentence and who said it. Return JSON with only these fields: ${fl.join(", ")}.`,
+          `${brief()}\nSlide name: ${o.name}\nKind: ${TYPES[o.type || "image"]}\nNow: ${JSON.stringify(Object.fromEntries(fl.map(f => [f, o[f] || ""])))}\nThe point: ${nd ? nd.full + " " + nd.text : "(not in the text yet)"}\nThe words around where it comes up:\n${ctx || "(not used in the text yet)"}`, {effort: "low"});
+        const s = snapshot(); fl.forEach(f => { if (j[f] != null) o[f] = Array.isArray(j[f]) ? j[f].join("\n") : String(j[f]) }); changed(s); redo() } catch (e) { aiFail(e) } finally { stop() } return }
+    if (act === "spell") { const stop = busy("Checking…"); let ch; try { ch = await slideSpell([o]) } catch (e) { stop(); aiFail(e); return } stop(); review("✨ Spelling · " + o.name, ch, acc => { const s = snapshot(); acc.forEach(c => c.apply()); changed(s); redo() }); return }
+    if (act === "pic") picture(i, ctx, nd) }
+  function picture(i, ctx, nd){ const k0 = K(), o = d.slides[i]; let results = [];
+    const dl = k0.dlg("ai2pic", `<div class="ed"><div class="pgh"><b>✨ Picture · ${E(o.name)}</b><button type="button" class="btn small" data-x>Close</button></div>
+      <div class="aiimg"><div class="aicur">${o.image ? `<img alt="Current picture" src="${E(LOCALIMG[o.image] || o.image)}"><label class="chk"><input type="checkbox" id="a2base" checked> Start from this picture</label>` : '<div class="aiempty">No picture yet</div>'}</div>
+      <div class="aiask"><label>What do you want? (or leave it empty)<textarea id="a2want" rows="3" placeholder="e.g. A potter's hands shaping clay, warm light. Or: same scene at sunrise."></textarea></label>
+      <div class="row"><button type="button" class="btn small pri" id="a2go">Create 2 pictures</button><span class="aimsg" id="a2m"></span></div></div></div>
+      <div id="a2res" hidden><div class="aires" id="a2r"></div><label>Prompt used (change it and try again)<textarea id="a2p" rows="4"></textarea></label><div class="row"><span style="flex:1"></span><button type="button" class="btn small" id="a2again">Try again with this prompt</button></div></div>
+      ${o.prevImage ? `<div class="row"><button type="button" class="btn small" id="a2undo">↶ Go back to the previous picture</button></div>` : ""}</div>`, "wide");
+    dl.querySelector("[data-x]").onclick = () => dl.close();
+    const base = () => !!($("#a2base") && $("#a2base").checked && o.image);
+    async function make(pr){ const b = $("#a2go"), st = k0.ticker($("#a2m"), pr ? "Making 2 pictures (about a minute)…" : "Writing the prompt…"); b.disabled = true;
+      try { if (!pr) { const sty = k0.styleOf(d); const j = await k0.chat(`You write prompts for an image model. ${k0.PIC_RULES}\nReturn JSON {"prompt": "..."}: one rich, concrete prompt of 80-160 words: scene, subject, setting, light, mood and composition, grounded in the meaning of this part of the talk. If the request is short, fill in good choices; never contradict it.`,
+            `Speaker's request: ${$("#a2want").value.trim() || "(none; choose the best picture for this slide)"}\nSlide text (goes on top, do not draw it): ${[o.eyebrow, o.slideTitle, o.slide, o.bullets].filter(Boolean).join(" / ") || "(none)"}\n${k0.placeNote(o)}\n${sty ? "The talk's picture style (follow it): " + sty + "\n" : ""}${base() ? "The slide's current picture is sent with the prompt: edit it, keep what the speaker didn't ask to change.\n" : ""}${o.imagePrompt ? "Prompt used for the current picture: " + o.imagePrompt + "\n" : ""}The point: ${nd ? nd.full + " " + nd.text : ""}\nThe words around the slide:\n${ctx || "(not used in the text yet)"}\n\n${brief()}`, {effort: "low"});
+          pr = String(j.prompt || "").trim(); $("#a2p").value = pr; st(); $("#a2m").textContent = ""; return make(pr) }
+        const imgs = []; if (base()) { const bl = await k0.picBlob(o.image); if (bl) imgs.push(bl) } const full = pr + "\n\n" + k0.PIC_RULES;
+        results = (await Promise.all([k0.image(full, imgs, 1), k0.image(full, imgs, 1)])).flat();
+        $("#a2r").innerHTML = results.map((u, q) => `<button type="button" data-pick="${q}"><img alt="Option ${q + 1}" src="${u}"><span>Use this one</span></button>`).join(""); $("#a2res").hidden = false }
+      catch (e) { aiFail(e) } finally { st(); b.disabled = false; $("#a2m").textContent = "" } }
+    $("#a2go").onclick = () => make(null); $("#a2again").onclick = () => make($("#a2p").value.trim());
+    $("#a2r").onclick = async e => { const b = e.target.closest("[data-pick]"); if (!b) return; b.disabled = true; b.querySelector("span").textContent = "Saving…";
+      try { const path = await k0.savePic("v2", results[+b.dataset.pick]); const s = snapshot(); if (o.image) o.prevImage = o.image; o.imagePrompt = $("#a2p").value.trim(); o.image = path; changed(s); dl.close(); slideEdit(i); k0.toast("Picture saved to the slide ✓") }
+      catch (err) { b.disabled = false; b.querySelector("span").textContent = "Use this one"; aiFail(err) } };
+    if ($("#a2undo")) $("#a2undo").onclick = () => { const s = snapshot(); o.image = o.prevImage; o.prevImage = ""; changed(s); dl.close(); slideEdit(i) };
+    k0.show(dl); $("#a2want").focus() }
+  document.addEventListener("click", e => { const b = e.target.closest("[data-ai2]"); if (!b) return; const i = +($("#sdlg").dataset.si); slideAI(i, b.dataset.ai2).catch(aiFail) });
+  // ---- Listen from here: reads each stretch of text in the talk's voice and steps along as it goes ----
+  const LS = {on: false, run: 0, au: null, paused: false};
+  function partsOf(st, mode){ const out = [], t = d.text.slice(st.a, st.b); let last = 0;
+    const say = x => { const s = x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim(); if (s) out.push({say: s, vs: K().voiceOf(mode)}) };
+    for (const m of t.matchAll(RE_TAG)) { say(t.slice(last, m.index)); last = m.index + m[0].length; const c = CUETAG[m[0].slice(1, -1).trim().toLowerCase()]; if (!c) continue; const q = c.cue;
+      if (q === "pause" || q === "long pause") out.push({pause: q === "pause" ? 1.2 : 2.5}); else if (q === "normal") { mode.speed = ""; mode.tone = "" } else if (q === "slow" || q === "fast") mode.speed = q; else mode.tone = q }
+    say(t.slice(last)); return out }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  function lbar(){ let el = $("#lbar"); if (!LS.on) { if (el) el.remove(); return } if (!el) { el = document.createElement("div"); el.id = "lbar"; document.body.appendChild(el);
+      el.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.l === "stop") stopListen(); else { LS.paused = !LS.paused; if (LS.au) LS.paused ? LS.au.pause() : LS.au.play(); lbar() } } }
+    el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><button type="button" class="btn small" data-l="stop">■ Stop</button>` }
+  function stopListen(){ LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
+  async function listen(){ if (LS.on) { stopListen(); return } saveText(); const k0 = K(); k0.setVoice(d.voice || ""); LS.on = true; LS.paused = false; const run = ++LS.run, mode = {speed: "", tone: ""};
+    const ctxOf = (i, dir) => { const L = []; for (let q = i + dir; q >= 0 && q < S.length && L.join(" ").length < 400; q += dir) if (S[q].a != null) L[dir < 0 ? "unshift" : "push"](plain(d.text.slice(S[q].a, S[q].b))); return L.join("\n") };
+    try { for (let i = k; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { await wait(1800); continue }
+        const parts = partsOf(st, mode), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
+        const jobs = parts.map((p, q) => p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
+        for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue }
+          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.onended = ok; au.onerror = ok; if (!LS.paused) au.play().catch(ok) }) } }
+      if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
   drawText(); redraw(); hl(true)
 }
 ({edit2: edit, present2: present, slides2: slides}[MODE] || (() => {}))();

@@ -414,7 +414,8 @@ function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.
 const cutAt = (x, cut) => ({...x, say: x.say.slice(cut), map: x.map.slice(cut), prev: ((x.prev ? x.prev + "\n" : "") + x.say.slice(0, cut)).slice(-500)});
 // Speech plus the time each character is spoken (ElevenLabs "with timestamps"), so the word being read can light up.
 function tts(text, vs, ctx){ const k = text + "|" + JSON.stringify(vs || {}); if (!AUD[k]) { AUD[k] = tts0(text, vs, ctx); AUD[k].catch(() => delete AUD[k]) } return AUD[k] }
-const talkVoice = () => { try { const d = T.ed ? T.ed.D() : T.D(); return (d && d.voice) || "" } catch (e) { return "" } };
+let VOICE2 = "";   // the new version sets the talk's voice here
+const talkVoice = () => { if (VOICE2) return VOICE2; try { const d = T.ed ? T.ed.D() : T.D(); return (d && d.voice) || "" } catch (e) { return "" } };
 async function voiceId(key){ const tv = talkVoice(); if (tv) return tv; if (KEYS.voice) return KEYS.voice; let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {}
   KEYS.voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; saveLocal(); return KEYS.voice }
 async function tts0(text, vs, ctx){ const key = await need("eleven"), voice = await voiceId(key);
@@ -650,7 +651,9 @@ window.TALKAI = {html: {
   navsec: () => ` <button type="button" class="btn small aib" data-act="aisec">✨ With AI</button>`,
   split: () => ` <button type="button" class="btn small aib" data-act="aisplit" title="The AI suggests key points from this text and where each starts; you check them first">✨ Key points from the text</button>`,
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
-}, chat, image, settings, outline};
+}, chat, image, settings, outline,
+  // building blocks for the new version (app2.js)
+  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, wdiff, dlg, show, toast, ticker, fail, tts, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }}};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
   m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="narr">Make the narrated version (share link)</button><button type="button" data-a="split">Key points from the text (points that have none)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";

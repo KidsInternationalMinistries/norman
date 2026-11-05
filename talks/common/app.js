@@ -973,8 +973,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=50"><link rel="stylesheet" href="../common/countdown.css?v=50"><link rel="stylesheet" href="../common/gate.css?v=50"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=50"></script><script src="../common/countdown.js?v=50"></script><script src="../common/gate.js?v=50"></script><script src="../common/app.js?v=50"></script>${mode === "edit" ? '<script src="../common/ai.js?v=50"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=51"><link rel="stylesheet" href="../common/countdown.css?v=51"><link rel="stylesheet" href="../common/gate.css?v=51"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=51"></script><script src="../common/countdown.js?v=51"></script><script src="../common/gate.js?v=51"></script><script src="../common/app.js?v=51"></script>${mode === "edit" ? '<script src="../common/ai.js?v=51"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",

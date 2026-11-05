@@ -99,3 +99,8 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 .pgrid .pt .th .slide{border-radius:5px}
 .pgrid .pt b{font-size:13px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pgrid .pt.new .th{display:grid;place-items:center;border:2px dashed var(--line);font-size:34px;color:var(--muted)}
+/* ✨ AI in the new version */
+.ai2row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.ai2row .note{flex-basis:100%}
+#lbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;display:flex;gap:10px;align-items:center;background:var(--ink);color:var(--bg);padding:8px 12px;border-radius:999px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-weight:700}
+.tn .tm{margin-left:auto;font-size:11px;color:var(--muted);font-weight:500;padding-left:6px}
