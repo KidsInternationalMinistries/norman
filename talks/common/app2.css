@@ -119,3 +119,7 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 #selai{position:absolute;z-index:60;padding:2px 8px;box-shadow:0 3px 10px rgba(0,0,0,.2);background:var(--bg)}
 #selm{max-width:250px}
 #selm .cuev{font-weight:600}
+.vpick{display:grid;gap:6px}
+.vpick button{display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+.vpick button:hover{border-color:var(--accent)}
+.vpick button span{color:var(--muted);font-size:14px}
