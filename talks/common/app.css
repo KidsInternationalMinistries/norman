@@ -255,32 +255,16 @@ body[data-mode="edit"] .stagev .scr-wrap{position:sticky;top:var(--stk,150px);al
 .vtag.pk,.vchip.pk{outline:3px solid #E9B949;outline-offset:2px}
 .vmenu button.new{color:var(--accent)}
 .rich .vchip{cursor:pointer}
-/* Key-point cards: each key point with the words to say for it */
-.cards{display:grid;gap:10px}
-.bcard{border:1px solid var(--line);border-radius:10px;padding:6px;background:var(--surface);position:relative}
-.bcard.cur{border-color:#E9B949;box-shadow:0 0 0 2px color-mix(in srgb,#E9B949 45%,transparent)}
-.ed.stagev .bcard .rich{min-height:0}
-.ed.stagev .bcard .rich.kp{font-size:19px;font-weight:600;border-radius:7px;padding:6px 10px}
-.ed.stagev .bcard .rich.big{font-size:19px;padding:6px 10px}
-.ed.stagev .bcard .rich.big:empty{min-height:1.6em}
-.bbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;opacity:0;transition:opacity .15s;margin-top:2px}
-.bcard:hover .bbar,.bcard:focus-within .bbar,.bbar.ask{opacity:1}
-.bbar .btn{padding:3px 10px;font-size:13px}
-body[data-mode="edit"] .ed .lcol{padding-bottom:70vh}
-/* Stage: key points (left), the words for each (middle), slide (right) */
-.grid.g3{grid-template-columns:minmax(0,1.15fr) minmax(0,2fr) minmax(0,1fr)}
-.grid.g3.notext{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
-body[data-mode="present"] .grid.g3>div:first-child{padding-bottom:0}
-body[data-mode="present"] .grid.g3.notext>div:first-child{padding-bottom:100vh}
-.grid.g3:not(.notext)>.kcol{position:sticky;top:var(--stk);max-height:calc(100vh - var(--stk) - 96px);overflow:auto}
-.grid.g3>.tcol{padding-bottom:100vh}
-.kpl{list-style:disc}
-.kpl li{cursor:pointer;border-radius:8px;padding:2px 8px;margin:2px 0 2px -8px}
-.kpl li.cur{background:color-mix(in srgb,#E9B949 30%,transparent)}
-.kpl li.intro{list-style:none;font-style:italic;color:var(--muted)}
-.tcol .beat{padding:4px 10px;border-left:3px solid transparent;margin:0 0 8px -13px;border-radius:0 8px 8px 0}
-.tcol .beat.cur{border-left-color:#E9B949;background:color-mix(in srgb,#E9B949 10%,transparent)}
-.tcol .beat .bk{font:700 12px/1.4 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:6px}
-.tcol .beat .script{margin:4px 0 6px}
 .slide.quote .vt{font-style:italic}
-@media (max-width:820px){.grid.g3,.grid.g3.notext{grid-template-columns:1fr}.grid.g3>.kcol{position:static;max-height:none}}
+/* Key points linked to a spot in the full text: ↓ at the start of the key point; Next scrolls the text there */
+body[data-mode="present"] .kpbox{position:sticky;top:calc(var(--stk) - 14px);z-index:3;background:var(--bg);max-height:46vh;overflow:auto;padding:14px 0 10px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.kpbox ul.kp li{border-radius:8px;padding:1px 8px;margin:2px 0 2px -8px;cursor:pointer}
+.kpbox ul.kp li.cur{background:color-mix(in srgb,#E9B949 30%,transparent)}
+.aglyph{display:inline-block;color:#b7860b;font-weight:800;margin-right:6px}
+.script .anc{display:inline-block;width:0;height:1em;border-left:3px solid transparent;margin:0 3px;vertical-align:-2px}
+.script .anc.on{border-left-color:#E9B949}
+.vchip.anc{border-style:solid;border-color:#b7860b;color:#b7860b;padding:0 7px}
+.rich.big .vchip.anc{border-style:solid;border-color:#b7860b;color:#b7860b;background:color-mix(in srgb,#E9B949 12%,transparent)}
+.rich .vchip.anc.on{background:#E9B949;color:#000}
+.rich.big .vchip.anc.orphan{border-color:#c0392b;color:#c0392b;text-decoration:line-through}
+.vmenu button.kpl{color:#8a6408}
