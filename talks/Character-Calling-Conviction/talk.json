@@ -223,6 +223,19 @@
      "seconds": 2
     },
     {
+     "id": "pmw3b740in74",
+     "cue": "New point",
+     "eyebrow": "",
+     "slideTitle": "",
+     "slide": "",
+     "layout": "left",
+     "image": "",
+     "keyPoints": [],
+     "verses": [],
+     "script": "",
+     "scriptDraft": false
+    },
+    {
      "id": "p2c",
      "cue": "Don't expect different",
      "eyebrow": "",
@@ -263,19 +276,6 @@
      "sbY": 53.4,
      "sbW": 56,
      "seconds": 1
-    },
-    {
-     "id": "pmw3b740in74",
-     "cue": "New point",
-     "eyebrow": "",
-     "slideTitle": "",
-     "slide": "",
-     "layout": "left",
-     "image": "",
-     "keyPoints": [],
-     "verses": [],
-     "script": "",
-     "scriptDraft": false
     },
     {
      "id": "p2d",
