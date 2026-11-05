@@ -30,8 +30,11 @@ function parse(d){ const t = d.text || "", toks = [], nodes = [], cnt = [0, 0, 0
       n.full = lvl <= 2 ? lab : (stack.find(x => x.lvl === 2) ? stack.find(x => x.lvl === 2).lab + " · " : "") + lab;
       nodes.push(n); stack.push(n); toks.push({k: "node", node: n, at, end, ref: r}); continue }
     const cue = CUETAG[r.toLowerCase()]; if (cue) { toks.push({k: "cue", cue, at, end, ref: r}); continue }
+    const cl = r[0] === "/" && CUETAG[r.slice(1).trim().toLowerCase()]; if (cl) { toks.push({k: "cue", cue: cl, close: true, at, end, ref: r}); continue }
     const s = r.toLowerCase() === "stop" ? STOP : (d.slides || []).find(x => x && x.name && x.name.trim() === r);
     if (s) toks.push({k: "slide", slide: s, at, end, node: nodes[nodes.length - 1] || null, ref: r}) }
+  // a voice cue with its end tag ([Excited]…[/Excited]) covers the words between them
+  toks.forEach((x, i) => { if (x.k !== "cue" || x.close) return; for (let q = i + 1; q < toks.length; q++) { const y = toks[q]; if (y.k === "cue" && y.cue === x.cue) { if (y.close && y.pairOf == null) { x.pair = q; y.pairOf = i } break } } });
   nodes.forEach((n, i) => { n.stop = i + 1 < nodes.length ? nodes[i + 1].at : t.length;      // its own words end at the next tag of any level
     let k = i + 1; while (k < nodes.length && nodes[k].lvl > n.lvl) k++; n.last = k < nodes.length ? nodes[k].at : t.length });   // its whole branch ends at the next one at its level or higher
   return {toks, nodes, t} }
@@ -103,15 +106,23 @@ function textHTML(d, P, inEdit, S, blocks){ const t = P.t; let h = "", pos = 0, 
   const tok = x => { const r = x.ref;
     if (x.k === "node") { const n = x.node; return inEdit ? `<span class="vchip nd l${n.lvl}" contenteditable="false" data-ref="${E(r)}" title="${E(ndTitle(n))}. Click to change it, drag to move it">${ndInner(n)}</span>`
       : `<span class="bmark l${n.lvl}" data-n="${n.j}" title="${E(ndTitle(n))}">${n.lvl === 1 ? E(n.lab + " " + n.text) : E(n.lab)}</span>` }
-    if (x.k === "cue") return inEdit ? `<span class="vchip cue cue-${x.cue.cue.replace(" ", "")}" contenteditable="false" data-ref="${E(r)}">${E(x.cue.icon + " " + x.cue.ref)}</span>` : `<span class="cuehint cue cue-${x.cue.cue.replace(" ", "")}">${E(x.cue.icon + " " + x.cue.ref)}</span>`;
+    if (x.k === "cue") { const cc = "cue-" + x.cue.cue.replace(" ", ""); if (x.close) { vz = null; return inEdit ? `<span class="vchip cue end ${cc}" contenteditable="false" data-ref="${E(r)}" title="End of ${E(x.cue.ref)}"></span>` : "" }
+      if (x.pair != null) vz = cc; const ranged = x.pair != null && !/pause/.test(x.cue.cue);
+      return inEdit ? `<span class="vchip cue ${cc}" contenteditable="false" data-ref="${E(r)}" title="${ranged ? E(x.cue.ref) + ": the marked words after it" : E(x.cue.ref) + (/pause/.test(x.cue.cue) ? "" : ": the next sentence")}">${E(x.cue.icon + " " + x.cue.ref)}<i class="cx" title="Remove">×</i></span>` : `<span class="cuehint cue ${cc}">${E(x.cue.icon + " " + x.cue.ref)}</span>` }
     const s = x.slide; return inEdit ? `<span class="vchip sl${s.stop ? " stop" : ""}" contenteditable="false" data-ref="${E(r)}" title="${s.stop ? "Stop: a pause that keeps the slide" : "Slide. Click to show it; drag to move it"}">${icon(s)} ${E(s.name)}</span>`
       : `<button type="button" class="vtag sl${s.stop ? " stop" : ""}" data-pk="${E(s.name)}">${icon(s)} ${E(s.name)}</button>` };
-  const piece = (a, b) => { let o = "", p = a; for (const x of P.toks) { if (x.k !== "cue" || x.at < a || x.at >= b) continue; o += E(t.slice(p, x.at)) + tok(x); p = x.end } return o + E(t.slice(p, b)) };
+  let vz = null; const tx = (a, b) => { const w = E(t.slice(a, b)); return vz && w ? `<span class="vz ${vz}">${w}</span>` : w };
+  const piece = (a, b) => { let o = "", p = a; for (const x of P.toks) { if (x.k !== "cue" || x.at < a || x.at >= b) continue; o += tx(p, x.at) + tok(x); p = x.end } return o + tx(p, b) };
   const words = b => { if (b <= pos) return; const i = byA.get(pos), w = piece(pos, b); h += i != null ? `<span class="ck" data-s="${i}">${w}</span>` : w };
   for (const x of P.toks) { if (x.k === "cue") continue; words(x.at);
     if (blocks && x.k === "node") { h += (open ? "</div>" : "") + `<div class="sg l${x.node.lvl}" data-seg="1">`; open = true }
     h += tok(x); pos = x.end }
   words(t.length); if (open) h += "</div>"; return h }
+// The light box behind the words being read: from the top of the first line to the bottom of the last, across the text column.
+function hlBox(host, col, r){ let el = host.querySelector(":scope > .hlb"); const L = r ? [...r.getClientRects()].filter(x => x.width > 1 && x.height > 1) : [];
+  if (!L.length) { if (el) el.hidden = true; return } if (!el) { el = document.createElement("div"); el.className = "hlb"; host.appendChild(el) }
+  const h = host.getBoundingClientRect(), c = col.getBoundingClientRect(), top = Math.min(...L.map(x => x.top)), bot = Math.max(...L.map(x => x.bottom));
+  el.hidden = false; el.style.top = (top - h.top - 6) + "px"; el.style.height = (bot - top + 12) + "px"; el.style.left = (c.left - h.left + 4) + "px"; el.style.width = (c.width - 8) + "px" }
 // The first step at or after an outline node (clicking a point in a list).
 const firstAt = (S, n) => n ? S.findIndex(z => z.pos >= n.at) : -1;
 // Bring a range into view below the sticky parts: in the middle if it fits, else its start at the top.
@@ -147,7 +158,7 @@ async function present(){
     $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`;
     document.querySelectorAll("#nav [data-n]").forEach(e => e.classList.toggle("cur", !!b && +e.dataset.n === b.j));
     const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
-    document.querySelectorAll("#sc .ck.cur").forEach(e => e.classList.remove("cur")); const ck = $(`#sc .ck[data-s="${k}"]`); if (ck && !end) ck.classList.add("cur");
+    const ck = end ? null : $(`#sc .ck[data-s="${k}"]`); requestAnimationFrame(() => { let r = null; if (ck && showText) { r = document.createRange(); r.selectNodeContents(ck) } hlBox($("#ft"), $("#sc"), r) });
     const s = peek ? (d.slides || []).find(x => x.name === peek) : SH[k]; setSlide($("#m").parentElement.querySelector(".scr"), end ? '<div class="slide blank"></div>' : slideHTML(s, d));
     $("#cap").textContent = end ? "End of the talk" : peek ? "Showing " + peek + " · Next or Back goes back" : s ? s.name : "Title slide";
     const nx = S.slice(k + 1).find(z => z.node && z.node !== n); $("#nx").innerHTML = nx ? `Up next: <b>${E(nx.node.lab)}</b> ${E(nx.node.text)}` : "End of the talk";
@@ -163,6 +174,7 @@ async function present(){
   function next(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (k < S.length - 1) go(k + 1); else if (!end) { end = true; draw(); push() } }
   function back(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (end) { end = false; draw(); push(); return } if (k > 0) go(k - 1) }
   $("#n").onclick = next; $("#b").onclick = back;
+  addEventListener("resize", () => draw());
   $("#stx").onchange = e => { showText = e.target.checked; $("#ft").hidden = !showText; try { localStorage.setItem("pres2-text", showText ? "1" : "0") } catch (_) {} draw() };
   document.body.addEventListener("click", e => { const pk = e.target.closest("[data-pk]"); if (pk) { const nm = pk.dataset.pk; if (nm === "Stop") return; peek = peek === nm ? null : nm; draw(); push(); return }
     const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = firstAt(S, P.nodes[j]); if (i >= 0) go(i) } });
@@ -207,10 +219,12 @@ async function edit(){
   const box = () => $("#ftext .rich.big");
   function drawText(){ $("#ftext").innerHTML = `<div class="rich big" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="The talk" data-ph="Type what you want to say. Then use / or ✨ Outline to add the points." data-f="script">${textHTML(d, P, true, null, true)}</div>`; shape = shapeOf(); hl(true) }
   let shape = ""; const shapeOf = () => P.nodes.map(n => n.lvl).join("");
-  function richText(el){ let out = ""; const walk = n => { for (const c of n.childNodes) {
+  function richText(el, keepEnd){ let out = ""; const walk = n => { for (const c of n.childNodes) {
       if (c.nodeType === 3) out += c.nodeValue.replace(/​/g, "");
       else if (c.nodeType === 1) { if (c.classList.contains("vchip")) out += "[" + c.dataset.ref + "]"; else if (c.tagName === "BR") out += "\n";
-        else { if (/^(DIV|P)$/.test(c.tagName) && !c.dataset.seg && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } }; walk(el); return out.replace(/\n$/, "") }
+        else { if (/^(DIV|P)$/.test(c.tagName) && !c.dataset.seg && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } }; walk(el); return keepEnd ? out : out.replace(/\n$/, "") }
+  // Where a spot in the text box is, as a position in d.text.
+  const offsetOf = (node, off) => { const b = box(), r = document.createRange(); r.setStart(b, 0); r.setEnd(node, off); const dv = document.createElement("div"); dv.appendChild(r.cloneContents()); return richText(dv, true).length };
   let typeT = null;
   function saveText(){ clearTimeout(typeT); const b = box(); if (!b) return; const t = richText(b); if (t === (d.text || "")) return; const s = snapshot(); d.text = t; changed(s); relabel() }
   // Number the outline chips again after a change (the text box itself is left as you're typing it).
@@ -235,7 +249,7 @@ async function edit(){
   function openMenu(){ const b = box(), sl = getSelection(); if (!b || !sl.rangeCount) return; const r = sl.getRangeAt(0); if (r.startContainer.nodeType !== 3 || r.startContainer.nodeValue[r.startOffset - 1] !== "/") return; mrange = r.cloneRange();
     const items = [[1, "Section"], [2, "Point"], [3, "Sub point"]].map(([l, n]) => ({node: l, label: `<b>${["", "1", "1.a", "1"][l]}</b> ${n}`}))
       .concat([{pickSlide: true, label: "▣ Slide…"}, {slide: "Stop", label: "■ Stop (a pause that keeps the slide)"}],
-        Object.values(CUETAG).map(c => ({cue: c.ref, label: E(c.icon + " " + c.ref)})));
+        Object.values(CUETAG).filter(c => /pause/.test(c.cue)).map(c => ({cue: c.ref, label: E(c.icon + " " + c.ref)})));
     closeMenu(); menu = document.createElement("div"); menu.className = "vmenu v2m";
     menu.innerHTML = `<input class="mf" placeholder="Type to find…" aria-label="Find"><div class="ml">${items.map((it, i) => `<button type="button" data-i="${i}" class="${it.node ? "nd" : it.cue ? "cueo" : ""}${i ? "" : " on"}">${it.label}</button>`).join("")}</div>`;
     document.body.appendChild(menu); const rr = r.getBoundingClientRect(); menu.style.left = Math.min(rr.left, innerWidth - 300) + "px"; menu.style.top = Math.min(rr.bottom + 4, innerHeight - menu.offsetHeight - 8) + "px";
@@ -339,12 +353,13 @@ async function edit(){
     if (c) c.classList.add("on"); const r = document.createRange();
     if (st.a == null) { const sc = chips[st.pre]; if (!sc) return; sc.classList.add("on"); r.selectNode(sc) }      // a slide with no words after it
     else { if (st.pre >= 0 && chips[st.pre]) r.setStartAfter(chips[st.pre]); else r.setStart(b, 0); if (st.nxt >= 0 && chips[st.nxt]) r.setEndBefore(chips[st.nxt]); else r.setEnd(b, b.childNodes.length);
-      try { if (window.Highlight && CSS.highlights) CSS.highlights.set("kpcur", new Highlight(r)) } catch (e) {} }
-    if (!quiet) { const tb = $(".top"), tl = $("#m .tools"); scrollToPart(r.getBoundingClientRect(), (tb ? tb.offsetHeight : 0) + (tl ? tl.offsetHeight : 0) + 12, innerHeight - 8) } }
+      }
+    hlBox($("#ftext"), b, r); if (!quiet) { const tb = $(".top"), tl = $("#m .tools"); scrollToPart(r.getBoundingClientRect(), (tb ? tb.offsetHeight : 0) + (tl ? tl.offsetHeight : 0) + 12, innerHeight - 8) } }
+  addEventListener("resize", () => hl(true));
   function side(){ const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
-  function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist() }
+  function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist(); hl(true) }
   function step(i, quiet, keep){ if (LS.on && !keep) stopListen(); peek = null; k = Math.max(0, Math.min(S.length - 1, i)); redraw(); hl(quiet) }
   const stepTo = i => step(i, false, true);
   $("#en").onclick = () => { if (peek) { peek = null; side(); return } step(k + 1) }; $("#eb").onclick = () => { if (peek) { peek = null; side(); return } step(k - 1) };
@@ -472,9 +487,11 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   function slideAIRow(o){ const ty = o.type || "image", b = (a, t, tip) => `<button type="button" class="btn small aib" data-ai2="${a}" title="${E(tip || "")}">${t}</button>`;
     return `<div class="row ai2row">${ty === "verse" ? b("verse", "✨ Look up the verse", "Fills the text for the reference and version; you can still change it") : ""}${ty === "image" || ty === "bulletsimg" ? b("pic", o.image ? "✨ Change the picture" : "✨ Create a picture") : ""}${SLF[ty] ? b("words", "✨ Suggest the words", "From the text where this slide is used") + b("spell", "✨ Check spelling") : ""}</div>` }
   async function slideAI(i, act){ const o = d.slides[i]; if (!o) return; const k0 = K(), redo = () => slideEdit(i), use = firstUse(o.name), ctx = use ? around(use.at, 1400) : "", nd = use ? use.node : null;
-    if (act === "verse") { const ref = (o.ref || "").trim(); if (!ref) { k0.toast("Type the reference first"); return } const ver = (o.version || "ESV").trim(); const stop = busy("Looking up " + ref + "…");
-      try { let t = /^esv/i.test(ver) ? await k0.esvText(ref) : null, v = ver; if (!t) { const j = await k0.chat(`Quote the Bible passage word for word in the ${ver || "ESV"} translation, plain text, no verse numbers or headings. Return JSON {"text": "..."}.`, ref, {effort: "low"}); t = j.text; v = (ver || "ESV").replace(/\s*\(check\)$/i, "") + " (check)" }
-        if (t) { const s = snapshot(); o.text = String(t).trim(); o.version = v; changed(s); redo() } } catch (e) { aiFail(e) } finally { stop() } return }
+    if (act === "verse") { const ref = (o.ref || "").trim(); if (!ref) { k0.toast("Type the reference first"); return } let ver = (o.version || "ESV").trim().replace(/\s*\(check\)$/i, "");
+      if (!/^esv$/i.test(ver) && !confirm(`This slide is set to ${ver}. Only the ESV comes exactly from an official source (the ESV API); another version would come from the AI and need checking.\n\nOK = use the exact ESV text. Cancel = ask the AI for ${ver}.`)) {
+        const stop = busy("Asking the AI for " + ref + " (" + ver + ")…"); try { const j = await k0.chat(`Quote the Bible passage word for word in the ${ver} translation, plain text, no verse numbers or headings. Return JSON {"text": "..."}.`, ref, {effort: "low"}); if (j.text) { const s = snapshot(); o.text = String(j.text).trim(); o.version = ver + " (check)"; changed(s); redo() } } catch (e) { aiFail(e) } finally { stop() } return }
+      const stop = busy("Looking up " + ref + " in the ESV…");
+      try { const v = await k0.esvStrict(ref); const s = snapshot(); o.text = v.text; o.version = "ESV"; if (v.ref && v.ref !== ref && o.name === o.ref && !d.slides.some(x => x !== o && x.name === v.ref)) { renameIn(o.name, v.ref); o.name = v.ref } o.ref = v.ref || ref; changed(s); drawText(); redo() } catch (e) { aiFail(e) } finally { stop() } return }
     if (act === "words") { const fl = SLF[o.type || "image"]; const stop = busy("Writing the slide…");
       try { const j = await k0.chat(`You write the words on one presentation slide for a talk by a Christian ministry leader. Slides show a few strong words, never the script: a title of 2-7 words, an optional short subtitle, an optional small line on top; bullets are 2-4 lines of 1-5 words; a quote is one striking sentence and who said it. Return JSON with only these fields: ${fl.join(", ")}.`,
           `${brief()}\nSlide name: ${o.name}\nKind: ${TYPES[o.type || "image"]}\nNow: ${JSON.stringify(Object.fromEntries(fl.map(f => [f, o[f] || ""])))}\nThe point: ${nd ? nd.full + " " + nd.text : "(not in the text yet)"}\nThe words around where it comes up:\n${ctx || "(not used in the text yet)"}`, {effort: "low"});
@@ -511,31 +528,72 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   // Pieces are only split where the voice really changes, so it doesn't jump at tags. The expressive voice (v3) gets one piece with the cues inside.
   const V3TAG = {excited: "[excited]", exclaim: "[excited]", calm: "[calm]", gentle: "[softly]", slow: "[slowly]", fast: "[quickly]", pause: "...", "long pause": "[long pause]"};
   const clean = x => x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n");
-  function partsOf(st){ const t = d.text.slice(st.a, st.b), k0 = K();
-    if (d.voiceModel === "v3") { let x = t.replace(RE_TAG, m => { const c = CUETAG[m.slice(1, -1).trim().toLowerCase()]; return c && V3TAG[c.cue] ? " " + V3TAG[c.cue] + " " : " " }); x = x.replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
+  function partsOf(st, F){ const A = st.a, t = d.text.slice(A, st.b), k0 = K(); F = Math.max(0, (F == null ? A : F) - A);
+    if (F > 0) { let q = F; while (q > 0 && !/[.!?…\n]/.test(t[q - 1])) q--; F = q }      // from the start of the sentence the cursor is in
+    const pairEnd = x => { const y = x.pair != null ? P.toks[x.pair] : null; return y ? y.at - A : -1 };
+    const cueToks = P.toks.filter(x => x.k === "cue" && x.at >= A && x.at < st.b);
+    if (d.voiceModel === "v3") { let x = "", p = 0; for (const c of cueToks) { if (c.at - A >= F) x += t.slice(Math.max(p, F), c.at - A) + (c.close ? " " : " " + (V3TAG[c.cue.cue] || "") + " "); p = c.end - A } x += t.slice(Math.max(p, F));
+      x = x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
       const out = []; while (x.length > 2800) { let cut = x.lastIndexOf(". ", 2800); if (cut < 800) cut = 2800; out.push({say: x.slice(0, cut + 1).trim(), v3: true}); x = x.slice(cut + 1) } if (x.trim()) out.push({say: x.trim(), v3: true}); return out }
-    const out = [], add = (x, m) => { const s = clean(x); if (!s.trim()) { if (out.length && !out[out.length - 1].pause) out[out.length - 1].say += s; return } const vs = k0.voiceOf(m), last = out[out.length - 1];
-      if (last && !last.pause && JSON.stringify(last.vs) === JSON.stringify(vs)) last.say += s; else out.push({say: s, vs}) };
-    const N = {speed: "", tone: ""}; let pos = 0, cue = null;      // cue: the mode for the sentence after a cue tag
-    const flush = to => { let x = t.slice(pos, to); pos = to; if (!cue) { add(x, N); return }
-      const m = x.replace(RE_TAG, q => " ".repeat(q.length)).match(/^[\s\S]*?(?:[.!?…]+["”’)]*(?=\s|$)|\n)/);   // the end of the sentence the cue covers
-      if (!m) { add(x, cue); return } add(x.slice(0, m[0].length), cue); cue = null; add(x.slice(m[0].length), N) };
-    for (const m of t.matchAll(RE_TAG)) { flush(m.index); pos = m.index + m[0].length; const c = CUETAG[m[0].slice(1, -1).trim().toLowerCase()]; if (!c) continue; const q = c.cue;
-      if (q === "pause" || q === "long pause") out.push({pause: q === "pause" ? 1.2 : 2.5}); else if (q === "normal") cue = null; else { cue = {...(cue || N)}; if (q === "slow" || q === "fast") cue.speed = q; else cue.tone = q } }
+    const out = [], N = {speed: "", tone: ""};
+    const add = (a0, b0, m) => { a0 = Math.max(a0, F); if (b0 <= a0) return; const sx = clean(t.slice(a0, b0)); if (!sx.trim()) { if (out.length && !out[out.length - 1].pause) out[out.length - 1].say += sx; return }
+      const vs = k0.voiceOf(m), last = out[out.length - 1]; if (last && !last.pause && JSON.stringify(last.vs) === JSON.stringify(vs)) last.say += sx; else out.push({say: sx, vs}) };
+    let pos = 0, cue = null, until = -1;      // cue: the voice after a cue tag; until: where it ends (its end tag), or -1 for "the next sentence"
+    const flush = to => { if (!cue) { add(pos, to, N); pos = to; return }
+      if (until >= 0) { add(pos, to, cue); pos = to; return }
+      const x = t.slice(pos, to).replace(RE_TAG, q => " ".repeat(q.length)), m = x.match(/^[\s\S]*?(?:[.!?…]+["”’)]*(?=\s|$)|\n)/);
+      if (!m) { add(pos, to, cue); pos = to; return } add(pos, pos + m[0].length, cue); cue = null; add(pos + m[0].length, to, N); pos = to };
+    for (const c of cueToks) { flush(c.at - A); pos = c.end - A; const q = c.cue.cue;
+      if (c.close) { cue = null; until = -1; continue }
+      if (q === "pause" || q === "long pause") { if (c.at - A >= F) out.push({pause: q === "pause" ? 1.2 : 2.5}); continue }
+      if (q === "normal") { cue = null; continue }
+      cue = {...(cue || N)}; if (q === "slow" || q === "fast") cue.speed = q; else cue.tone = q; until = pairEnd(c) }
     flush(t.length); out.forEach(o => { if (o.say) o.say = o.say.trim() }); return out.filter(o => o.pause || o.say) }
   const wait = ms => new Promise(r => setTimeout(r, ms));
   function lbar(){ let el = $("#lbar"); if (!LS.on) { if (el) el.remove(); return } if (!el) { el = document.createElement("div"); el.id = "lbar"; document.body.appendChild(el);
       el.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.l === "stop") stopListen(); else { LS.paused = !LS.paused; if (LS.au) LS.paused ? LS.au.pause() : LS.au.play(); lbar() } } }
     el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><button type="button" class="btn small" data-l="stop">■ Stop</button>` }
   function stopListen(){ LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
-  async function listen(){ if (LS.on) { stopListen(); return } saveText(); const k0 = K(); k0.setVoice(d.voice || ""); LS.on = true; LS.paused = false; const run = ++LS.run;
+  let caretPos = null;      // the last spot of the cursor in the text (Listen starts there)
+  document.addEventListener("selectionchange", () => { const b = box(), sl = getSelection(); if (!b || !sl.rangeCount || !b.contains(sl.anchorNode) || LS.on) return; caretPos = {node: sl.getRangeAt(0).startContainer, off: sl.getRangeAt(0).startOffset} });
+  async function listen(from){ if (LS.on) { stopListen(); return } saveText();
+    if (from == null && caretPos && caretPos.node.isConnected) { try { from = offsetOf(caretPos.node, caretPos.off) } catch (e) {} }
+    let i0 = k; if (from != null) { const j = S.findIndex(st => st.a != null && from < st.b); if (j >= 0) { i0 = j; if (from < S[j].a) from = null } } const k0 = K(); k0.setVoice(d.voice || ""); LS.on = true; LS.paused = false; const run = ++LS.run;
     const ctxOf = (i, dir) => { const L = []; for (let q = i + dir; q >= 0 && q < S.length && L.join(" ").length < 400; q += dir) if (S[q].a != null) L[dir < 0 ? "unshift" : "push"](plain(d.text.slice(S[q].a, S[q].b))); return L.join("\n") };
-    try { for (let i = k; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { await wait(1800); continue }
-        const parts = partsOf(st), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
+    try { for (let i = i0; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { await wait(1800); continue }
+        const parts = partsOf(st, i === i0 ? from : null), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
         const jobs = parts.map((p, q) => p.v3 ? k0.ttsV3(p.say) : p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
         for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue }
           const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.onended = ok; au.onerror = ok; if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
+  // ---- ✨ on selected text: grammar, spelling, tighten, listen, and the voice for those words ----
+  const VOICES = ["excited", "exclaim", "calm", "gentle", "slow", "fast"];
+  let selR = null;
+  function selButton(){ const b = box(), sl = getSelection(); let el = $("#selai");
+    if (!b || menu || LS.on || !sl.rangeCount || sl.isCollapsed || !b.contains(sl.anchorNode) || !b.contains(sl.focusNode) || !sl.toString().trim()) { if (el && !el.dataset.open) el.remove(); return }
+    if (!el) { el = document.createElement("button"); el.type = "button"; el.id = "selai"; el.className = "btn small aib"; el.textContent = "✨"; el.title = "AI and voice for the selected words"; document.body.appendChild(el);
+      el.onmousedown = e => e.preventDefault(); el.onclick = () => selMenu(el) }
+    selR = sl.getRangeAt(0).cloneRange(); const rc = [...selR.getClientRects()].pop() || selR.getBoundingClientRect(); el.style.left = Math.min(innerWidth - 50, rc.right + 6) + "px"; el.style.top = Math.max(60, rc.top - 34) + scrollY + "px" }
+  let selT = null; document.addEventListener("selectionchange", () => { clearTimeout(selT); selT = setTimeout(selButton, 250) });
+  function selRange(){ if (!selR) return null; saveText(); let a = offsetOf(selR.startContainer, selR.startOffset), b = offsetOf(selR.endContainer, selR.endOffset); const t = d.text || "";
+    while (a < b && /\s/.test(t[a])) a++; while (b > a && /\s/.test(t[b - 1])) b--; return b > a ? [a, b] : null }
+  function selMenu(btn){ let m = $("#selm"); if (m) { m.remove(); btn.dataset.open = ""; return } btn.dataset.open = "1"; m = document.createElement("div"); m.id = "selm"; m.className = "vmenu";
+    m.innerHTML = `<div class="vmh">✨ The selected words</div><button type="button" data-s="grammar">✨ Grammar and flow</button><button type="button" data-s="spelling">✨ Spelling</button><button type="button" data-s="tighten">✨ Tighten</button><button type="button" data-s="listen">▶ Listen from here</button>
+      <div class="vmh">Voice for these words</div>${VOICES.map(v => `<button type="button" data-v="${v}" class="cuev cue-${v}">${E(CUETAG[v].icon + " " + CUETAG[v].ref)}</button>`).join("")}<button type="button" data-p="pause">⏸ Pause before them</button>`;
+    document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 260)) + "px"; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
+    const off = e => { if (!m.contains(e.target) && e.target !== btn) { m.remove(); btn.remove(); removeEventListener("mousedown", off) } }; setTimeout(() => addEventListener("mousedown", off), 0);
+    m.onmousedown = e => e.preventDefault();
+    m.onclick = e => { const x = e.target.closest("button"); if (!x) return; const R = selRange(); m.remove(); btn.remove(); removeEventListener("mousedown", off); if (!R) return; const [a, b] = R;
+      if (x.dataset.s === "listen") { listen(a); return }
+      if (x.dataset.s === "tighten") { const now = words(d.text.slice(a, b)), mm = prompt(`The selection is about ${now} words, roughly ${Math.max(.5, Math.round(now / 140 * 2) / 2)} minutes. How many minutes should it be?`, String(Math.max(.5, Math.round(now / 140 * .7 * 2) / 2))); if (!mm || !(+mm > 0)) return; lineEdit(a, b, "tighten", {minutes: +mm, target: Math.round(+mm * 140), now}).catch(aiFail); return }
+      if (x.dataset.s) { lineEdit(a, b, x.dataset.s).catch(aiFail); return }
+      const sn = snapshot(), t = d.text;
+      if (x.dataset.p) d.text = t.slice(0, a) + "[Pause] " + t.slice(a);
+      else { const nm = CUETAG[x.dataset.v].ref; d.text = t.slice(0, a) + "[" + nm + "]" + t.slice(a, b) + "[/" + nm + "]" + t.slice(b) }
+      changed(sn); drawText() } }
+  // the × on a voice tag removes it (and its end tag)
+  document.addEventListener("click", e => { const x = e.target.closest("#ftext .vchip.cue .cx"); if (!x) return; e.stopPropagation(); saveText(); const c = x.closest(".vchip"), i = [...box().querySelectorAll(".vchip")].indexOf(c), tk = P.toks[i]; if (!tk) return;
+    const sn = snapshot(); let t = d.text; const pr = tk.pair != null ? P.toks[tk.pair] : null; if (pr) t = t.slice(0, pr.at) + t.slice(pr.end); t = t.slice(0, tk.at) + t.slice(tk.end); d.text = t; changed(sn); drawText() }, true);
   drawText(); redraw(); hl(true)
 }
 ({edit2: edit, present2: present, slides2: slides}[MODE] || (() => {}))();

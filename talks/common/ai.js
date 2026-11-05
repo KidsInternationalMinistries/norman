@@ -325,6 +325,12 @@ function toPoint(p, isTitle){ const refs = [...new Set((p.verses || []).map(v =>
 async function esvText(ref){ const k = KEYS.esv; if (!k) return null;
   try { const r = await fetch("https://api.esv.org/v3/passage/text/?" + new URLSearchParams({q: ref, "include-headings": false, "include-footnotes": false, "include-verse-numbers": false, "include-short-copyright": false, "include-passage-references": false}), {headers: {Authorization: "Token " + k}});
     if (!r.ok) return null; const j = await r.json(); return (j.passages || []).join("\n").replace(/\s+\n/g, "\n").trim() || null } catch (e) { return null } }
+// The exact ESV text from the ESV API, or a clear reason why not (used by the new version's verse look-up).
+async function esvStrict(ref){ const k = KEYS.esv; if (!k) { settings(); throw quiet("Add the ESV API key in Settings first (free from api.esv.org).") } let r;
+  try { r = await fetch("https://api.esv.org/v3/passage/text/?" + new URLSearchParams({q: ref, "include-headings": false, "include-footnotes": false, "include-verse-numbers": false, "include-short-copyright": false, "include-passage-references": false}), {headers: {Authorization: "Token " + k}}) }
+  catch (e) { throw new Error("Couldn't reach the ESV API (" + e.message + ").") }
+  if (!r.ok) { let m = ""; try { m = (await r.json()).detail || "" } catch (e) {} throw new Error("The ESV API said: " + (m || r.status) + (r.status === 401 || r.status === 403 ? ". Check the ESV key in Settings." : "")) }
+  const j = await r.json(), t = (j.passages || []).join("\n").replace(/\s+\n/g, "\n").trim(); if (!t) throw new Error("The ESV API found no passage for \"" + ref + "\". Check the reference."); return {text: t, ref: j.canonical || ref} }
 async function fillVerses(points){ const all = points.flatMap(p => p.verses || []).filter(v => v.ref && !v.text), miss = [];
   await pool(all, 4, async v => { const t = await esvText(v.ref); if (t) { v.text = t; v.version = "ESV" } else miss.push(v) });
   if (!miss.length) return; const refs = [...new Set(miss.map(v => v.ref))];
@@ -657,7 +663,7 @@ window.TALKAI = {html: {
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
 }, chat, image, settings, outline,
   // building blocks for the new version (app2.js)
-  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }}};
+  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, esvStrict, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }}};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
   m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="narr">Make the narrated version (share link)</button><button type="button" data-a="split">Key points from the text (points that have none)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";

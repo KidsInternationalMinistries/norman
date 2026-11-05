@@ -104,3 +104,18 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 .ai2row .note{flex-basis:100%}
 #lbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;display:flex;gap:10px;align-items:center;background:var(--ink);color:var(--bg);padding:8px 12px;border-radius:999px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-weight:700}
 .tn .tm{margin-left:auto;font-size:11px;color:var(--muted);font-weight:500;padding-left:6px}
+/* the light box behind the words being read */
+.v2e .ftext,.v2s .fulltext{position:relative}
+.hlb{position:absolute;pointer-events:none;z-index:1;background:rgba(233,185,73,.15);border:1px solid rgba(201,162,39,.45);border-left:5px solid #E9B949;border-radius:10px;transition:top .25s ease,height .25s ease}
+.v2s .script .ck.cur{background:none;box-shadow:none}
+/* voice on marked words */
+.vz{border-radius:3px;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.vz.cue-excited,.vz.cue-exclaim{text-decoration-color:#d9622b;background:color-mix(in srgb,#d9622b 8%,transparent)}
+.vz.cue-calm,.vz.cue-gentle{text-decoration-color:#2b8fa6;background:color-mix(in srgb,#2b8fa6 8%,transparent)}
+.vz.cue-slow,.vz.cue-fast{text-decoration-color:#7b5cc4;background:color-mix(in srgb,#7b5cc4 8%,transparent)}
+.vchip.cue .cx{font-style:normal;margin-left:5px;opacity:.6;cursor:pointer;font-weight:700}
+.vchip.cue .cx:hover{opacity:1}
+.v2e .rich.big .vchip.cue.end{padding:0;min-width:0;width:5px;height:1.1em;border-radius:2px;vertical-align:-2px;margin:0 2px}
+#selai{position:absolute;z-index:60;padding:2px 8px;box-shadow:0 3px 10px rgba(0,0,0,.2);background:var(--bg)}
+#selm{max-width:250px}
+#selm .cuev{font-weight:600}
