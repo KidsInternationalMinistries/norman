@@ -274,3 +274,20 @@ body[data-mode="present"] .kpbox{position:sticky;top:calc(var(--stk) - 14px);z-i
 #snd{position:fixed;right:18px;bottom:18px;z-index:60;border:0;border-radius:999px;padding:10px 18px;font:600 16px system-ui,sans-serif;background:#E9B949;color:#000;cursor:pointer}
 label.chk{display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:400;font-size:15px;color:var(--ink)}
 label.chk input{width:auto}
+/* Key points: a numbered list (Edit: add, move, delete) */
+ul.kp:has(.kn){list-style:none;padding-left:0}
+ul.kp li .kn{display:inline-block;min-width:1.6em;color:var(--muted);font-weight:600;font-size:.8em}
+ul.kp li.key .kn{visibility:hidden}
+ul.kp li.key{margin-left:0}
+.kplist{display:grid;gap:2px;background:color-mix(in srgb,var(--cue) 25%,transparent);border-radius:10px;padding:6px 6px 8px}
+.kpi{display:grid;grid-template-columns:2em 1fr auto;align-items:start;border-radius:7px}
+.kpi:focus-within{background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.kpi .kn{color:var(--muted);font:600 14px/2.2 system-ui,sans-serif;text-align:right;padding-right:8px}
+.ed.stagev .kpi .rich.kp{min-height:0;background:transparent;padding:3px 6px;font-size:19px}
+.kpi .kbar{display:flex;gap:2px;opacity:0;transition:opacity .15s;padding-top:4px}
+.kpi:hover .kbar,.kpi:focus-within .kbar{opacity:1}
+.kbar button{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:1px 7px;font-size:13px;cursor:pointer}
+.kbar button.arm{border-color:#c0392b;color:#c0392b}
+.kplist .kadd{justify-self:start;margin:4px 0 0 2em}
+.slide.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.kpi .rich{resize:none}

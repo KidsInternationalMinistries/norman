@@ -95,14 +95,31 @@ const isXS = v => !!(v && SLIDE_TYPES[v.type]);
 function xsHTML(v){ if (v.type === "video") return videoHTML(v); if (v.type === "quote") return quoteHTML(v); if (isBul(v.type)) return bulletsHTML(v); return v.type === "plain" ? slideBox({...v, image: ""}, " plain") : slideBox(v) }
 // A video slide plays from the start each time it comes up (sound on the slides screens, muted on Stage and in Edit).
 // If "next when it ends" is on, Stage moves to the next step when it finishes.
-function videoHTML(v){ return v.video ? `<div class="slide vid"><video data-p="${E(v.video)}" src="${E(LOCALIMG[v.video] || v.video)}" playsinline preload="auto"${v.autoNext !== false ? " data-next=\"1\"" : ""} onerror="__imgFallback(this)"></video></div>`
+// The video can be an uploaded file (v.video) or a link (v.url): YouTube, or a direct link to a video file. A link wins if both are set.
+function ytInfo(u){ const m = (u || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/); if (!m) return null;
+  const t = (u.match(/[?&#](?:t|start)=(?:(\d+)h)?(?:(\d+)m)?(\d+)s?/) || []); return {id: m[1], start: (+t[1] || 0) * 3600 + (+t[2] || 0) * 60 + (+t[3] || 0)} }
+function videoHTML(v){ const nx = v.autoNext !== false ? ' data-next="1"' : "", url = (v.url || "").trim(), yt = ytInfo(url);
+  if (yt) return `<div class="slide vid"${nx}><div class="yt" data-yt="${yt.id}" data-start="${yt.start}"></div></div>`;
+  if (url) return `<div class="slide vid"${nx}><video src="${E(url)}" playsinline preload="auto"></video></div>`;
+  return v.video ? `<div class="slide vid"${nx}><video data-p="${E(v.video)}" src="${E(LOCALIMG[v.video] || v.video)}" playsinline preload="auto" onerror="__imgFallback(this)"></video></div>`
   : '<div class="slide plain"><div class="tx" style="justify-content:center;align-items:center;opacity:.6;font-size:16px;color:#fff;left:0;width:100%;text-align:center">No video yet</div></div>' }
+function soundButton(on){ if (document.getElementById("snd")) return; const b = document.createElement("button"); b.id = "snd"; b.type = "button"; b.textContent = "🔊 Click for sound";
+  b.onclick = () => { b.remove(); document.querySelectorAll("video").forEach(x => { x.muted = false }); YTP.forEach(p => { try { p.unMute() } catch (e) {} }); if (on) on() }; document.body.appendChild(b) }
+const vidEnded = el => { const w = el.closest && el.closest(".slide.vid"); if (w) w.dispatchEvent(new Event("vidend")) };
 function startVideo(vd){ if (vd.dataset.go) return; vd.dataset.go = 1; const mon = MODE === "monitor", inDlg = !!vd.closest("dialog");
-  vd.muted = !mon; if (inDlg) vd.controls = true; vd.currentTime = 0;
-  const p = vd.play(); if (p && p.catch) p.catch(() => { vd.muted = true; vd.play().catch(() => {});      // the browser blocked sound until someone clicks this page
-    if (mon && !document.getElementById("snd")) { const b = document.createElement("button"); b.id = "snd"; b.type = "button"; b.textContent = "🔊 Click for sound";
-      b.onclick = () => { b.remove(); document.querySelectorAll("video").forEach(x => { x.muted = false }) }; document.body.appendChild(b) } }) }
-new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; (n.matches("video") ? [n] : [...n.querySelectorAll("video")]).forEach(startVideo) }))).observe(document.documentElement, {childList: true, subtree: true});
+  vd.muted = !mon; if (inDlg) vd.controls = true; vd.currentTime = 0; vd.addEventListener("ended", () => vidEnded(vd));
+  const p = vd.play(); if (p && p.catch) p.catch(() => { vd.muted = true; vd.play().catch(() => {}); if (mon) soundButton() }) }      // the browser blocked sound until someone clicks this page
+// YouTube links play through YouTube's player (the screens need internet for these).
+const YTP = []; let ytReady = null;
+function ytAPI(){ if (!ytReady) ytReady = new Promise(ok => { if (window.YT && YT.Player) return ok(); const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { if (prev) prev(); ok() };
+  const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc) }); return ytReady }
+function startYT(el){ if (el.dataset.go) return; el.dataset.go = 1; const mon = MODE === "monitor", inDlg = !!el.closest("dialog"), start = +el.dataset.start || 0, wrap = el.closest(".slide");
+  ytAPI().then(() => { if (!el.isConnected) return; const pl = new YT.Player(el, {videoId: el.dataset.yt, width: "100%", height: "100%",
+    playerVars: {autoplay: 1, controls: inDlg ? 1 : 0, rel: 0, modestbranding: 1, playsinline: 1, start, disablekb: 1, iv_load_policy: 3},
+    events: {onReady: e => { if (!mon) e.target.mute(); e.target.seekTo(start, true); e.target.playVideo();
+        if (mon) setTimeout(() => { try { if (e.target.getPlayerState() !== 1) { e.target.mute(); e.target.playVideo(); soundButton() } } catch (_) {} }, 1500) },
+      onStateChange: e => { if (e.data === 0 && wrap) wrap.dispatchEvent(new Event("vidend")) }}}); YTP.push(pl) }) }
+new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; (n.matches("video") ? [n] : [...n.querySelectorAll("video")]).forEach(startVideo); (n.matches(".yt") ? [n] : [...n.querySelectorAll(".yt")]).forEach(startYT) }))).observe(document.documentElement, {childList: true, subtree: true});
 // Put new slide HTML in a box only if it changed, so a playing video isn't restarted by a redraw of the same slide.
 function setSlide(el, h){ if (!el) return; if (el.dataset.h === h && el.firstChild) return; el.dataset.h = h; el.innerHTML = h }
 // A quote: large words (fitted like a verse) and who said it.
@@ -152,7 +169,7 @@ function taggedHTML(t, p, st){ let h = "", last = 0;
     if (v.anchor) { h += E(t.slice(last, m.index)) + (kpAnchor(p, m[0]) ? `<span class="aglyph" title="Next scrolls the full text to this key point">↓</span>` : ""); last = m.index + m[0].length; continue }
     st.k++; h += E(t.slice(last, m.index)) + `<button type="button" class="vtag${tagCls(v)}${st.k === st.sub ? " on" : ""}" data-sub="${st.k}" data-ref="${E(tagName(v))}">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
   return h + E(t.slice(last)) }
-function kpTagged(p, st, bt){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map((x, j) => `<li data-b="${j}" class="${/^(🔑|🔁|\[@[a-z0-9]+\]\s*(🔑|🔁))/u.test(x) ? "key" : ""}${j === bt ? " cur" : ""}">${taggedHTML(x, p, st)}</li>`).join("")}</ul>` : "" }
+function kpTagged(p, st, bt){ const list = p.keyPoints || []; return list.length ? `<ul class="kp">${list.map((x, j) => (x || "").trim() ? `<li data-b="${j}" class="${/^(🔑|🔁|\[@[a-z0-9]+\]\s*(🔑|🔁))/u.test(x) ? "key" : ""}${j === bt ? " cur" : ""}"><span class="kn">${j + 1}</span>${taggedHTML(x, p, st)}</li>` : "").join("")}</ul>` : "" }
 function scriptHTML(p){ const t = p.script || ""; let h = "", last = 0;      // tags here don't step slides; clicking one shows it for a moment
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue;
     if (v.anchor) { const live = (p.keyPoints || []).some(x => x.includes(m[0])); h += E(t.slice(last, m.index)) + (live ? `<span class="anc" data-anc="${E(v.id)}"></span>` : ""); last = m.index + m[0].length; continue } h += E(t.slice(last, m.index)) + `<button type="button" class="vtag ref${tagCls(v)}" data-ref="${E(tagName(v))}" title="Click to show this slide. Next or Back goes back">${E(tagLabel(v))}</button>`; last = m.index + m[0].length }
@@ -272,8 +289,8 @@ async function present(){
   function markPk(){ document.querySelectorAll("#m [data-ref]").forEach(b => b.classList.toggle("pk", !!peek && b.dataset.ref === peek)) }
   function updScr(){ const sc = $("#m .scr"), cp = $("#m .cap"); if (!sc || atEnd) return main(); setSlide(sc, scrHTML()); cp.innerHTML = capTxt(); markPk(); vidNext() }
   // A video set to "next when it ends" presses Next for you when it finishes (a moment later, so the slides screens finish too).
-  function vidNext(){ const vd = $("#m .scr video[data-next]"); if (!vd || vd.dataset.hooked) return; vd.dataset.hooked = 1; const at = [cur, pos, peek];
-    vd.addEventListener("ended", () => setTimeout(() => { if (cur === at[0] && pos === at[1] && peek === at[2] && !atEnd) next() }, 1200)) }
+  function vidNext(){ const vd = $("#m .scr .slide.vid[data-next]"); if (!vd || vd.dataset.hooked) return; vd.dataset.hooked = 1; const at = [cur, pos, peek];
+    vd.addEventListener("vidend", () => setTimeout(() => { if (cur === at[0] && pos === at[1] && peek === at[2] && !atEnd) next() }, 1200)) }
   // Keep the step you're on at the top, just under the sticky header (the page has room below to allow it).
   // The key points stay at the top; Next on a linked key point scrolls the full text up to its spot, just under them (there's room below to allow it).
   function toStep(){ const tb = $(".top"), hd = $("#m .head"), kb = $("#m .kpbox"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0);
@@ -452,7 +469,7 @@ async function edit(){
           <label class="tm" title="Time on this point (m:ss)">Time<input data-t="pt" data-id="${E(p.id)}" data-f="seconds" value="${ptSecs(p) ? mmss(ptSecs(p)) : ""}" placeholder="0:00" inputmode="numeric"></label>
           <div class="vtags">${vt}<button type="button" class="vplus" data-act="addmenu" title="Add a verse or a slide">+</button></div></div>
         <div class="grid"><div class="lcol">
-          <div class="rich kp" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="keyPoints" role="textbox" aria-multiline="true" aria-label="Key points" data-ph="Key points, one per line. Type / for a tag.">${richHTML(p, (p.keyPoints || []).join("\n"))}</div>
+          <div class="kplist" data-id="${E(p.id)}">${kpItems(p)}</div>
           <div class="fulltext"><div class="rule"><span class="tag">Full text</span>${p.scriptDraft ? '<span class="draft">Draft</span>' : ""}<span class="note" style="font-size:12px">Type / for a tag. Click a tag to show its slide</span></div>
           <div class="rich big" contenteditable="true" spellcheck="true" data-id="${E(p.id)}" data-f="script" role="textbox" aria-multiline="true" aria-label="What I'll say" data-ph="What I'll say">${richHTML(p)}</div></div>
         <div class="row"><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="-1">↑ Up</button><button class="btn small" type="button" data-act="pmove" data-id="${E(p.id)}" data-d="1">↓ Down</button>
@@ -467,9 +484,18 @@ async function edit(){
   }
   // "What I'll say" is a text box where verse tags are real tags: typing "/" lists this point's verses, picking one inserts a tag,
   // and a tag is removed whole (Backspace, Delete, or selecting it with the text around it). It is saved as [Ref] in the text.
+  // Key points are a numbered list: type in a line, Enter adds the next one, Backspace on an empty one removes it; ↑ ↓ ✕ on hover.
+  function kpItems(p){ const L = p.keyPoints && p.keyPoints.length ? p.keyPoints : [""], id = E(p.id);
+    return L.map((x, j) => `<div class="kpi${kpAnchor(p, x) ? " linked" : ""}" data-j="${j}"><span class="kn">${j + 1}</span><div class="rich kp" contenteditable="true" spellcheck="true" data-id="${id}" data-f="kpline" data-j="${j}" role="textbox" aria-label="Key point ${j + 1}" data-ph="${j ? "Key point" : "Key point. Type / for a slide tag"}">${richHTML(p, x, false)}</div>
+      <span class="kbar"><button type="button" data-act="kmove" data-j="${j}" data-d="-1" title="Move up">↑</button><button type="button" data-act="kmove" data-j="${j}" data-d="1" title="Move down">↓</button><button type="button" data-act="kdel" data-j="${j}" title="Delete">✕</button></span></div>`).join("")
+      + `<button type="button" class="btn small kadd" data-act="kadd" data-j="${L.length}">+ Key point</button>` }
+  let kpBusy = false;      // while the list is redrawn, a box losing focus must not save its old line over the new list
+  function kpSet(p, L, focusJ, caretEnd){ op({t: "pt", pid: p.id, f: "keyPoints", v: L}); const box = $("#m .kplist"); kpBusy = true; if (box) box.innerHTML = kpItems(p); kpBusy = false; relabel(p); hlStep(true);
+    if (focusJ != null) { const el = $(`#m .kplist .rich[data-j="${focusJ}"]`); if (el) { el.focus(); const r = document.createRange(); r.selectNodeContents(el); r.collapse(!caretEnd ? true : false); if (caretEnd) r.collapse(false); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r) } } }
+  const kpNow = p => [...(p.keyPoints || [])];
   // A link shows as ↓ at the start of its key point, and as ↑ plus the key point's words in the full text.
   const kpText = x => (x || "").replace(TAG, (a, r) => /^@/.test(r) ? "" : r).replace(/\s+/g, " ").trim();
-  const ancLabel = (p, v) => { const k = (p.keyPoints || []).find(x => x.includes("[" + v.ref + "]")); if (!k) return "↑ (key point removed)"; const t = kpText(k); return "↑ " + (t.length > 34 ? t.slice(0, 33) + "…" : t) };
+  const ancLabel = (p, v) => { const L = p.keyPoints || [], j = L.findIndex(x => x.includes("[" + v.ref + "]")); if (j < 0) return "↑ (key point removed)"; const t = kpText(L[j]); return "↑ " + (j + 1) + " · " + (t.length > 30 ? t.slice(0, 29) + "…" : t) };
   const chip = (v, p, inText) => v.anchor ? `<span class="vchip anc${inText && p && !(p.keyPoints || []).some(x => x.includes("[" + v.ref + "]")) ? " orphan" : ""}" contenteditable="false" data-ref="${E(v.ref)}" title="${inText ? "Next on this key point scrolls the full text here" : "Linked to a spot in the full text"}">${E(inText ? ancLabel(p, v) : "↓")}</span>`
     : `<span class="vchip${tagCls(v)}" contenteditable="false" data-ref="${E(tagName(v))}">${E(tagLabel(v))}</span>`;
   function richHTML(p, text, inText){ let h = "", last = 0; if (inText == null) inText = text == null; const t = text != null ? text : p.script || "";
@@ -482,12 +508,15 @@ async function edit(){
         else { const blk = /^(DIV|P)$/.test(c.tagName); if (blk && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } };
     walk(el); return out.replace(/\n$/, "") }
   let richT = null;
-  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return; const kp = el.dataset.f === "keyPoints", txt = richText(el);
+  function saveRich(el){ clearTimeout(richT); const f = findPt(D, el.dataset.id); if (!f) return;
+    if (el.dataset.f === "kpline") { if (kpBusy || !el.isConnected) return; const j = +el.dataset.j, L = kpNow(f.p); while (L.length <= j) L.push(""); const v = richText(el).replace(/\s*\n\s*/g, " ").trim(); if (L[j] === v) return; L[j] = v;
+      op({t: "pt", pid: f.p.id, f: "keyPoints", v: L}); relabel(f.p); const it = el.closest(".kpi"); if (it) it.classList.toggle("linked", !!kpAnchor(f.p, v)); return }
+    const kp = el.dataset.f === "keyPoints", txt = richText(el);
     const v = kp ? txt.split("\n").map(x => x.trim()).filter(Boolean) : txt; if (JSON.stringify(v) === JSON.stringify(kp ? f.p.keyPoints || [] : f.p.script || "")) return;
     op({t: "pt", pid: el.dataset.id, f: el.dataset.f, v});
     if (kp) { relabel(f.p); return } const d = el.previousElementSibling && el.previousElementSibling.querySelector(".draft"); if (d) d.remove();
     const kl = (f.p.keyPoints || []).map(x => x.replace(/\[@([a-z0-9]+)\]\s*/g, (a, id) => v.includes("[@" + id + "]") ? a : "")); if (JSON.stringify(kl) !== JSON.stringify(f.p.keyPoints || [])) { op({t: "pt", pid: f.p.id, f: "keyPoints", v: kl}); redrawKp(f.p) } }
-  function redrawKp(p){ const b = $("#m .rich.kp"); if (b && document.activeElement !== b) b.innerHTML = richHTML(p, (p.keyPoints || []).join("\n")) }
+  function redrawKp(p){ const b = $("#m .kplist"); if (b && !b.contains(document.activeElement)) { kpBusy = true; b.innerHTML = kpItems(p); kpBusy = false } }
   function relabel(p){ document.querySelectorAll("#m .rich.big .vchip.anc").forEach(c => { const v = tagOf(p, c.dataset.ref); c.textContent = ancLabel(p, v); c.classList.toggle("orphan", !(p.keyPoints || []).some(x => x.includes("[" + v.ref + "]"))) }) }
   document.addEventListener("input", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; clearTimeout(richT); richT = setTimeout(() => saveRich(el), 900) });
   document.addEventListener("focusout", e => { const el = e.target.closest && e.target.closest(".rich"); if (el) saveRich(el) });
@@ -495,12 +524,14 @@ async function edit(){
   function selText(){ const sl = getSelection(); if (!sl.rangeCount) return ""; const d = document.createElement("div"); d.appendChild(sl.getRangeAt(0).cloneContents()); return richText(d) }
   document.addEventListener("copy", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); e.clipboardData.setData("text/plain", selText()) });
   document.addEventListener("cut", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); e.clipboardData.setData("text/plain", selText()); document.execCommand("delete") });
-  document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); const t = (e.clipboardData || window.clipboardData).getData("text/plain"), f = findPt(D, el.dataset.id);
+  document.addEventListener("paste", e => { const el = e.target.closest && e.target.closest(".rich"); if (!el) return; e.preventDefault(); let t = (e.clipboardData || window.clipboardData).getData("text/plain"); const f = findPt(D, el.dataset.id);
+    if (f && el.dataset.f === "kpline" && /\n/.test(t.trim())) { const lines = t.split(/\r?\n/).map(x => x.replace(/^\s*([-*•]|\d+[.)])\s+/, "").trim()).filter(Boolean); t = lines.shift() || "";
+      if (lines.length) { document.execCommand("insertText", false, t); saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ...lines); kpSet(f.p, L, j + lines.length, true); return } }
     if (f && [...t.matchAll(TAG)].some(m => tagOf(f.p, m[1]))) document.execCommand("insertHTML", false, richHTML(f.p, t, el.dataset.f === "script").replace(/\n/g, "<br>")); else document.execCommand("insertText", false, t) });
   let vmenu = null;
   function closeVmenu(){ if (vmenu) { vmenu.el.remove(); vmenu = null } }
   function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? [...(f.p.verses || []).filter(v => v && v.ref), ...(f.p.slides || []).filter(x => x && x.name)] : []; const inKp = el.classList.contains("kp"); if (inKp) vs.push(STOPTAG, MAINTAG);
-    else if (f) { saveRich($("#m .rich.kp") || el); vs.unshift(...(f.p.keyPoints || []).map((x, j) => ({kpLink: j, label: kpText(x)})).filter(v => v.label)) }
+    else if (f) { vs.unshift(...(f.p.keyPoints || []).map((x, j) => ({kpLink: j, label: (j + 1) + " · " + kpText(x)})).filter(v => v.label.replace(/^\d+ · /, ""))) }
     vs.push({newT: "verse"}, ...Object.keys(SLIDE_TYPES).map(k => ({newT: k})));
     const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
     if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
@@ -527,7 +558,12 @@ async function edit(){
       closeVmenu(); if (e.key === "Escape") { e.preventDefault(); return } }
     const el = e.target.closest && e.target.closest(".rich"); if (!el) return;
     if (e.key === "/") setTimeout(() => openVmenu(el), 0);
+    else if (e.key === "Enter" && el.dataset.f === "kpline") { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; saveRich(el); const j = +el.dataset.j, L = kpNow(f.p); L.splice(j + 1, 0, ""); kpSet(f.p, L, j + 1) }
+    else if (e.key === "Backspace" && el.dataset.f === "kpline" && !richText(el).trim() && +el.dataset.j > 0) { e.preventDefault(); const f = findPt(D, el.dataset.id); if (!f) return; const j = +el.dataset.j, L = kpNow(f.p); L.splice(j, 1); kpSet(f.p, L, j - 1, true) }
+    else if (e.key === "ArrowUp" && el.dataset.f === "kpline" && +el.dataset.j > 0 && e.altKey) { e.preventDefault(); kmove(el.dataset.id, +el.dataset.j, -1) }
+    else if (e.key === "ArrowDown" && el.dataset.f === "kpline" && e.altKey) { e.preventDefault(); kmove(el.dataset.id, +el.dataset.j, 1) }
     else if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak") } }, true);
+  function kmove(pid, j, d){ const f = findPt(D, pid); if (!f) return; const a = document.activeElement; if (a && a.dataset && a.dataset.f === "kpline") saveRich(a); const L = kpNow(f.p), k = j + d; if (k < 0 || k >= L.length) return; [L[j], L[k]] = [L[k], L[j]]; kpSet(f.p, L, k) }
   document.addEventListener("mousedown", e => { if (vmenu && !vmenu.el.contains(e.target)) closeVmenu(); if (amenu && !amenu.contains(e.target)) { amenu.remove(); amenu = null } });
   // The + in the header: add a verse, or a slide of any type.
   let amenu = null;
@@ -537,7 +573,7 @@ async function edit(){
     m.onclick = e => { const b = e.target.closest("[data-new]"); if (!b) return; m.remove(); amenu = null; if (sel.k !== "pt") return;
       if (b.dataset.new === "verse") verseEdit(sel.id, "new"); else openSlide(addSlide(sel.id, b.dataset.new)) } }
   function addSlide(pid, type){ const f = findPt(D, pid); let n = (f.p.slides || []).length + 2, name; do { name = "Slide " + n++ } while (tagOf(f.p, name));
-    op({t: "xadd", pid, s: type === "video" ? {name, type, video: "", autoNext: true} : type === "quote" ? {name, type, quote: "", by: ""} : {name, type, slideTitle: "", ...(isBul(type) ? {bullets: ""} : {eyebrow: "", slide: "", layout: "center"}), image: ""}}); return f.p.slides.length - 1 }
+    op({t: "xadd", pid, s: type === "video" ? {name, type, url: "", video: "", autoNext: true} : type === "quote" ? {name, type, quote: "", by: ""} : {name, type, slideTitle: "", ...(isBul(type) ? {bullets: ""} : {eyebrow: "", slide: "", layout: "center"}), image: ""}}); return f.p.slides.length - 1 }
   // Renaming a verse or slide renames its tags in the text; removing it (b empty) removes its tags.
   function renameTag(pid, a, b){ const f = findPt(D, pid); if (!f || !a) return; const rep = t => t.split("[" + a + "]").join(b ? "[" + b + "]" : "");
     const kp = (f.p.keyPoints || []).map(x => rep(x).replace(/  +/g, " ").trim()).filter(Boolean), sc = rep(f.p.script || "");
@@ -566,7 +602,7 @@ async function edit(){
   // Like Stage: the slide tag showing is lit in the key points, and a linked key point brings its spot in the full text to the top.
   function hlStep(quiet){ document.querySelectorAll("#m .rich .vchip.on").forEach(c => c.classList.remove("on")); if (atEnd) return;
     if (esub) { const c = document.querySelectorAll("#m .rich.kp .vchip:not(.anc)")[esub - 1]; if (c) c.classList.add("on") }
-    const fp = sel.k === "pt" && findPt(D, sel.id); if (!fp) return; const L = stepsOf(fp.p), st = L[epos], li = st && st.b >= 0 && (p => p && p.querySelectorAll(".vchip.anc").forEach(x => x.dataset.ref === "@" + st.a && x.classList.add("on")))($("#m .rich.kp"));
+    const fp = sel.k === "pt" && findPt(D, sel.id); if (!fp) return; const L = stepsOf(fp.p), st = L[epos], li = st && st.b >= 0 && (p => p && p.querySelectorAll(".vchip.anc").forEach(x => x.dataset.ref === "@" + st.a && x.classList.add("on")))($("#m .kplist"));
     if (!eanc) return; const a = $(`#m .rich.big .vchip.anc[data-ref="@${eanc}"]`); if (!a) return; a.classList.add("on"); if (quiet) return;
     const tb = $(".top"), hd = $("#m .head"), off = (tb ? tb.offsetHeight : 0) + (hd ? hd.offsetHeight : 0) + 16; window.scrollTo({top: Math.max(0, a.getBoundingClientRect().top + scrollY - off), behavior: "smooth"}) }
   function updStep(){ const f = findPt(D, sel.id); if (!f) return; updSmall(); hlStep(); if (!epos || atEnd) window.scrollTo({top: 0, behavior: "smooth"}) }
@@ -601,7 +637,8 @@ async function edit(){
     if (xs) h += `<div class="row"><label style="flex:1 1 200px">Name (its tag in your text)<input ${A} data-f="name" value="${E(o.name)}"></label>
       <label style="flex:0 1 220px">Type<select ${A} data-f="type">${Object.entries(SLIDE_TYPES).map(([k, n]) => `<option value="${k}"${k === ty ? " selected" : ""}>${E(n)}</option>`).join("")}</select></label></div>`;
     h += `<div class="prev" id="prev">${prevOf(t, o)}</div><div class="slideed" id="slideed">`;
-    if (ty === "video") h += `<div class="row"><span class="tag">Video file (MP4 works best; keep it under about 50 MB)</span>
+    if (ty === "video") h += `<label>Link (YouTube, or a direct link to a video file)<input ${A} data-f="url" value="${E(o.url)}" placeholder="https://www.youtube.com/watch?v=…  (add &t=30 to start at 0:30)"></label>
+      <div class="row"><span class="tag">Or upload a file (MP4 works best; keep it under about 50 MB). It works without internet${o.url ? ". The link above is used while it's filled in" : ""}</span>
       <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${o.video ? "Replace" : "Add"} video<input type="file" accept="video/mp4,video/webm,video/quicktime,video/*" data-vid="${E(t.pid)}" data-i="${t.i}" hidden></label><span class="note" id="imgmsg"></span></div>
       <label class="chk"><input type="checkbox" ${A} data-f="autoNext"${o.autoNext !== false ? " checked" : ""}> When the video ends, go to the next slide (like pressing Next)</label>
       <p class="note">It plays from the start every time the slide comes up, with sound on the slides screens. On Stage it plays muted, so you can see where it is.</p>`;
@@ -720,6 +757,11 @@ async function edit(){
     if (a === "sadd") { const sid = newId("s"); op({t: "sadd", sid}); sel = {k: "sec", id: sid}; render(); return }
     if (a === "pmove" || a === "smove") { op({t: a, [a === "pmove" ? "pid" : "sid"]: id, d: +b.dataset.d}, true); return }
     if (a === "vadd") { op({t: "vadd", pid: id}, true); const ins = document.querySelectorAll(`[data-t="v"][data-id="${CSS.escape(id)}"][data-f="ref"]`); if (ins.length) ins[ins.length - 1].focus(); return }
+    if (a === "kadd") { const f = findPt(D, sel.id); if (!f) return; const L = kpNow(f.p); L.push(""); kpSet(f.p, L, L.length - 1); return }
+    if (a === "kmove") { kmove(sel.id, +b.dataset.j, +b.dataset.d); return }
+    if (a === "kdel") { const f = findPt(D, sel.id); if (!f) return; const j = +b.dataset.j, L = kpNow(f.p), id = kpAnchor(f.p, L[j]) || ((L[j] || "").match(ANC) || [])[1];
+      if (!b.dataset.armed && (L[j] || "").trim()) { b.dataset.armed = 1; b.textContent = "Delete?"; b.classList.add("arm"); return }
+      L.splice(j, 1); if (id) op({t: "pt", pid: f.p.id, f: "script", v: (f.p.script || "").split("[@" + id + "]").join("")}); kpSet(f.p, L); if (id) { const sb = $("#m .rich.big"); if (sb) sb.innerHTML = richHTML(f.p) } return }
     if (a === "posreset") { const g = b.dataset.g, fs = g === "bul" ? ["ttSize", "ttColor", "blSize", "blColor"] : g === "all" ? POSF : ["X", "Y", "W", "Size", "Align", "Color"].map(x => g + x), T = elT(b);
       fs.forEach(k => setOp(T, k, "")); refreshSlide(); return }
     if (a === "imgdel") { setOp(elT(b), "image", "", true); return }
@@ -737,7 +779,7 @@ async function edit(){
     const el = ev.target;
     if (el.dataset.vid) { const file = el.files && el.files[0]; if (!file) return; const pid = el.dataset.vid, T = {pid, i: +el.dataset.i}, msg = $("#imgmsg");
       if (file.size > 95e6) { if (msg) msg.textContent = "That video is too big for GitHub (over 95 MB). Shrink it and try again."; return }
-      if (msg) msg.textContent = `Uploading ${Math.round(file.size / 1e6)} MB…`;
+      if (msg) msg.textContent = `Uploading ${Math.round(file.size / 1e6)} MB…`; if (tObj(T) && tObj(T).url) setOp(T, "url", "");
       try { const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = no; r.readAsDataURL(file) });
         const ext = (file.name.match(/\.([a-z0-9]{2,5})$/i) || [, "mp4"])[1].toLowerCase(), path = `slides/video/${pid}-${Date.now().toString(36)}.${ext}`;
         await GH.put(PATH + "/" + path, b64, null, "Video for " + pid); LOCALIMG[path] = URL.createObjectURL(file); setOp(T, "video", path, true) }
@@ -777,8 +819,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=26"><link rel="stylesheet" href="../common/countdown.css?v=26"><link rel="stylesheet" href="../common/gate.css?v=26"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=26"></script><script src="../common/countdown.js?v=26"></script><script src="../common/gate.js?v=26"></script><script src="../common/app.js?v=26"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=27"><link rel="stylesheet" href="../common/countdown.css?v=27"><link rel="stylesheet" href="../common/gate.css?v=27"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=27"></script><script src="../common/countdown.js?v=27"></script><script src="../common/gate.js?v=27"></script><script src="../common/app.js?v=27"></script></body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 async function index(){
