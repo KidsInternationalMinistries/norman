@@ -376,3 +376,18 @@ body[data-mode="edit"] .kpi:hover .kbar button,body[data-mode="edit"] .kpi:focus
 .ftext .btx .vchip.unplaced{border-style:solid;border-color:#c0392b;color:#fff;background:#c0392b}
 .ftext .vchip.on{background:var(--accent);color:#fff;opacity:1}
 .aisp{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:8px 0}.aisp b{font-size:14px}.aisp p{margin:3px 0;color:var(--muted);font-size:14px}
+/* Reading cues (how to say it): purple family */
+.vchip.cue,.cuehint{border-style:solid!important;border-color:#7b5cc4!important;color:#7b5cc4!important;background:color-mix(in srgb,#7b5cc4 10%,transparent)!important;font-size:12px}
+.vchip.cue-pause,.vchip.cue-longpause,.cuehint.cue-pause,.cuehint.cue-longpause{border-color:#5f6a66!important;color:#5f6a66!important;background:color-mix(in srgb,#5f6a66 10%,transparent)!important}
+.vchip.cue-excited,.vchip.cue-exclaim,.cuehint.cue-excited,.cuehint.cue-exclaim{border-color:#d9622b!important;color:#d9622b!important;background:color-mix(in srgb,#d9622b 10%,transparent)!important}
+.vchip.cue-calm,.vchip.cue-gentle,.cuehint.cue-calm,.cuehint.cue-gentle{border-color:#2b8fa6!important;color:#2b8fa6!important;background:color-mix(in srgb,#2b8fa6 10%,transparent)!important}
+.vchip.cue-normal,.cuehint.cue-normal{border-style:dashed!important}
+.cuehint{display:inline-block;border:1.5px solid;border-radius:999px;padding:0 8px;font:700 12px/1.6 system-ui,sans-serif;margin:0 3px;vertical-align:2px}
+.vmenu button.cueo{color:#7b5cc4;font-size:14px}
+
+/* ?play narrated version */
+#pstart{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:18vh;gap:14px;background:rgba(0,0,0,.55);z-index:30}
+#pstart button{font-size:28px;padding:18px 36px;border-radius:999px;border:0;background:#f2c14e;color:#151515;font-weight:700;cursor:pointer}
+#pstart button:disabled{opacity:.5;cursor:default}
+#pstart p{color:#fff;font-size:18px;margin:0;text-align:center;padding:0 16px}
+#again{margin-top:18px;font-size:20px}

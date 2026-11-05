@@ -350,38 +350,74 @@ Return JSON {"section": {...one entry of sections...}} using this ${GEN_SHAPE}`,
 // =====================================================================
 const AUD = {};       // text → promise of an object URL, so replaying is instant
 // A point as a list of things to do: say some text, or press Next at a tag (like the speaker does when they reach it).
-function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.script);
+// How the voice reads: the reading cues ([Slow], [Excited], [Normal]…) set its speed and tone until the next cue.
+const TONES = {excited: {stability: .3, style: .55, f: 1.05}, exclaim: {stability: .22, style: .8, f: 1}, calm: {stability: .8, style: 0, f: .93}, gentle: {stability: .72, style: .15, f: .9}};
+function voiceOf(m){ const v = {stability: .5, similarity_boost: .75, style: 0, speed: m.speed === "slow" ? .82 : m.speed === "fast" ? 1.15 : 1, use_speaker_boost: true}, t = TONES[m.tone];
+  if (t) { v.stability = t.stability; v.style = t.style; v.speed *= t.f } v.speed = Math.max(.7, Math.min(1.2, Math.round(v.speed * 100) / 100)); return v }
+function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.script), mode = {speed: "", tone: ""}; let cv = voiceOf(mode);
   const seg = (blk, t) => { const n = {}; let last = 0;
     const say = (a, b) => { let x = "", map = [], sp = true; for (let i = a; i < b; i++) { const c = t[i]; if (/\s/.test(c)) { if (!sp) { x += " "; map.push(i); sp = true } } else if (!/[🔑🔁]/u.test(c)) { x += c; map.push(i); sp = false } }
       while (x.endsWith(" ")) { x = x.slice(0, -1); map.pop() }
-      while (x.length > 3500) { let cut = x.lastIndexOf(". ", 3500); if (cut < 1000) cut = 3500; out.push({say: x.slice(0, cut + 1), blk, map: map.slice(0, cut + 1)}); x = x.slice(cut + 1).replace(/^ /, ""); map = map.slice(map.length - x.length) }
-      if (x) out.push({say: x, blk, map}) };
+      while (x.length > 3500) { let cut = x.lastIndexOf(". ", 3500); if (cut < 1000) cut = 3500; out.push({say: x.slice(0, cut + 1), blk, map: map.slice(0, cut + 1), vs: cv}); x = x.slice(cut + 1).replace(/^ /, ""); map = map.slice(map.length - x.length) }
+      if (x) out.push({say: x, blk, map, vs: cv}) };
     for (const m of t.matchAll(/\[([^\[\]\n]{1,60})\]/g)) { say(last, m.index); last = m.index + m[0].length; const r = m[1].trim(), v = T.tagOf(p, r.replace(/^!/, "")); if (!v || v.anchor) continue;
+      if (v.cue) { const c = v.cue; if (c === "pause" || c === "long pause") out.push({pause: c === "pause" ? 1.2 : 2.5}); else if (c === "normal") { mode.speed = ""; mode.tone = "" } else if (c === "slow" || c === "fast") mode.speed = c; else mode.tone = c; cv = voiceOf(mode); continue }
       const key = T.tagKey(v); n[key] = (n[key] || 0) + 1; if (blk !== "intro") out.push({step: blk + "|" + key + "#" + n[key]});
-      const vt = vs.find(x => x && x.ref && x.ref.trim() === r.replace(/^!/, "")); if (vt && vt.text) out.push({say: vt.ref + ". " + vt.text.replace(/\*\*|__/g, "").replace(/\s+/g, " "), blk: null}) }
+      const vt = vs.find(x => x && x.ref && x.ref.trim() === r.replace(/^!/, "")); if (vt && vt.text) out.push({say: vt.ref + ". " + vt.text.replace(/\*\*|__/g, "").replace(/\s+/g, " "), blk: null, vs: cv}) }
     say(last, t.length) };
   seg("intro", T.trimBlk(B.intro)); for (const x of p.keyPoints || []) { const id = T.kpId(x); if (id) seg(id, T.trimBlk(B.text[id])) }
-  if (!out.some(x => x.say)) { const k = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); if (k) out.push({say: k, blk: null}) }
+  if (!out.some(x => x.say)) { const k = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); if (k) out.push({say: k, blk: null, vs: voiceOf({})}) }
   return out }
 // Speech plus the time each character is spoken (ElevenLabs "with timestamps"), so the word being read can light up.
-function tts(text){ if (!AUD[text]) { AUD[text] = tts0(text); AUD[text].catch(() => delete AUD[text]) } return AUD[text] }
-async function tts0(text){ const key = await need("eleven"); let voice = KEYS.voice;
-  if (!voice) { let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {} voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; KEYS.voice = voice; saveLocal() }
-  const body = JSON.stringify({text, model_id: "eleven_multilingual_v2"}), H = {"xi-api-key": key, "Content-Type": "application/json"};
+function tts(text, vs){ const k = text + "|" + JSON.stringify(vs || {}); if (!AUD[k]) { AUD[k] = tts0(text, vs); AUD[k].catch(() => delete AUD[k]) } return AUD[k] }
+async function voiceId(key){ if (KEYS.voice) return KEYS.voice; let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {}
+  KEYS.voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; saveLocal(); return KEYS.voice }
+async function tts0(text, vs){ const key = await need("eleven"), voice = await voiceId(key);
+  const body = JSON.stringify(vs ? {text, model_id: "eleven_multilingual_v2", voice_settings: vs} : {text, model_id: "eleven_multilingual_v2"}), H = {"xi-api-key": key, "Content-Type": "application/json"};
   let r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {method: "POST", headers: H, body});
   let j = null; if (r.ok) try { j = await r.json() } catch (e) {}
   if (j && j.audio_base64) { const a = j.alignment || {}; const bin = Uint8Array.from(atob(j.audio_base64 || ""), c => c.charCodeAt(0));
-    return {url: URL.createObjectURL(new Blob([bin], {type: "audio/mpeg"})), starts: a.character_start_times_seconds || null, chars: a.characters || null} }
+    return {url: URL.createObjectURL(new Blob([bin], {type: "audio/mpeg"})), b64: j.audio_base64, starts: a.character_start_times_seconds || null, chars: a.characters || null} }
   if (r.status === 401) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status) + ". In ElevenLabs, edit the key and turn on Text to Speech.") }
   r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {method: "POST", headers: {...H, Accept: "audio/mpeg"}, body});
-  if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status)) } return {url: URL.createObjectURL(await r.blob()), starts: null} }
+  if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status)) } const bl = await r.blob(); return {url: URL.createObjectURL(bl), blob: bl, starts: null} }
+const blobB64 = b => new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1]); fr.onerror = no; fr.readAsDataURL(b) });
+// =====================================================================
+// NARRATED VERSION: the whole talk read in the AI voice and saved with the talk (voice/*.mp3 + narration.json),
+// so anyone with the ?play link watches the slides while the voice reads and moves them on.
+// =====================================================================
+function narrate(){ const ed = T.ed, share = new URL("./?play", location.href).href;
+  const d = dlg("ainar", `<div class="ed"><div class="pgh"><b>🔊 Narrated version (share link)</b><button type="button" class="btn small" data-x>Close</button></div>
+    <p class="note">This reads the whole talk in the AI voice, with your reading cues, and saves it with the talk. Anyone with the link then sees the slides while the voice reads and moves them forward. Only the parts that changed since the last time use ElevenLabs credits.</p>
+    <p class="aimsg" id="ainm"></p><div class="row"><button type="button" class="btn" id="aingo">Make the narrated version</button></div>
+    <div id="ainl" style="display:none"><p class="note">Share this link (give GitHub a minute or two to publish a fresh version):</p><div class="row"><input id="ainu" readonly value="${E(share)}" style="flex:1"><button type="button" class="btn small" id="ainc">Copy</button><a class="btn small" href="${E(share)}" target="_blank" rel="noopener">Open</a></div></div></div>`);
+  d.querySelector("[data-x]").onclick = () => d.close(); $("#ainc").onclick = () => { $("#ainu").select(); try { navigator.clipboard.writeText(share) } catch (e) { document.execCommand("copy") } toast("Link copied") };
+  if (!d.open) d.showModal();
+  T.GH.get(T.PATH + "/narration.json").then(g => { const n = JSON.parse(g.text); $("#ainm").textContent = "Last made " + new Date(n.made).toLocaleString() + ". Make it again after you change the talk."; $("#ainl").style.display = "" }).catch(() => {});
+  $("#aingo").onclick = async () => { const b = $("#aingo"), m = $("#ainm"); b.disabled = true;
+    try { if (!T.token()) throw new Error("Saving needs the GitHub sign-in on this page first."); const key = await need("eleven"), voice = await voiceId(key);
+      let old = {}, osha = null; try { const g = await GH.get(T.PATH + "/narration.json"); old = JSON.parse(g.text); osha = g.sha } catch (e) {}
+      const have = new Set(); Object.values(old.points || {}).forEach(a => (a || []).forEach(x => x.say && have.add(x.say)));
+      const points = {}, jobs = [];
+      for (const s of ed.S()) { const f = ed.findPt(s.id); if (!f) continue; const st = T.stepsOf(f.p), items = [];
+        for (const it of speakPlan(f.p)) { if (it.step) { const x = st.find(y => y.a === it.step); if (x) items.push({sub: x.sub}) } else if (it.pause) items.push({pause: it.pause});
+          else if (it.say) { const file = "voice/" + (await sha(voice + "|" + JSON.stringify(it.vs || {}) + "|" + it.say)).slice(0, 16) + ".mp3"; items.push({say: file}); if (!have.has(file) && !jobs.some(j => j.file === file)) jobs.push({file, text: it.say, vs: it.vs}) } }
+        points[s.id] = items }
+      for (let k = 0; k < jobs.length; k++) { const j = jobs[k]; m.textContent = `Reading part ${k + 1} of ${jobs.length}…`; if (jobs[k + 1]) tts(jobs[k + 1].text, jobs[k + 1].vs).catch(() => {});
+        const a = await tts(j.text, j.vs), data = a.b64 || await blobB64(a.blob);
+        try { await GH.put(T.PATH + "/" + j.file, data, null, "Narration voice") } catch (e) { if (e.status !== 422) throw e } }
+      m.textContent = "Saving…"; const N = {format: "narration/1", voice, voiceName: KEYS.voiceName || "", made: new Date().toISOString(), points};
+      for (let a = 0; a < 3; a++) { try { await GH.put(T.PATH + "/narration.json", T.b64e(JSON.stringify(N, null, 1) + "\n"), osha, "Narrated version"); break } catch (e) { if (a === 2 || (e.status !== 409 && e.status !== 422)) throw e; try { osha = (await GH.get(T.PATH + "/narration.json")).sha } catch (_) { osha = null } } }
+      m.textContent = `Done. ${jobs.length ? jobs.length + " new part" + (jobs.length > 1 ? "s" : "") + " read" : "Nothing had changed, so no new reading was needed"}.`; $("#ainl").style.display = "" }
+    catch (e) { m.textContent = ""; fail(e) } b.disabled = false } }
+
 let LS = null;
 function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0), plan = [], q = 0, run = 0, cur = null, raf = 0, lastW = null;
   if (LS) LS.stop(); const bar = document.createElement("div"); bar.id = "ailisten"; bar.innerHTML = `<button type="button" data-l="prev" title="Previous point">⏮</button><button type="button" data-l="play" title="Pause">❚❚</button><button type="button" data-l="next" title="Next point">⏭</button><span id="ailt"></span><select id="ailr" title="Speed">${[0.9, 1, 1.15, 1.3, 1.5].map(r => `<option value="${r}"${r === 1 ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" data-l="x" title="Stop">✕</button>`;
   document.body.appendChild(bar); const au = new Audio(), lab = $("#ailt"); let alive = true; ed.listenMode(true);
   LS = {stop(){ alive = false; au.pause(); cancelAnimationFrame(raf); bar.remove(); LS = null; ed.listenMode(false) }};
   const head = () => `${L[i].label} ${L[i].cue || ""}`;
-  const warm = (pl, from) => pl.slice(from).filter(x => x.say).slice(0, 2).forEach(x => tts(x.say).catch(() => {}));
+  const warm = (pl, from) => pl.slice(from).filter(x => x.say).slice(0, 2).forEach(x => tts(x.say, x.vs).catch(() => {}));
   // Light up the word being said: the time → the character → its place in the block → that word.
   function glow(){ raf = requestAnimationFrame(glow); const it = plan[q]; if (!cur || !it || !it.blk || !cur.starts || au.paused) return; const t = au.currentTime, S = cur.starts;
     let lo = 0, hi = S.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (S[mid] <= t) lo = mid; else hi = mid - 1 } const off = it.map[Math.min(lo, it.map.length - 1)]; if (off == null) return;
@@ -392,10 +428,11 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
   function point(k){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; run++;
     if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; lastW = null; warm(plan, 0);
     const nx = L[i + 1] && ed.findPt(L[i + 1].id); if (nx) warm(speakPlan(nx.p), 0); go(run) }
-  async function go(r){ while (alive && r === run && q < plan.length && plan[q].step) { ed.stepTo(plan[q].step); q++ }
+  async function go(r){ while (alive && r === run && q < plan.length && (plan[q].step || plan[q].pause)) { const it = plan[q];
+      if (it.step) ed.stepTo(it.step); else { lab.textContent = head() + " · pause"; await new Promise(ok => setTimeout(ok, it.pause * 1000 / (+$("#ailr").value || 1))); if (!alive || r !== run) return } q++ }
     if (!alive || r !== run) return; if (q >= plan.length) return point(i + 1);
     const it = plan[q]; lab.textContent = head() + " · getting the voice…";
-    try { const a = await tts(it.say); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
+    try { const a = await tts(it.say, it.vs); if (!alive || r !== run) return; warm(plan, q + 1); cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
     catch (e) { if (!alive || r !== run) return; lab.textContent = ""; fail(e); if (e.quiet && LS) LS.stop() } }
   au.onended = () => { q++; go(run) }; $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
   bar.onclick = e => { const b = e.target.closest("[data-l]"); if (!b) return; const a = b.dataset.l;
@@ -519,10 +556,10 @@ window.TALKAI = {html: {
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
 }, chat, image, settings, outline};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
-  m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="split">Split the full text into the key points (whole talk)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
+  m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="narr">Make the narrated version (share link)</button><button type="button" data-a="split">Split the full text into the key points (whole talk)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";
   m.onclick = e => { const b = e.target.closest("[data-a]"); if (!b) return; m.remove(); const a = b.dataset.a;
-    if (a === "check") checkTalk(); else if (a === "listen") listen(); else if (a === "split") splitTalk(null).catch(fail); else if (a === "sec") sectionAI(null); else settings() } }
+    if (a === "check") checkTalk(); else if (a === "listen") listen(); else if (a === "narr") narrate(); else if (a === "split") splitTalk(null).catch(fail); else if (a === "sec") sectionAI(null); else settings() } }
 document.addEventListener("mousedown", e => { const m = $("#aimenu"); if (m && !m.contains(e.target) && !e.target.closest("#aibtn")) m.remove() });
 document.addEventListener("click", e => {
   if (e.target.closest("#aibtn")) { aiMenu(e.target.closest("#aibtn")); return }

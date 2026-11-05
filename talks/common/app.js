@@ -87,7 +87,10 @@ function slideBox(p, cls){
 // [Acts 1:8] (one of its verses) shows that verse alone; [Main slide] brings its own slide back; [Stop] is a pause that keeps the slide.
 const TAG = /\[([^\[\]\n]{1,60})\]/g;
 const MAIN = "Main slide", MAINTAG = {ref: MAIN, main: true}, STOP = "Stop", STOPTAG = {ref: STOP, stop: true};
-function tagOf(p, t){ t = t.trim(); if (t[0] === "!") { const v = tagOf(p, t.slice(1)); if (!v) return null; if (v.anchor) return {...v, unplaced: true}; const u = Object.create(v); u.unplaced = true; return u }
+// Reading cues: hints for how to say a part (shown on Stage, followed by the AI voice). They never change slides. Normal ends them.
+const CUES = {"pause": ["⏸", "Pause"], "long pause": ["⏸", "Long pause"], "slow": ["🐢", "Slow"], "fast": ["🐇", "Fast"], "excited": ["✨", "Excited"], "exclaim": ["❗", "Exclaim"], "calm": ["🌊", "Calm"], "gentle": ["🤍", "Gentle"], "normal": ["↺", "Normal"]};
+const CUETAG = {}; for (const [k, [ic, nm]] of Object.entries(CUES)) CUETAG[k] = {ref: nm, cue: k, icon: ic};
+function tagOf(p, t){ t = t.trim(); if (CUETAG[t.toLowerCase()]) return CUETAG[t.toLowerCase()]; if (t[0] === "!") { const v = tagOf(p, t.slice(1)); if (!v) return null; if (v.anchor) return {...v, unplaced: true}; const u = Object.create(v); u.unplaced = true; return u }
   if (/^@[a-z0-9]+$/.test(t)) return {ref: t, anchor: true, id: t.slice(1)}; const l = t.toLowerCase(); if (l === MAIN.toLowerCase()) return MAINTAG; if (l === STOP.toLowerCase()) return STOPTAG; return (p.verses || []).find(x => x && x.ref && x.ref.trim() === t) || (p.slides || []).find(x => x && x.name && x.name.trim() === t) || null }
 // Extra slides on a point (p.slides): {name, type: "image" | "plain", eyebrow, slideTitle, slide, layout, image, placement…}. The tag is [name].
 // More types can be added here: give each a name, whether it has a picture, and how it draws.
@@ -134,7 +137,7 @@ function bulletsHTML(v){ const L = (v.bullets || "").split("\n").map(x => x.trim
 // The slide a tag shows: its verse, its extra slide, or the point's own slide.
 function tagHTML(S, i, v, d){ if (!v || v.main || v.stop) return slideHTML(S, i, d); return isXS(v) ? xsHTML(v) : verseSlide(v) }
 const tagSources = p => [...(p.keyPoints || [])];      // only key-point tags change slides; full-text tags are reference only
-function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tagSources(p)) for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v && !v.anchor) out.push(v) } return out }
+function verseRefsIn(p){ const out = []; if (!p) return out; for (const t of tagSources(p)) for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (v && !v.anchor && !v.cue) out.push(v) } return out }
 // Links from a key point to a spot in the full text: [@id] at the start of the key point and [@id] in the text.
 // Next on that key point scrolls the full text to the spot. A key point without a link (or slide tags) takes no Next.
 const ANC = /\[@([a-z0-9]+)\]/;
@@ -149,7 +152,7 @@ const KPID = /^\s*\[@([a-z0-9]+)\]\s*/;
 const kpId = line => { const m = (line || "").match(KPID); return m ? m[1] : null };
 const kpBody = line => (line || "").replace(KPID, "");
 const newKid = () => Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 6);
-function lineCounts(p, x){ const c = {}; for (const m of (x || "").matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v || v.anchor || v.unplaced) continue; const k = tagKey(v); c[k] = (c[k] || 0) + 1 } return c }
+function lineCounts(p, x){ const c = {}; for (const m of (x || "").matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v || v.anchor || v.unplaced || v.cue) continue; const k = tagKey(v); c[k] = (c[k] || 0) + 1 } return c }
 function kpCounts(p){ const c = {}; for (const x of p.keyPoints || []) for (const [k, n] of Object.entries(lineCounts(p, x))) c[k] = (c[k] || 0) + n; return c }
 function splitBlocks(t){ t = t || ""; const out = {intro: "", order: [], text: {}}; let last = 0, cur = null;
   const put = seg => { if (cur == null) out.intro += seg; else out.text[cur] += seg };
@@ -183,7 +186,7 @@ function hasSpot(p, a){ const b = a.indexOf("|"), i = a.lastIndexOf("#"); if (b 
   const t = splitBlocks(p.script).text[id]; if (t == null) return false; let c = 0; for (const m of t.matchAll(TAG)) { const r = m[1].trim(); if (r === k || r === "!" + k) c++ } return c >= n }
 function stepsOf(p){ const out = [{b: -1, sub: 0}]; let k = 0;
   (p.keyPoints || []).forEach((x, j) => { const id = kpId(x), n = {};
-    [...x.matchAll(TAG)].map(m => tagOf(p, m[1])).filter(v => v && !v.anchor && !v.unplaced).forEach(v => { const key = tagKey(v); n[key] = (n[key] || 0) + 1; out.push({b: j, sub: ++k, a: id ? id + "|" + key + "#" + n[key] : null}) }) });
+    [...x.matchAll(TAG)].map(m => tagOf(p, m[1])).filter(v => v && !v.anchor && !v.unplaced && !v.cue).forEach(v => { const key = tagKey(v); n[key] = (n[key] || 0) + 1; out.push({b: j, sub: ++k, a: id ? id + "|" + key + "#" + n[key] : null}) }) });
   return out }
 const subCount = p => verseRefsIn(p).length;
 // Which step's slide is showing at step sub (a Stop keeps the slide before it).
@@ -204,9 +207,9 @@ function stepHTML(S, i, sub, d){ const k = shownAt(S[i], sub); if (k > 0) { cons
 // One dot per slide on a point (its own slide, then each verse / main-slide step; stops aren't slides); "on" marks the one showing.
 function dotsHTML(p, on){ const n = (hasSlide(p) ? 1 : 0) + verseRefsIn(p).filter(v => !v.stop).length; if (!n) return ""; let h = ""; for (let k = 0; k < n; k++) h += `<b${k === on ? ' class="on"' : ""}></b>`; return `<span class="dots">${h}</span>` }
 function dotOf(p, sub){ const k = shownAt(p, sub), own = hasSlide(p) ? 1 : 0; if (!k) return own ? 0 : -1; return own + verseRefsIn(p).slice(0, k).filter(v => !v.stop).length - 1 }
-const tagLabel = v => v.anchor ? "↓" : v.main ? "↩ " + MAIN : v.stop ? "■ " + STOP : isXS(v) ? "▣ " + v.name : v.ref;
+const tagLabel = v => v.cue ? v.icon + " " + v.ref : v.anchor ? "↓" : v.main ? "↩ " + MAIN : v.stop ? "■ " + STOP : isXS(v) ? "▣ " + v.name : v.ref;
 const tagName = v => isXS(v) ? v.name : v.ref;
-const tagCls = v => v.anchor ? " anc" : v.main ? " main" : v.stop ? " stop" : isXS(v) ? " xs" : "";
+const tagCls = v => v.cue ? " cue cue-" + v.cue.replace(" ", "") : v.anchor ? " anc" : v.main ? " main" : v.stop ? " stop" : isXS(v) ? " xs" : "";
 // Text with its tags as buttons; k counts steps across key points and full text.
 function taggedHTML(t, p, st){ let h = "", last = 0;
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue;
@@ -219,6 +222,7 @@ function scriptHTML(p){ const B = splitBlocks(p.script), L = p.keyPoints || []; 
   L.forEach(x => { const id = kpId(x); if (!id) return; const t = trimBlk(B.text[id]); h += `${h ? "\n" : ""}<span class="blkmark" data-blk="${E(id)}"></span>` + segHTML(p, t, id, x) }); return h }
 function segHTML(p, t, blk, line){ let h = "", last = 0; const n = {}, need = blk ? lineCounts(p, line) : {};
   for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; h += E(t.slice(last, m.index)); last = m.index + m[0].length; if (v.anchor) continue;
+    if (v.cue) { h += `<span class="cuehint${tagCls(v)}">${E(tagLabel(v))}</span>`; continue }
     const key = tagKey(v); let mk = ""; if (blk) { n[key] = (n[key] || 0) + 1; mk = ` data-mk="${E(blk + "|" + key + "#" + n[key])}"` }
     if (v.unplaced) { h += `<span class="umark"${mk}></span>`; continue }
     h += `<button type="button" class="vtag ref${tagCls(v)}${blk && n[key] <= (need[key] || 0) ? " mir" : ""}" data-ref="${E(tagName(v))}"${mk} title="Click to show this slide. Next or Back goes back">${E(tagLabel(v))}</button>` }
@@ -265,7 +269,37 @@ function topBar(active){
 // =====================================================================
 // MONITOR: slides only, follows the presenter, can step, snaps back.
 // =====================================================================
+// ?play: the narrated version. The slides show while the saved AI voice reads, and the voice moves the slides on.
+async function playMode(){
+  document.body.innerHTML = `<div id="s"></div><div id="ui"><button id="pb" type="button" title="Previous point">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next point">⏭</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
+  try { D = await loadTalk(false) } catch (e) { $("#pmsg").textContent = "Couldn't load this talk."; return }
+  document.title = D.title + " · narrated"; const S = steps(D); preload(S, D); setSlide($("#s"), stepHTML(S, 0, 0, D));
+  let N = null; for (const u of ["narration.json", RAW + PATH + "/narration.json"]) { try { const r = await fetch(u + "?t=" + Date.now(), {cache: "no-store"}); if (r.ok) { N = await r.json(); break } } catch (e) {} }
+  if (!N || !N.points) { $("#pgo").textContent = "Not ready yet"; $("#pmsg").textContent = "This talk doesn't have a narrated version yet."; return }
+  $("#pgo").disabled = false; $("#pgo").textContent = "▶ Play the talk"; $("#pmsg").textContent = "Narrated with an AI voice";
+  const au = new Audio(), st = $("#st"); let run = 0, i = 0, paused = false, wake = null;
+  const url = f => f.startsWith("voice/") ? f : "";
+  const pre = f => { const x = new Audio(); x.preload = "auto"; x.src = url(f) };
+  const show = (k, sub) => { setSlide($("#s"), stepHTML(S, k, sub, D)); st.lastChild.textContent = `${S[k].label} ${S[k].cue || ""}`.trim() };
+  const wait = (ms, r) => new Promise(ok => { let left = ms; const t = setInterval(() => { if (r !== run) { clearInterval(t); ok() } else if (!paused && (left -= 100) <= 0) { clearInterval(t); ok() } }, 100) });
+  const say = f => new Promise(ok => { let alt = false; wake = ok; au.onended = () => ok(); au.onerror = () => { if (alt) return ok(); alt = true; au.src = RAW + PATH + "/" + f; if (!paused) au.play().catch(() => {}) }; au.src = url(f); if (!paused) au.play().catch(() => {}) });
+  async function point(k){ const r = ++run; au.pause(); if (wake) { wake(); wake = null } if (k < 0) k = 0;
+    if (k >= S.length) { setSlide($("#s"), `<div class="slide blank"><div class="txt">The end<br><button type="button" id="again" class="btn">▶ Play again</button></div></div>`); st.lastChild.textContent = "The end"; const g = $("#again"); if (g) g.onclick = () => point(0); return }
+    i = k; show(k, 0); const items = N.points[S[k].id] || [], says = items.filter(x => x.say); says.slice(0, 2).forEach(x => pre(x.say));
+    const nx = S[k + 1] && N.points[S[k + 1].id]; if (nx) { const f = nx.find(x => x.say); if (f) pre(f.say) }
+    if (!says.length) await wait(4000, r);
+    for (let q = 0; q < items.length && r === run; q++) { const it = items[q];
+      if (it.sub != null) show(k, it.sub); else if (it.pause) await wait(it.pause * 1000, r); else if (it.say) { const nf = items.slice(q + 1).find(x => x.say); if (nf) pre(nf.say); await say(it.say) } }
+    if (r === run) point(k + 1) }
+  const toggle = () => { paused = !paused; $("#pg").textContent = paused ? "▶" : "❚❚"; if (paused) au.pause(); else if (au.src && !au.ended) au.play().catch(() => {}) };
+  $("#pgo").onclick = () => { $("#pstart").remove(); point(0) };
+  $("#pn").onclick = () => point(i + 1); $("#pb").onclick = () => point(i - 1); $("#pg").onclick = toggle;
+  const full = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen() } catch (e) {} }; $("#f").onclick = full;
+  document.addEventListener("keydown", e => { if ($("#pstart")) return; if (e.key === "ArrowRight" || e.key === "PageDown") point(i + 1); else if (e.key === "ArrowLeft" || e.key === "PageUp") point(i - 1); else if (e.key === " ") { e.preventDefault(); toggle() } else if (e.key === "f" || e.key === "F") full() });
+  let hideT; const ui = $("#ui"); const wk = () => { ui.classList.remove("hide"); clearTimeout(hideT); hideT = setTimeout(() => ui.classList.add("hide"), 3000) };
+  document.addEventListener("mousemove", wk); document.addEventListener("touchstart", wk); wk() }
 async function monitor(){
+  if (new URLSearchParams(location.search).has("play")) return playMode();
   document.body.innerHTML = `<div id="s"></div><div id="ui"><button id="b" type="button">&larr; Back</button><span id="st"><b></b>Connecting&hellip;</span><button id="n" type="button">Next &rarr;</button><button id="f" type="button">Full screen</button></div>`;
   try { D = await loadTalk(false) } catch (e) { $("#s").innerHTML = `<div class="txt">Couldn't load this talk.</div>`; return }
   document.title = D.title + " · slides";
@@ -580,7 +614,7 @@ async function edit(){
   // In Listen mode each word is a span with its place in the block, so the word being read can light up.
   const words = (t, base) => lmode ? t.replace(/[^\s]+/g, "\u0000$&\u0001").split(/(\u0000[^\u0001]*\u0001)/).map((x, i, a) => { const o = base + a.slice(0, i).join("").replace(/[\u0000\u0001]/g, "").length; return x[0] === "\u0000" ? `<span class="w" data-o="${o}">${E(x.slice(1, -1))}</span>` : E(x) }).join("") : E(t);
   function richHTML(p, text, inText, blk){ let h = "", last = 0; if (inText == null) inText = text == null; const t = text != null ? text : p.script || "";
-    const n = {}; for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; let mk = ""; if (inText && blk && !v.anchor) { const k = tagKey(v); n[k] = (n[k] || 0) + 1; mk = blk + "|" + k + "#" + n[k] }
+    const n = {}; for (const m of t.matchAll(TAG)) { const v = tagOf(p, m[1]); if (!v) continue; let mk = ""; if (inText && blk && !v.anchor && !v.cue) { const k = tagKey(v); n[k] = (n[k] || 0) + 1; mk = blk + "|" + k + "#" + n[k] }
       h += words(t.slice(last, m.index), last) + (v.anchor && inText ? "" : chip(v, p, inText, mk)); last = m.index + m[0].length }
     return h + words(t.slice(last), last) }
   function richText(el){ let out = "";
@@ -602,7 +636,7 @@ async function edit(){
     relabel(f.p) }
   function redrawKp(p){ const b = $("#m .kplist"); if (b && !b.contains(document.activeElement)) { kpBusy = true; b.innerHTML = kpItems(p); kpBusy = false } }
   function relabel(p){ document.querySelectorAll("#ftext [data-f=block]").forEach(bx => { const id = bx.dataset.blk, line = (p.keyPoints || []).find(x => kpId(x) === id), need = line ? lineCounts(p, line) : {}, n = {};
-    bx.querySelectorAll(".vchip").forEach(c => { const v = tagOf(p, c.dataset.ref); if (!v || v.anchor) return; const k = tagKey(v); if (!line) { delete c.dataset.mk; c.classList.remove("mir"); return }
+    bx.querySelectorAll(".vchip").forEach(c => { const v = tagOf(p, c.dataset.ref); if (!v || v.anchor || v.cue) return; const k = tagKey(v); if (!line) { delete c.dataset.mk; c.classList.remove("mir"); return }
       n[k] = (n[k] || 0) + 1; c.dataset.mk = id + "|" + k + "#" + n[k]; c.classList.toggle("mir", !v.unplaced && n[k] <= (need[k] || 0)) }) }) }
   // A tag that's in the key points can't leave the full text: if one is removed (with a selection, cut, etc.) it's back at the top in red at once.
   function restoreTags(box){ const f = findPt(D, box.dataset.id); if (!f) return; const line = (f.p.keyPoints || []).find(x => kpId(x) === box.dataset.blk); if (!line) return; const need = lineCounts(f.p, line), have = {};
@@ -630,11 +664,11 @@ async function edit(){
   function openVmenu(el){ const f = findPt(D, el.dataset.id); const vs = f ? [...(f.p.verses || []).filter(v => v && v.ref), ...(f.p.slides || []).filter(x => x && x.name)] : []; const inKp = el.classList.contains("kp");
     if (inKp) vs.push(STOPTAG, MAINTAG, {newT: "verse"}, ...Object.keys(SLIDE_TYPES).map(k => ({newT: k})));
     else if (f) { vs.length = 0;      // the full text only places the red tags of this key point
-      [...el.querySelectorAll(".vchip.unplaced")].forEach(c => { const v = tagOf(f.p, c.dataset.ref); if (v) vs.push({place: c, v, label: tagLabel(v)}) }) }
+      [...el.querySelectorAll(".vchip.unplaced")].forEach(c => { const v = tagOf(f.p, c.dataset.ref); if (v) vs.push({place: c, v, label: tagLabel(v)}) }); vs.push(...Object.values(CUETAG)) }
     if (!vs.length) return;
     const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0); const node = r.startContainer, off = r.startOffset;
     if (node.nodeType !== 3 || off < 1 || node.nodeValue[off - 1] !== "/") return;
-    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">${inKp ? "Slides" : "Place here"}</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.main || v.newLink || v.newT === "verse" || (v.kpLink != null && vs[i - 1] && vs[i - 1].place) ? " main" : ""}${v.newT || v.newLink ? " new" : ""}${v.kpLink != null ? " kpl" : ""}${v.place ? " plc" : ""}">${v.place ? "📍 " + E(v.label) : v.newLink ? "↓ Link to a spot in the full text" : v.kpLink != null ? "↓ " + E(v.label.length > 40 ? v.label.slice(0, 39) + "…" : v.label) : v.newT ? "+ New " + (v.newT === "verse" ? "verse" : E(SLIDE_TYPES[v.newT].toLowerCase()) + " slide") : v.main ? "↩ Return to main slide" : v.stop ? "■ Stop (pause here)" : E(tagLabel(v))}</button>`).join("");
+    closeVmenu(); const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">${inKp ? "Slides" : vs[0] && vs[0].place ? "Place here" : "Reading cues"}</div>` + vs.map((v, i) => `<button type="button" data-k="${i}" class="${i ? "" : "on"}${v.cue ? " cueo" : ""}${v.main || v.newLink || v.newT === "verse" || (v.cue && vs[i - 1] && !vs[i - 1].cue) || (v.kpLink != null && vs[i - 1] && vs[i - 1].place) ? " main" : ""}${v.newT || v.newLink ? " new" : ""}${v.kpLink != null ? " kpl" : ""}${v.place ? " plc" : ""}">${v.place ? "📍 " + E(v.label) : v.newLink ? "↓ Link to a spot in the full text" : v.kpLink != null ? "↓ " + E(v.label.length > 40 ? v.label.slice(0, 39) + "…" : v.label) : v.newT ? "+ New " + (v.newT === "verse" ? "verse" : E(SLIDE_TYPES[v.newT].toLowerCase()) + " slide") : v.main ? "↩ Return to main slide" : v.stop ? "■ Stop (pause here)" : E(tagLabel(v))}</button>`).join("");
     document.body.appendChild(m); const rr = r.getBoundingClientRect(), x = rr.left || el.getBoundingClientRect().left, y = (rr.bottom || el.getBoundingClientRect().top) + 4;
     m.style.left = Math.min(x, innerWidth - 240) + "px"; m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + "px";
     vmenu = {el: m, box: el, node, off, vs, k: 0}; m.onmousedown = e => e.preventDefault(); m.onclick = e => { const b = e.target.closest("[data-k]"); if (b) pickV(+b.dataset.k) } }
@@ -946,8 +980,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=32"><link rel="stylesheet" href="../common/countdown.css?v=32"><link rel="stylesheet" href="../common/gate.css?v=32"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=32"></script><script src="../common/countdown.js?v=32"></script><script src="../common/gate.js?v=32"></script><script src="../common/app.js?v=32"></script>${mode === "edit" ? '<script src="../common/ai.js?v=32"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=33"><link rel="stylesheet" href="../common/countdown.css?v=33"><link rel="stylesheet" href="../common/gate.css?v=33"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=33"></script><script src="../common/countdown.js?v=33"></script><script src="../common/gate.js?v=33"></script><script src="../common/app.js?v=33"></script>${mode === "edit" ? '<script src="../common/ai.js?v=33"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -976,6 +1010,6 @@ async function index(){
   });
 }
 
-window.TALKAPP = {tagKey, kpId, kpBody, splitBlocks, joinBlocks, trimBlk, normBlocks, lineCounts, C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
+window.TALKAPP = {stepsOf, CUETAG, tagKey, kpId, kpBody, splitBlocks, joinBlocks, trimBlk, normBlocks, lineCounts, C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
 ({monitor, present, edit, index}[MODE] || (() => {}))();
 })();
