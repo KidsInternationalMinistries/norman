@@ -1,198 +1,234 @@
 {
  "format": "narration/1",
- "voice": "21m00Tcm4TlvDq8ikWAM",
+ "voice": "T35xhkssyHXFKYgHylWH",
  "voiceName": "First voice on the account",
- "made": "2026-11-05T05:35:59.011Z",
+ "made": "2026-11-05T10:29:07.658Z",
  "points": {
-  "p1a": [],
+  "p1a": [
+   {
+    "pause": 3
+   }
+  ],
   "pmw20axve9na": [
    {
-    "say": "voice/6aebcb8ff2cc86ba.mp3"
+    "say": "voice/ed225a26e99a9e8e.mp3"
    },
    {
-    "say": "voice/ce9ee660d539fccb.mp3"
+    "say": "voice/f3ae2af8e308b4f0.mp3"
+   },
+   {
+    "say": "voice/509c7ccc8d7ee542.mp3"
+   },
+   {
+    "say": "voice/e2178af070aeb6a2.mp3"
+   },
+   {
+    "pause": 2.5
+   },
+   {
+    "say": "voice/d5ff619a70e19128.mp3"
+   },
+   {
+    "say": "voice/adbefbe7710918e2.mp3"
    },
    {
     "sub": 1
    },
    {
-    "say": "voice/753203a313735536.mp3"
+    "say": "voice/61c7d6f1b1ebc351.mp3"
    },
    {
-    "say": "voice/e3334349b80202c2.mp3"
+    "say": "voice/ea76db838194fd6d.mp3"
    },
    {
-    "say": "voice/ead2076fc335c5f5.mp3"
-   },
-   {
-    "say": "voice/2b77199baf2f26e9.mp3"
-   },
-   {
-    "say": "voice/51628b5e20552040.mp3"
-   },
-   {
-    "say": "voice/e8a10d31ca974fa0.mp3"
+    "say": "voice/0bcbc8b7b2904279.mp3"
    }
   ],
   "p1d": [
    {
-    "say": "voice/bfd547cce4031249.mp3"
+    "say": "voice/e6028061f29b9168.mp3"
+   },
+   {
+    "say": "voice/1864b69b9a0a97a4.mp3"
    }
   ],
   "p1f": [
    {
-    "say": "voice/f6b5e9312f8216d1.mp3"
+    "say": "voice/036bd17078380101.mp3"
+   },
+   {
+    "say": "voice/5441170443ee475b.mp3"
+   },
+   {
+    "say": "voice/1985320b9b61f9c2.mp3"
+   },
+   {
+    "say": "voice/8c6e99f8ed2ded2e.mp3"
+   },
+   {
+    "pause": 1.2
+   },
+   {
+    "say": "voice/16c76da4ac2357b9.mp3"
    }
   ],
   "p2a": [
    {
-    "say": "voice/e062ed389e7d0320.mp3"
+    "say": "voice/fdde8d7591976117.mp3"
    },
+   {
+    "say": "voice/1c2e2b8fbefdbcb6.mp3"
+   }
+  ],
+  "pmw3b740in74": [
    {
     "sub": 1
    },
    {
-    "say": "voice/a1879077fee986da.mp3"
+    "say": "voice/5c6a17b85a5698dd.mp3"
    }
   ],
   "p2c": [
    {
-    "say": "voice/c8362f802a4848fa.mp3"
+    "say": "voice/29587f4a286a5c85.mp3"
+   },
+   {
+    "say": "voice/acf29f4499a02715.mp3"
    }
   ],
   "p2d": [
    {
-    "say": "voice/db12ca405c8df4c1.mp3"
+    "say": "voice/ce4c23d0440b7002.mp3"
    }
   ],
   "p3a": [
    {
-    "say": "voice/5d410d832a637670.mp3"
+    "say": "voice/1dbdddd156b0f7b0.mp3"
    }
   ],
   "p3b": [
    {
-    "say": "voice/8c0a52220da0b432.mp3"
+    "say": "voice/9c6baa5bff26cc80.mp3"
    }
   ],
   "p3c": [
    {
-    "say": "voice/13c79c09439bb5a4.mp3"
+    "say": "voice/0944828478908de8.mp3"
    }
   ],
   "p3d": [
    {
-    "say": "voice/9c4a02ad7cf33964.mp3"
+    "say": "voice/d1a1b72f6bdbb14f.mp3"
    }
   ],
   "p3e": [
    {
-    "say": "voice/c9dc78b7413cf05e.mp3"
+    "say": "voice/96b1f0d702d60f07.mp3"
    }
   ],
   "p3f": [
    {
-    "say": "voice/9fa034aebc9135a9.mp3"
+    "say": "voice/23cff40e0580a75c.mp3"
    }
   ],
   "p3g": [
    {
-    "say": "voice/e4a04ad54c6d4b1a.mp3"
+    "say": "voice/6d29d4c2deb36273.mp3"
    }
   ],
   "p4a": [
    {
-    "say": "voice/ea00116c41b5ae39.mp3"
+    "say": "voice/03902831a76a7c26.mp3"
    }
   ],
   "p4b": [
    {
-    "say": "voice/8b0084585991b1e4.mp3"
+    "say": "voice/84fa1b38caed4125.mp3"
    }
   ],
   "p4c": [
    {
-    "say": "voice/a336b340db69e7e7.mp3"
+    "say": "voice/7df8481ce999d730.mp3"
    }
   ],
   "p4d": [
    {
-    "say": "voice/05e45dc022c32f19.mp3"
+    "say": "voice/86157ddb87f90a9b.mp3"
    }
   ],
   "p4e": [
    {
-    "say": "voice/f7c605ae0f6ddecd.mp3"
+    "say": "voice/4d26502c96943561.mp3"
    }
   ],
   "p4f": [
    {
-    "say": "voice/e00a4918cb73dda6.mp3"
+    "say": "voice/d60821af4edbf0e8.mp3"
    }
   ],
   "p4g": [
    {
-    "say": "voice/1394c4a35d00cfb0.mp3"
+    "say": "voice/b697c8b47a31e425.mp3"
    }
   ],
   "p4h": [
    {
-    "say": "voice/f43c458c4ab89e41.mp3"
+    "say": "voice/9f99b2fdf7ccd05f.mp3"
    }
   ],
   "p5a": [
    {
-    "say": "voice/69baddbce1d0af04.mp3"
+    "say": "voice/0758edc52d120669.mp3"
    }
   ],
   "p5b": [
    {
-    "say": "voice/b05b001197a2948a.mp3"
+    "say": "voice/7bf2291fe38e4d5a.mp3"
    }
   ],
   "p5c": [
    {
-    "say": "voice/d156aa8d9b0b07bc.mp3"
+    "say": "voice/c2a3a66e4815cd92.mp3"
    }
   ],
   "p5d": [
    {
-    "say": "voice/b976e5e74844e4bd.mp3"
+    "say": "voice/3673a95bfd7f5608.mp3"
    }
   ],
   "p5e": [
    {
-    "say": "voice/f7c8691d6842071c.mp3"
+    "say": "voice/1bcdc97c00501649.mp3"
    }
   ],
   "p5f": [
    {
-    "say": "voice/94d25a5ce08c081f.mp3"
+    "say": "voice/03811608bac93134.mp3"
    }
   ],
   "p6a": [
    {
-    "say": "voice/cb52de5865003378.mp3"
+    "say": "voice/3db51a15b8d81316.mp3"
    }
   ],
   "p6b": [
    {
-    "say": "voice/0d00859228d6df97.mp3"
+    "say": "voice/571924683248da06.mp3"
    }
   ],
   "p6c": [
    {
-    "say": "voice/5ce0784fccd09045.mp3"
+    "say": "voice/379033bd4b67c360.mp3"
    }
   ],
   "p6d": [
    {
-    "say": "voice/e00da02880b5152c.mp3"
+    "say": "voice/f61f5641260ffadd.mp3"
    }
   ],
   "p6e": [
    {
-    "say": "voice/51724cbbd1a3ecf3.mp3"
+    "say": "voice/031a72945474dcbf.mp3"
    }
   ]
  }
