@@ -52,6 +52,7 @@ const mmss = s => { s = Math.round(Math.abs(s)); return Math.floor(s / 60) + ":"
 const parseTime = v => { v = String(v || "").trim(); if (!v) return ""; const m = v.match(/^(\d+):(\d{1,2})$/); if (m) return +m[1] * 60 + +m[2]; const n = parseFloat(v); return n >= 0 ? Math.round(n * 60) : "" };
 const hasSlide = p => !!(p && (p.image || p.slide || p.slideTitle || p.eyebrow));
 function heldIdx(S, i){ for (let k = i; k >= 0; k--) if (hasSlide(S[k])) return k; return -1 }
+const AIH = (k, ...a) => { try { return window.TALKAI && TALKAI.html[k] ? TALKAI.html[k](...a) : "" } catch (e) { return "" } };   // ✨ AI buttons, drawn by ai.js when it is loaded
 const LOCALIMG = {};                                   // freshly uploaded images, shown before the site redeploys
 window.__imgFallback = el => { const p = el.dataset.p; if (p && !el.dataset.f) { el.dataset.f = 1; el.src = RAW + PATH + "/" + p } };
 function imgTag(p){ return `<img alt="" data-p="${E(p)}" src="${E(LOCALIMG[p] || p)}" onerror="__imgFallback(this)">` }
@@ -396,6 +397,7 @@ function applyOp(d, o){
     case "padd": { const s = d.sections.find(x => x.id === o.sid); if (s && !findPt(d, o.pid)) s.points.push({id: o.pid, cue: "New point", eyebrow: "", slideTitle: "", slide: "", layout: "left", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}); break }
     case "pdel": { const f = findPt(d, o.pid); if (f) f.s.points.splice(f.i, 1); break }
     case "pmove": { const f = findPt(d, o.pid); if (!f) break; const j = f.i + o.d; if (j < 0 || j >= f.s.points.length) break; const a = f.s.points; [a[f.i], a[j]] = [a[j], a[f.i]]; break }
+    case "sins": if (!d.sections.some(x => x.id === o.sec.id)) { const i = d.sections.findIndex(x => x.id === o.after); d.sections.splice(i < 0 ? d.sections.length : i + 1, 0, JSON.parse(JSON.stringify(o.sec))) } break;
     case "sadd": if (!d.sections.some(x => x.id === o.sid)) d.sections.push({id: o.sid, title: "New movement", minutes: "", points: []}); break;
     case "sdel": { const i = d.sections.findIndex(x => x.id === o.sid); if (i >= 0 && !d.sections[i].points.length) d.sections.splice(i, 1); break }
     case "smove": { const i = d.sections.findIndex(x => x.id === o.sid), j = i + o.d; if (i < 0 || j < 0 || j >= d.sections.length) break; const a = d.sections; [a[i], a[j]] = [a[j], a[i]]; break }
@@ -437,7 +439,7 @@ async function edit(){
       s.points.forEach((p, pi) => { h += `<button type="button" class="it${sel.k === "pt" && sel.id === p.id ? " cur" : ""}" data-sel="pt" data-id="${E(p.id)}"><i>${si + 1}.${letter(pi)}</i><span>${E(p.cue || "(no cue)")}</span>${dotsHTML(p, -1)}</button>` });
       h += `<button type="button" class="btn small add" data-act="padd" data-id="${E(s.id)}">+ Point in ${si + 1}</button>`;
     });
-    h += `<div style="margin:14px 8px"><button type="button" class="btn small" data-act="sadd">+ Movement</button></div>`;
+    h += `<div style="margin:14px 8px"><button type="button" class="btn small" data-act="sadd">+ Movement</button>${AIH("navsec")}</div>`;
     $("#nav").innerHTML = h;
   }
   function pane(){
@@ -450,14 +452,14 @@ async function edit(){
         ${talkSecs(D) ? `<p class="note"><b>Talk length: ${mmss(talkSecs(D))}</b>, the total of the times on each point${D.lastPractice ? ` (last practice ${new Date(D.lastPractice.date).toLocaleDateString()})` : ""}. Practice on Stage to set them, or type them on each point.</p>` : `<p class="note">No point times yet. Tick <b>Practice</b> on Stage at 1.a and run through the talk, or type a time on each point.</p>`}
         <label style="max-width:320px">Countdown if no point times (minutes)<input data-t="talk" data-f="timerMinutes" value="${E(D.timerMinutes)}" inputmode="numeric"></label>
         <p class="note">In Stage the timer resets on 1.a and starts when you move to 1.b.</p>
-        <label>Big idea<textarea data-t="talk" data-f="bigIdea">${E(D.bigIdea)}</textarea></label>`;
+        <label>Big idea<textarea data-t="talk" data-f="bigIdea">${E(D.bigIdea)}</textarea></label>${AIH("talk", D)}`;
     } else if (sel.k === "sec") {
       const si = D.sections.findIndex(x => x.id === sel.id), s = D.sections[si];
       if (!s) { sel = {k: "talk"}; return pane() }
       e += `<h2><span>${si + 1}.</span>Movement</h2>
         <div class="row"><label style="flex:3 1 240px">Title<input data-t="sec" data-id="${E(s.id)}" data-f="title" value="${E(s.title)}"></label><label style="flex:0 1 120px">Minutes<input data-t="sec" data-id="${E(s.id)}" data-f="minutes" value="${E(s.minutes)}" inputmode="numeric"></label></div>
         <div class="row"><button class="btn small" type="button" data-act="smove" data-id="${E(s.id)}" data-d="-1">↑ Move up</button><button class="btn small" type="button" data-act="smove" data-id="${E(s.id)}" data-d="1">↓ Move down</button>
-          <button class="btn small" type="button" data-act="padd" data-id="${E(s.id)}">+ Add point</button><button class="btn small danger" type="button" data-act="sdel" data-id="${E(s.id)}">Delete movement</button></div>
+          <button class="btn small" type="button" data-act="padd" data-id="${E(s.id)}">+ Add point</button><button class="btn small danger" type="button" data-act="sdel" data-id="${E(s.id)}">Delete movement</button></div>${AIH("sec", s)}
         <p class="note">${s.points.length} points. Pick one on the left to edit it.</p>`;
     } else {
       const f = findPt(D, sel.id); if (!f) { sel = {k: "talk"}; return pane() }
@@ -650,7 +652,7 @@ async function edit(){
       <label style="flex:0 1 200px">Style<select ${A} data-f="layout"><option value="left"${o.layout !== "center" ? " selected" : ""}>Gold title, white subtitle</option><option value="center"${o.layout === "center" ? " selected" : ""}>White title, gold subtitle</option></select></label></div>
       <label>Title<textarea class="auto" ${A} data-f="slideTitle">${E(o.slideTitle)}</textarea></label>
       <label>Subtitle<textarea class="auto" ${A} data-f="slide">${E(o.slide)}</textarea></label>${posOf(t, o)}`;
-    if (pic) h += `<div class="row"><span class="tag">Picture (no words in it; the text goes on top)</span>${o.image ? `<button class="btn small" type="button" data-act="imgdel" ${A}>Remove image</button>` : ""}
+    if (pic) h += `<div class="row"><span class="tag">Picture (no words in it; the text goes on top)</span>${AIH("img", A, o)}${o.image ? `<button class="btn small" type="button" data-act="imgdel" ${A}>Remove image</button>` : ""}
       <label class="btn small" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);display:inline-flex">${o.image ? "Replace" : "Add"} image<input type="file" accept="image/*" data-img="${E(t.pid)}"${xs ? ` data-i="${t.i}"` : ""} hidden></label><span class="note" id="imgmsg"></span></div>`;
     h += xs ? `<div class="row"><span class="note" style="flex:1">Type / in Key points to put this slide in the order. Type it in Full text to show it only when you click it.</span><button class="btn small danger" type="button" data-act="xdel" ${A}>Remove this slide</button></div>`
       : `<p class="note">Leave the text and picture empty for no new slide at this point.</p>`;
@@ -671,7 +673,7 @@ async function edit(){
     const f = findPt(D, pid); if (!f) return; const isNew = i === "new", v = isNew ? {ref: "", text: "", version: "NIV"} : f.p.verses[+i];
     let d = $("#ved"); if (!d) { document.body.insertAdjacentHTML("beforeend", `<dialog class="verse ved" id="ved"><form method="dialog" class="ed">
         <label>Reference<input id="ver" placeholder="e.g. John 15:5"></label><div class="ed-l"><span class="tag">Text</span><button type="button" class="btn small fmt" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" class="btn small fmt" data-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button><span class="note" style="font-size:12px">Select words, then Ctrl+B or Ctrl+U</span></div><div id="vet" class="vtext" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Verse text"></div>
-        <div class="row"><label style="flex:0 1 140px">Version<input id="vev"></label><span style="flex:1"></span>
+        <div class="row"><label style="flex:0 1 140px">Version<input id="vev"></label>${AIH("esv")}<span style="flex:1"></span>
           <button class="btn small danger" type="button" id="vedel">Remove</button><button class="btn small" type="button" id="vecan">Cancel</button><button class="btn small pri" type="submit" id="vesave">Save</button></div></form></dialog>`); d = $("#ved");
       $("#vecan").onclick = () => d.close();
       d.querySelectorAll(".fmt").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => { $("#vet").focus(); document.execCommand(b.dataset.cmd) } });
@@ -807,7 +809,8 @@ async function edit(){
       setOp(T, f, v); if (f === "type") fillDlg(); else refreshSlide() }
     else if (t === "v") { op({t: "vset", pid: el.dataset.id, i: +el.dataset.i, f: el.dataset.f, v: el.dataset.f === "text" ? v : v.trim()}); if (el.dataset.f === "ref") { const tags = document.querySelector(".ed .vtags"); const f = findPt(D, el.dataset.id); if (f) { const nt = verseTags(f.p); if (tags) tags.outerHTML = nt || ""; else if (nt) $(".ed h2").insertAdjacentHTML("afterend", nt) } } }
   });
-  render();
+  window.TALKAPP.ed = {D: () => D, op, render, flush, sel: () => sel, go(s){ sel = s; render(); window.scrollTo(0, 0) }, findPt: id => findPt(D, id), S, newId, tObj, setOp, refreshSlide, fillDlg, dlgT: () => dlgT, setSave};
+  render(); document.dispatchEvent(new Event("talk-edit-ready"));
 }
 async function toJpeg(file){
   const bm = await createImageBitmap(file); const w = Math.min(1920, bm.width), h = Math.round(bm.height * w / bm.width);
@@ -819,13 +822,23 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=27"><link rel="stylesheet" href="../common/countdown.css?v=27"><link rel="stylesheet" href="../common/gate.css?v=27"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=27"></script><script src="../common/countdown.js?v=27"></script><script src="../common/gate.js?v=27"></script><script src="../common/app.js?v=27"></script></body></html>
+<link rel="stylesheet" href="../common/app.css?v=28"><link rel="stylesheet" href="../common/countdown.css?v=28"><link rel="stylesheet" href="../common/gate.css?v=28"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=28"></script><script src="../common/countdown.js?v=28"></script><script src="../common/gate.js?v=28"></script><script src="../common/app.js?v=28"></script>${mode === "edit" ? '<script src="../common/ai.js?v=28"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
+const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
+  relayTopic: "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join(""),
+  sections: [{id: "s1", title: "Opening", minutes: "", points: [{id: "p1", cue: "Opening slide", eyebrow: "", slideTitle: title, slide: "", layout: "center", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}]}]});
+// Makes the talk's folder (talk.json + its three pages) and lists it. Returns the folder and talk.json's sha.
+async function createTalk(talk){ const folder = folderName(talk.title), base = C.root + "/" + folder;
+  const sha = await GH.put(base + "/talk.json", b64e(JSON.stringify(talk, null, 1) + "\n"), null, "New talk: " + talk.title);
+  for (const [f, m] of [["index.html", "monitor"], ["present.html", "present"], ["edit.html", "edit"]]) await GH.put(base + "/" + f, b64e(STUB(m)), null, "New talk: " + talk.title);
+  let lsha = null, cur = []; try { const g = await GH.get(C.root + "/talks.json"); lsha = g.sha; cur = JSON.parse(g.text) } catch (e) {}
+  if (!cur.some(t => t.folder === folder)) { cur.push({folder, title: talk.title}); await GH.put(C.root + "/talks.json", b64e(JSON.stringify(cur, null, 1) + "\n"), lsha, "List new talk: " + talk.title) }
+  return {folder, sha} }
 async function index(){
   document.body.innerHTML = `<div class="setup" style="max-width:820px"><h1 style="margin:0">Talks</h1><div id="list"><p class="note">Loading…</p></div>
-    <div><button class="btn" id="new" type="button">+ New talk</button> <span class="note" id="msg"></span></div></div>`;
+    <div><button class="btn" id="new" type="button">+ New talk</button> <a class="btn" href="prepare.html">✨ Prepare a new talk with AI</a> <span class="note" id="msg"></span></div></div>`;
   let list = []; try { list = await (await fetch("talks.json?t=" + Date.now(), {cache: "no-store"})).json() } catch (e) {}
   $("#list").innerHTML = list.length ? `<ul>${list.map(t => `<li style="margin:6px 0"><b>${E(t.title)}</b>: <a href="${E(t.folder)}/present.html">Stage</a> · <a href="${E(t.folder)}/edit.html">Edit</a> · <a href="${E(t.folder)}/">Monitor (slides)</a></li>`).join("")}</ul>` : '<p class="note">No talks yet.</p>';
   $("#new").onclick = () => presenterGate(C.passHash, "pres-ok", async () => {
@@ -833,18 +846,12 @@ async function index(){
     const title = prompt("Title of the new talk?"); if (!title) return; const folder = folderName(title); const msg = $("#msg");
     if (!folder) return; if (list.some(t => t.folder === folder)) { msg.textContent = "A talk with that folder already exists."; return }
     msg.textContent = "Creating…";
-    try { const base = C.root + "/" + folder;
-      const talk = {format: "talk/1", id: folder.toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
-        relayTopic: "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join(""),
-        sections: [{id: "s1", title: "Opening", minutes: "", points: [{id: "p1", cue: "Opening slide", eyebrow: "", slideTitle: title, slide: "", layout: "center", image: "", keyPoints: [], verses: [], script: "", scriptDraft: false}]}]};
-      await GH.put(base + "/talk.json", b64e(JSON.stringify(talk, null, 1) + "\n"), null, "New talk: " + title);
-      for (const [f, m] of [["index.html", "monitor"], ["present.html", "present"], ["edit.html", "edit"]]) await GH.put(base + "/" + f, b64e(STUB(m)), null, "New talk: " + title);
-      let sha = null, cur = []; try { const g = await GH.get(C.root + "/talks.json"); sha = g.sha; cur = JSON.parse(g.text) } catch (e) {}
-      cur.push({folder, title}); await GH.put(C.root + "/talks.json", b64e(JSON.stringify(cur, null, 1) + "\n"), sha, "List new talk: " + title);
+    try { await createTalk(newTalk(title));
       msg.innerHTML = `Created. Its pages go live in about a minute: <a href="${E(folder)}/edit.html">open the editor</a>.` }
     catch (e) { msg.textContent = "Couldn't create it: " + (e.detail || e.message) }
   });
 }
 
+window.TALKAPP = {C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
 ({monitor, present, edit, index}[MODE] || (() => {}))();
 })();
