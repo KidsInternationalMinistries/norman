@@ -73,6 +73,15 @@
        "slide": "xdfdf",
        "layout": "center",
        "image": ""
+      },
+      {
+       "name": "Slide 3",
+       "type": "image",
+       "slideTitle": "",
+       "eyebrow": "",
+       "slide": "",
+       "layout": "center",
+       "image": ""
       }
      ]
     },
