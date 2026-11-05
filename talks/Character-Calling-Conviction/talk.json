@@ -790,12 +790,12 @@
      "layout": "left",
      "image": "slides/bg/p5e.jpg",
      "keyPoints": [
-      "In the middle of the mess, remember:",
-      "Dad's circus story: knothole vs. up in the tree",
-      "\"God sees at one glance every episode of our lives\"",
-      "Don't judge your ministry, or anyone else, by one frame",
-      "He who began a good work will finish it",
-      "🔑 \"God doesn't see a point in time. He sees the whole journey.\""
+      "[@c562trnl] In the middle of the mess, remember:",
+      "[@c562jqgg] Dad's circus story: knothole vs. up in the tree",
+      "[@c562tvo8] \"God sees at one glance every episode of our lives\"",
+      "[@c562gj7y] Don't judge your ministry, or anyone else, by one frame",
+      "[@c562wuys] He who began a good work will finish it",
+      "[@c562gtwz] 🔑 \"God doesn't see a point in time. He sees the whole journey.\""
      ],
      "verses": [
       {
@@ -804,8 +804,8 @@
        "version": "NIV"
       }
      ],
-     "script": "And when you are in the middle of the mess, remember this.\n\nMy dad used to tell a story about two boys at the circus. One watches through a knothole in the fence, and he sees one animal at a time going by. The other boy is up in a tree, and he sees the whole circus at one glance. My dad said, \"God sees at one glance every episode of our lives.\"\n\nSo don't judge your ministry by one frame. And don't judge anyone else's by one frame either. He who began a good work in you will carry it on to completion.\n\nGod doesn't see a point in time. He sees the whole journey.",
-     "scriptDraft": true,
+     "script": "And when you are in the middle of the mess, remember this.\n\nMy dad used to tell a story about two boys at the circus. One watches through a knothole in the fence, and he sees one animal at a time going by. The other boy is up in a tree, and he sees the whole circus at one glance. My dad said, \"God sees at one glance every episode of our lives.\"\n\nSo don't judge your ministry by one frame. And don't judge anyone else's by one frame either. He who began a good work in you will carry it on to completion.\n\nGod doesn't see a point in time. He sees the whole journey.\n[@c562trnl]\n[@c562jqgg]\n[@c562tvo8]\n[@c562gj7y]\n[@c562wuys]\n[@c562gtwz]",
+     "scriptDraft": false,
      "seconds": 1
     },
     {
