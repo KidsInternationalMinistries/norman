@@ -440,11 +440,11 @@
      "layout": "left",
      "image": "slides/bg/p3g.jpg",
      "keyPoints": [
-      "Kintsugi: broken bowl repaired with gold",
-      "Worth more than before it broke",
-      "The cracks are where the gold is",
-      "Treasure in jars of clay",
-      "🔁 Character, calling, conviction. We don't make them. His power makes them in our weakness."
+      "[@2d1d095v] Kintsugi: broken bowl repaired with gold",
+      "[@2d1d54g1] Worth more than before it broke",
+      "[@2d1d2scz] The cracks are where the gold is",
+      "[@2d1de7vg] Treasure in jars of clay",
+      "[@2d1dkm1z] 🔁 Character, calling, conviction. We don't make them. His power makes them in our weakness."
      ],
      "verses": [
       {
@@ -453,8 +453,8 @@
        "version": "NIV"
       }
      ],
-     "script": "In Japan there's an art called kintsugi. When a bowl breaks, they don't throw it away. They put it back together with gold. And the bowl becomes more valuable than it was before it broke. The cracks are where the gold is.\n\nPaul says, \"We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.\"\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.",
-     "scriptDraft": true,
+     "script": "In Japan there's an art called kintsugi. When a bowl breaks, they don't throw it away. They put it back together with gold. And the bowl becomes more valuable than it was before it broke. The cracks are where the gold is.\n\nPaul says, \"We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.\"\n\nCharacter, calling, conviction. We don't make them. His power makes them in our weakness.\n[@2d1d095v]\n[@2d1d54g1]\n[@2d1d2scz]\n[@2d1de7vg]\n[@2d1dkm1z]",
+     "scriptDraft": false,
      "seconds": 1
     }
    ]
