@@ -203,7 +203,7 @@ function afterPic(t){ const ed = T.ed, sd = $("#sdlg"); if (sd && sd.open) { ed.
 function voiceHTML(d){ const v = d.voice || "";
   return `<div class="aibox"><div class="pgh"><b>🔊 Voice for this talk</b></div>
     <p class="note">Used by Listen and the narrated version. Your own ElevenLabs voices (a clone of your voice, for example) show up here too.</p>
-    <div class="row"><select id="aitv" style="flex:1"><option value="${E(v)}">${E(v ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI settings)")}</option></select><span class="aimsg" id="aitvm"></span></div></div>` }
+    <div class="row"><select id="aitv" style="flex:1"><option value="${E(v)}">${E(v ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI settings)")}</option></select><button type="button" class="btn small" id="aitvp">▶ Preview</button><span class="aimsg" id="aitvm"></span></div></div>` }
 async function talkVoices(){ const sl = $("#aitv"); if (!sl || sl.dataset.loaded) return; sl.dataset.loaded = 1; const m = $("#aitvm"); m.textContent = "Loading voices…";
   try { const key = await need("eleven"); let list = STD_VOICES.map(([voice_id, name]) => ({voice_id, name}));
     try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) { const j = await r.json(); if ((j.voices || []).length) list = j.voices } } catch (e) {}
@@ -213,6 +213,17 @@ async function talkVoices(){ const sl = $("#aitv"); if (!sl || sl.dataset.loaded
     if (d.voice && !list.some(x => x.voice_id === d.voice)) sl.insertAdjacentHTML("beforeend", `<option value="${E(d.voice)}" selected>${E(d.voiceName || "Chosen voice")}</option>`); m.textContent = "" }
   catch (e) { sl.dataset.loaded = ""; m.textContent = ""; fail(e) } }
 document.addEventListener("focusin", e => { if (e.target.id === "aitv") talkVoices() });
+// Preview: a short line from this talk in the chosen voice.
+let PV = null;
+document.addEventListener("click", async e => { const b = e.target.closest && e.target.closest("#aitvp"); if (!b) return; if (PV) { PV.pause(); PV = null; b.textContent = "▶ Preview"; return }
+  const m = $("#aitvm"); b.disabled = true; m.textContent = "Getting the voice…";
+  try { const key = await need("eleven"), sl = $("#aitv"), d = T.ed.D(); let voice = sl && sl.value; if (!voice) { const k0 = KEYS.voice; voice = k0 || (await voiceId(key)) }
+    let line = ""; for (const sc of d.sections || []) for (const p of sc.points || []) { if (line) break; const t = noTags(String(p.script || "").replace(/\[@[a-z0-9]+\]/g, " ")).replace(/\s+/g, " ").trim(); const mm = t.match(/^.{20,220}?[.!?](?=\s|$)/); if (mm) line = mm[0] }
+    const first = (d.title ? d.title + ". " : "") + (line || "This is how the voice will sound when it reads your talk.");
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {method: "POST", headers: {"xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg"}, body: JSON.stringify({text: first, model_id: "eleven_multilingual_v2"})});
+    if (!r.ok) throw new Error("ElevenLabs: " + ((await elErr(r)) || r.status));
+    PV = new Audio(URL.createObjectURL(await r.blob())); PV.onended = () => { PV = null; b.textContent = "▶ Preview" }; await PV.play(); b.textContent = "■ Stop"; m.textContent = "" }
+  catch (err) { m.textContent = ""; fail(err) } finally { b.disabled = false } });
 document.addEventListener("pointerdown", e => { if (e.target.id === "aitv") talkVoices() });
 document.addEventListener("change", e => { if (e.target.id !== "aitv") return; const sl = e.target, o = sl.selectedOptions[0];
   T.ed.op({t: "talk", f: "voice", v: sl.value}); T.ed.op({t: "talk", f: "voiceName", v: sl.value && o ? o.textContent.replace(/ \(yours\)$/, "") : ""}); toast("Voice saved for this talk") });
