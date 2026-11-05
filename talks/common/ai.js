@@ -404,7 +404,7 @@ function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.
       const key = T.tagKey(v); n[key] = (n[key] || 0) + 1; if (blk !== "intro") out.push({step: blk + "|" + key + "#" + n[key]});
     }
     say(last, t.length) };
-  seg("intro", T.trimBlk(B.intro)); for (const x of p.keyPoints || []) { const id = T.kpId(x); if (id) seg(id, T.trimBlk(B.text[id])) }
+  const ids = (p.keyPoints || []).map(T.kpId); seg("intro", T.trimBlk(B.intro)); for (const id of B.order) if (ids.includes(id)) seg(id, T.trimBlk(B.text[id]))
   if (!out.some(x => x.say)) out.push({pause: 3});      // no full text: show the slides a moment, then go on (slide words are never read)
   // Each part is voiced on its own, so give the voice the words around it; then the tone and pace carry on smoothly across parts.
   const S = out.filter(x => x.say); S.forEach((x, k) => { x.prev = S.slice(0, k).map(y => y.say).join("\n").slice(-500); x.next = S.slice(k + 1).map(y => y.say).join("\n").slice(0, 300) });
@@ -458,8 +458,8 @@ function narrate(){ const ed = T.ed, share = new URL("./?play", location.href).h
 let CARET = null;
 document.addEventListener("selectionchange", () => { if (LS) return; const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0), n = r.startContainer;
   const el = (n.nodeType === 1 ? n : n.parentElement) && (n.nodeType === 1 ? n : n.parentElement).closest(".rich"); if (!el || !el.dataset.id) return;
-  if (el.dataset.f === "block") { let key = ""; if (n.nodeType === 3) { const v = n.nodeValue, o = r.startOffset; key = v.slice(o, o + 40).trim().length >= 8 ? "+" + v.slice(o, o + 40) : "-" + v.slice(Math.max(0, o - 40), o) }
-    CARET = {pid: el.dataset.id, blk: el.dataset.blk, key} }
+  if (el.dataset.f === "script") { let key = "", blk = "intro"; for (const m of el.querySelectorAll(".vchip.kpm")) { if (!(m.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)) break; blk = m.dataset.ref.slice(1) } if (n.nodeType === 3) { const v = n.nodeValue, o = r.startOffset; key = v.slice(o, o + 40).trim().length >= 8 ? "+" + v.slice(o, o + 40) : "-" + v.slice(Math.max(0, o - 40), o) }
+    CARET = {pid: el.dataset.id, blk, key} }
   else if (el.dataset.f === "kpline") { const f = T.ed.findPt(el.dataset.id), x = f && (f.p.keyPoints || [])[+el.dataset.j]; CARET = {pid: el.dataset.id, blk: x ? T.kpId(x) : null, key: ""} } });
 // Start a plan at a block, at the sentence holding the given words.
 function seek(plan, blk, key){ const norm = t => t.replace(/\s+/g, " "), list = plan.map((x, n) => [x, n]).filter(([x]) => x.say && x.blk === blk);
