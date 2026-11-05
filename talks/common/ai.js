@@ -428,6 +428,22 @@ function narrate(){ const ed = T.ed, share = new URL("./?play", location.href).h
       m.textContent = `Done. ${jobs.length ? jobs.length + " new part" + (jobs.length > 1 ? "s" : "") + " read" : "Nothing had changed, so no new reading was needed"}.`; $("#ainl").style.display = "" }
     catch (e) { m.textContent = ""; fail(e) } b.disabled = false } }
 
+// Where the cursor was last in a point's text, so Listen can start there.
+let CARET = null;
+document.addEventListener("selectionchange", () => { if (LS) return; const sl = getSelection(); if (!sl.rangeCount) return; const r = sl.getRangeAt(0), n = r.startContainer;
+  const el = (n.nodeType === 1 ? n : n.parentElement) && (n.nodeType === 1 ? n : n.parentElement).closest(".rich"); if (!el || !el.dataset.id) return;
+  if (el.dataset.f === "block") { let key = ""; if (n.nodeType === 3) { const v = n.nodeValue, o = r.startOffset; key = v.slice(o, o + 40).trim().length >= 8 ? "+" + v.slice(o, o + 40) : "-" + v.slice(Math.max(0, o - 40), o) }
+    CARET = {pid: el.dataset.id, blk: el.dataset.blk, key} }
+  else if (el.dataset.f === "kpline") { const f = T.ed.findPt(el.dataset.id), x = f && (f.p.keyPoints || [])[+el.dataset.j]; CARET = {pid: el.dataset.id, blk: x ? T.kpId(x) : null, key: ""} } });
+// Start a plan at a block, at the sentence holding the given words.
+function seek(plan, blk, key){ const norm = t => t.replace(/\s+/g, " "), list = plan.map((x, n) => [x, n]).filter(([x]) => x.say && x.blk === blk);
+  if (!list.length) { const k = plan.findIndex(x => x.blk === blk); return k < 0 ? 0 : k }
+  const w = norm(key.slice(1)).trim(); if (!w) return list[0][1];
+  for (const [x, n] of list) { const at = x.say.indexOf(w); if (at < 0) continue; const end = key[0] === "+" ? at : at + w.length - 1;
+    let cut = 0; for (const m of x.say.slice(0, end).matchAll(/[.!?…]["”’)]*\s+/g)) cut = m.index + m[0].length;
+    if (cut > 0) plan[n] = {...x, say: x.say.slice(cut), map: x.map.slice(cut)}; return n }
+  return list[0][1] }
+
 let LS = null;
 function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0), plan = [], q = 0, run = 0, cur = null, raf = 0, lastW = null;
   if (LS) LS.stop(); const bar = document.createElement("div"); bar.id = "ailisten"; bar.innerHTML = `<button type="button" data-l="prev" title="Previous point">⏮</button><button type="button" data-l="play" title="Pause">❚❚</button><button type="button" data-l="next" title="Next point">⏭</button><span id="ailt"></span><select id="ailr" title="Speed">${[0.9, 1, 1.15, 1.3, 1.5].map(r => `<option value="${r}"${r === 1 ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" data-l="x" title="Stop">✕</button>`;
@@ -442,8 +458,9 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
     if (w === lastW) return; if (lastW) lastW.classList.remove("say"); lastW = w; if (!w) return; w.classList.add("say");
     const r = w.getBoundingClientRect(); if (r.top < innerHeight * .35 || r.bottom > innerHeight - 90) window.scrollBy({top: r.top - innerHeight * .45, behavior: "smooth"}) }
   raf = requestAnimationFrame(glow);
-  function point(k){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; run++;
-    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; lastW = null; warm(plan, 0);
+  function point(k, at){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; run++;
+    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; lastW = null;
+    if (at && at.blk) { q = seek(plan, at.blk, at.key || ""); for (let m = 0; m < q; m++) if (plan[m].step) ed.stepTo(plan[m].step) } warm(plan, q);
     const nx = L[i + 1] && ed.findPt(L[i + 1].id); if (nx) warm(speakPlan(nx.p), 0); go(run) }
   async function go(r){ while (alive && r === run && q < plan.length && (plan[q].step || plan[q].pause)) { const it = plan[q];
       if (it.step) ed.stepTo(it.step); else { lab.textContent = head() + " · pause"; await new Promise(ok => setTimeout(ok, it.pause * 1000 / (+$("#ailr").value || 1))); if (!alive || r !== run) return } q++ }
@@ -475,7 +492,7 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
     const from = it.say.slice(0, h.ci + 1).search(/[^.!?]*[.!?]?\s*$/), key = it.say.slice(Math.max(0, from), from + 30).trim(); let cut = key ? x.say.indexOf(key) : -1;
     if (cut < 0) { const fr = h.ci / it.say.length; cut = Math.max(0, x.say.lastIndexOf(". ", Math.floor(x.say.length * fr)) + 1); while (x.say[cut] === " ") cut++ }
     plan[n] = cut > 0 ? {...x, say: x.say.slice(cut), map: x.map.slice(cut)} : x; q = n; go(r) }
-  point(i) }
+  const c0 = CARET && L[i] && CARET.pid === L[i].id ? CARET : null; point(i, c0) }
 
 // =====================================================================
 // SPLIT: the full text of a point (written before the blocks existed) shared out to its key points, for you to check.
