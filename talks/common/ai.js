@@ -344,9 +344,14 @@ Return JSON {"section": {...one entry of sections...}} using this ${GEN_SHAPE}`,
 // LISTEN: the talk read by a natural voice (ElevenLabs), point by point, from the point that's open.
 // =====================================================================
 const AUD = {};       // text → promise of an object URL, so replaying is instant
-function speakText(p){ const vs = p.verses || [];
-  let t = (p.script || "").replace(/\[([^\[\]\n]{1,60})\]/g, (a, r) => { const v = vs.find(x => x && x.ref && x.ref.trim() === r.trim()); return v && v.text ? `\n${v.ref}: ${v.text.replace(/\*\*|__/g, "")}\n` : "" }).replace(/[🔑🔁]/gu, "").trim();
-  if (!t) t = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); return t }
+// A point as a list of things to do: say some text, or press Next at a tag (like the speaker does when they reach it).
+function speakPlan(p){ const vs = p.verses || [], t = (p.script || "").replace(/[🔑🔁]/gu, ""), out = [], n = {}; let last = 0;
+  const say = x => { x = x.replace(/[ \t]+/g, " ").trim(); if (x) out.push({say: x}) };
+  for (const m of t.matchAll(/\[([^\[\]\n]{1,60})\]/g)) { say(t.slice(last, m.index)); last = m.index + m[0].length; const r = m[1].trim(); if (r[0] === "!") continue;
+    const v = T.tagOf(p, r); if (!v) { say(m[0]); continue } const k = T.tagKey(v);
+    if (!v.anchor) n[k] = (n[k] || 0) + 1; out.push({step: v.anchor ? k : k + "#" + n[k]});
+    const vt = vs.find(x => x && x.ref && x.ref.trim() === r); if (vt && vt.text) say(vt.ref + ". " + vt.text.replace(/\*\*|__/g, "")) }
+  say(t.slice(last)); if (!out.some(x => x.say)) say((p.keyPoints || []).map(noTags).filter(Boolean).join(". ")); return out }
 function tts(text){ if (!AUD[text]) { AUD[text] = tts0(text); AUD[text].catch(() => delete AUD[text]) } return AUD[text] }
 async function tts0(text){ const key = await need("eleven"); let voice = KEYS.voice;
   if (!voice) { let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {} voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; KEYS.voice = voice; saveLocal() }
@@ -355,21 +360,25 @@ async function tts0(text){ const key = await need("eleven"); let voice = KEYS.vo
     if (!r.ok) { const m = await elErr(r); throw new Error("ElevenLabs: " + (m || r.status) + (r.status === 401 ? ". In ElevenLabs, edit the key and turn on Text to Speech." : "")) } blobs.push(await r.blob()) }
   return URL.createObjectURL(new Blob(blobs, {type: "audio/mpeg"})) }
 let LS = null;
-function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0);
-  if (LS) { LS.stop(); } const bar = document.createElement("div"); bar.id = "ailisten"; bar.innerHTML = `<button type="button" data-l="prev" title="Previous point">⏮</button><button type="button" data-l="play" title="Pause">❚❚</button><button type="button" data-l="next" title="Next point">⏭</button><span id="ailt"></span><select id="ailr" title="Speed">${[0.9, 1, 1.15, 1.3, 1.5].map(r => `<option value="${r}"${r === 1 ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" data-l="x" title="Stop">✕</button>`;
-  document.body.appendChild(bar); const au = new Audio(), lab = $("#ailt"); let alive = true, paused = false;
+function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0, s.k === "pt" ? L.findIndex(x => x.id === s.id) : 0), plan = [], q = 0, run = 0;
+  if (LS) LS.stop(); const bar = document.createElement("div"); bar.id = "ailisten"; bar.innerHTML = `<button type="button" data-l="prev" title="Previous point">⏮</button><button type="button" data-l="play" title="Pause">❚❚</button><button type="button" data-l="next" title="Next point">⏭</button><span id="ailt"></span><select id="ailr" title="Speed">${[0.9, 1, 1.15, 1.3, 1.5].map(r => `<option value="${r}"${r === 1 ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" data-l="x" title="Stop">✕</button>`;
+  document.body.appendChild(bar); const au = new Audio(), lab = $("#ailt"); let alive = true;
   LS = {stop(){ alive = false; au.pause(); bar.remove(); LS = null }};
-  const ready = k => { const p = L[k]; return p ? tts(speakText(p)).catch(e => { throw e }) : null };
-  async function play(k){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; const p = L[i], txt = speakText(p);
-    if (ed.sel().id !== p.id) ed.go({k: "pt", id: p.id}); if (!txt) return play(i + 1);
-    lab.textContent = `${p.label} ${p.cue || ""} · getting the voice…`;
-    try { const u = await tts(txt); if (!alive || i !== k) return; au.src = u; au.playbackRate = +$("#ailr").value; await au.play(); paused = false; bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = `${p.label} ${p.cue || ""}`;
-      if (L[i + 1]) { const nx = ready(i + 1); if (nx) nx.catch(() => {}) } } catch (e) { lab.textContent = ""; fail(e); if (e.quiet) LS && LS.stop() } }
-  au.onended = () => play(i + 1); $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
+  const head = () => `${L[i].label} ${L[i].cue || ""}`;
+  const warm = (pl, from) => pl.slice(from).filter(x => x.say).slice(0, 2).forEach(x => tts(x.say).catch(() => {}));
+  function point(k){ if (!alive) return; if (k < 0 || k >= L.length) { lab.textContent = "End of the talk"; return } i = k; run++;
+    if (ed.sel().id !== L[i].id) ed.go({k: "pt", id: L[i].id}); plan = speakPlan(ed.findPt(L[i].id).p); q = 0; warm(plan, 0);
+    const nx = L[i + 1] && ed.findPt(L[i + 1].id); if (nx) warm(speakPlan(nx.p), 0); go(run) }
+  async function go(r){ while (alive && r === run && q < plan.length && plan[q].step) { ed.stepTo(plan[q].step); q++ }
+    if (!alive || r !== run) return; if (q >= plan.length) return point(i + 1);
+    const it = plan[q]; lab.textContent = head() + " · getting the voice…";
+    try { const u = await tts(it.say); if (!alive || r !== run) return; warm(plan, q + 1); au.src = u; au.playbackRate = +$("#ailr").value; await au.play(); bar.querySelector('[data-l="play"]').textContent = "❚❚"; lab.textContent = head() }
+    catch (e) { if (!alive || r !== run) return; lab.textContent = ""; fail(e); if (e.quiet && LS) LS.stop() } }
+  au.onended = () => { q++; go(run) }; $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
   bar.onclick = e => { const b = e.target.closest("[data-l]"); if (!b) return; const a = b.dataset.l;
-    if (a === "x") LS.stop(); else if (a === "next") play(i + 1); else if (a === "prev") play(au.currentTime > 3 ? i : i - 1);
-    else if (a === "play") { if (paused || au.paused) { au.play(); paused = false; b.textContent = "❚❚" } else { au.pause(); paused = true; b.textContent = "▶" } } };
-  play(i) }
+    if (a === "x") LS.stop(); else if (a === "next") { au.pause(); point(i + 1) } else if (a === "prev") { au.pause(); point(q > 0 || au.currentTime > 3 ? i : i - 1) }
+    else if (a === "play") { if (au.paused) { au.play(); b.textContent = "❚❚" } else { au.pause(); b.textContent = "▶" } } };
+  point(i) }
 
 // =====================================================================
 // PREPARE: develop a new talk in a conversation, then create it (outline, text, verse slides, slides, pictures).

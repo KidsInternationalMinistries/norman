@@ -340,3 +340,14 @@ label.aiup{flex:0 0 auto;width:auto;text-transform:none;letter-spacing:0;font-we
 .aicomp{display:grid;gap:6px}
 .aibrief{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto}
 .aibrief>textarea{flex:1;min-height:260px;font-size:14px;line-height:1.5}
+/* Tags mirrored from the key points into the full text */
+body[data-mode="edit"] .stagev .kplist{position:sticky;top:calc(var(--stk,150px) - 6px);z-index:3;max-height:42vh;overflow:auto;background:color-mix(in srgb,var(--cue) 25%,var(--bg));box-shadow:0 6px 10px -8px rgba(0,0,0,.25)}
+.rich.big .vchip.unplaced{border-style:solid;border-color:#c0392b;color:#fff;background:#c0392b;cursor:grab}
+.rich.big .vchip{cursor:grab}
+.vchip.ghost{position:fixed;z-index:80;pointer-events:none;opacity:.85;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.vchip.dragging{opacity:.35}
+.dropmark{position:fixed;z-index:79;width:3px;background:#c0392b;pointer-events:none;border-radius:2px}
+.vmenu button.plc{color:#c0392b}
+.script .vtag.ref.on{outline:3px solid #E9B949;outline-offset:2px}
+.script .vtag.ref.mir{border-style:solid;border-color:var(--accent);color:var(--accent)}
+.rich.big .vchip.mir:not(.unplaced){border-style:solid;border-color:var(--accent);color:var(--accent)}
