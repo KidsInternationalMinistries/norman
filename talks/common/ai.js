@@ -53,7 +53,7 @@ function settings(){
     <p class="note">One set of keys for everyone. They are saved in the site's files encrypted with the presenter password, so anyone who knows it can use them. A key is never shown again after it's saved; type a new one to replace it.</p>
     ${[["openai", "OpenAI key", "sk-…", "Pictures, writing, checking"], ["eleven", "ElevenLabs key", "", "Listen to the talk"], ["esv", "ESV API key", "", "Exact ESV verse text (free from api.esv.org)"]].map(([k, l, ph, u]) =>
       `<label>${l} <span class="note">· ${u} · <b data-km="${k}">${mask(KEYS[k])}</b></span><input type="password" autocomplete="off" data-key="${k}" placeholder="${ph || "Paste to set or replace"}"></label>`).join("")}
-    <div class="row"><label style="flex:1 1 200px">Voice for Listen<select id="aivoice"><option value="${E(KEYS.voice)}">${E(KEYS.voiceName || (KEYS.voice ? "Saved voice" : "First voice on the account"))}</option></select></label>
+    <div class="row"><label style="flex:1 1 200px">Default voice (a talk can pick its own in Talk details)<select id="aivoice"><option value="${E(KEYS.voice)}">${E(KEYS.voiceName || (KEYS.voice ? "Saved voice" : "First voice on the account"))}</option></select></label>
       <label style="flex:1 1 160px">Picture quality<select id="aiq">${["high", "medium", "low"].map(q => `<option${KEYS.imageQuality === q ? " selected" : ""}>${q}</option>`).join("")}</select></label>
       <label style="flex:1 1 160px">Writing model (optional)<input id="aitm" value="${E(KEYS.textModel)}" placeholder="automatic"></label></div>
     <div class="aimsg" id="aism"></div>
@@ -200,6 +200,22 @@ async function createImage(t){
 function afterPic(t){ const ed = T.ed, sd = $("#sdlg"); if (sd && sd.open) { ed.fillDlg(); ed.refreshSlide() } else ed.render() }
 
 // ---- the talk's picture style (Talk details) ----
+function voiceHTML(d){ const v = d.voice || "";
+  return `<div class="aibox"><div class="pgh"><b>🔊 Voice for this talk</b></div>
+    <p class="note">Used by Listen and the narrated version. Your own ElevenLabs voices (a clone of your voice, for example) show up here too.</p>
+    <div class="row"><select id="aitv" style="flex:1"><option value="${E(v)}">${E(v ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI settings)")}</option></select><span class="aimsg" id="aitvm"></span></div></div>` }
+async function talkVoices(){ const sl = $("#aitv"); if (!sl || sl.dataset.loaded) return; sl.dataset.loaded = 1; const m = $("#aitvm"); m.textContent = "Loading voices…";
+  try { const key = await need("eleven"); let list = STD_VOICES.map(([voice_id, name]) => ({voice_id, name}));
+    try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) { const j = await r.json(); if ((j.voices || []).length) list = j.voices } } catch (e) {}
+    const d = T.ed.D(), mine = x => x.category && !/premade|professional_library/.test(x.category);
+    list.sort((a, b) => (mine(b) ? 1 : 0) - (mine(a) ? 1 : 0));
+    sl.innerHTML = `<option value="">Default voice (from ✨ AI settings)</option>` + list.map(x => `<option value="${E(x.voice_id)}"${x.voice_id === d.voice ? " selected" : ""}>${E(x.name)}${mine(x) ? " (yours)" : ""}</option>`).join("");
+    if (d.voice && !list.some(x => x.voice_id === d.voice)) sl.insertAdjacentHTML("beforeend", `<option value="${E(d.voice)}" selected>${E(d.voiceName || "Chosen voice")}</option>`); m.textContent = "" }
+  catch (e) { sl.dataset.loaded = ""; m.textContent = ""; fail(e) } }
+document.addEventListener("focusin", e => { if (e.target.id === "aitv") talkVoices() });
+document.addEventListener("pointerdown", e => { if (e.target.id === "aitv") talkVoices() });
+document.addEventListener("change", e => { if (e.target.id !== "aitv") return; const sl = e.target, o = sl.selectedOptions[0];
+  T.ed.op({t: "talk", f: "voice", v: sl.value}); T.ed.op({t: "talk", f: "voiceName", v: sl.value && o ? o.textContent.replace(/ \(yours\)$/, "") : ""}); toast("Voice saved for this talk") });
 function styleHTML(d){ const ref = d.imageStyleRef || "";
   return `<div class="aibox"><div class="pgh"><b>✨ Picture style for this talk</b></div>
     <p class="note">Every AI picture follows this, so the slides look like one set. Describe the look; add a style picture to match.</p>
@@ -370,7 +386,8 @@ function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.
   return out }
 // Speech plus the time each character is spoken (ElevenLabs "with timestamps"), so the word being read can light up.
 function tts(text, vs){ const k = text + "|" + JSON.stringify(vs || {}); if (!AUD[k]) { AUD[k] = tts0(text, vs); AUD[k].catch(() => delete AUD[k]) } return AUD[k] }
-async function voiceId(key){ if (KEYS.voice) return KEYS.voice; let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {}
+const talkVoice = () => { try { const d = T.ed ? T.ed.D() : T.D(); return (d && d.voice) || "" } catch (e) { return "" } };
+async function voiceId(key){ const tv = talkVoice(); if (tv) return tv; if (KEYS.voice) return KEYS.voice; let j = {}; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": key}}); if (r.ok) j = await r.json() } catch (e) {}
   KEYS.voice = ((j.voices || [])[0] || {}).voice_id || STD_VOICES[0][0]; saveLocal(); return KEYS.voice }
 async function tts0(text, vs){ const key = await need("eleven"), voice = await voiceId(key);
   const body = JSON.stringify(vs ? {text, model_id: "eleven_multilingual_v2", voice_settings: vs} : {text, model_id: "eleven_multilingual_v2"}), H = {"xi-api-key": key, "Content-Type": "application/json"};
@@ -437,7 +454,27 @@ function listen(){ const ed = T.ed, L = ed.S(), s = ed.sel(); let i = Math.max(0
   au.onended = () => { q++; go(run) }; $("#ailr").onchange = () => au.playbackRate = +$("#ailr").value;
   bar.onclick = e => { const b = e.target.closest("[data-l]"); if (!b) return; const a = b.dataset.l;
     if (a === "x") LS.stop(); else if (a === "next") { au.pause(); point(i + 1) } else if (a === "prev") { au.pause(); point(q > 0 || au.currentTime > 3 ? i : i - 1) }
-    else if (a === "play") { if (au.paused) { au.play(); b.textContent = "❚❚" } else { au.pause(); b.textContent = "▶" } } };
+    else if (a === "play") { if (held) resume(); else if (!au.paused) hold(); else { au.play(); b.textContent = "❚❚" } } };
+  // Pause to edit: the text opens for changes; ▶ picks up again where it stopped, reading your changed text.
+  let held = null;
+  function hold(){ au.pause(); const it = plan[q]; let ci = 0;
+    if (it && it.say) { if (cur && cur.starts) { const S = cur.starts, t = au.currentTime; while (ci + 1 < S.length && S[ci + 1] <= t) ci++ } else if (au.duration) ci = Math.floor(it.say.length * au.currentTime / au.duration) }
+    const same = it && it.say ? plan.slice(0, q).filter(x => x.say && x.blk === it.blk).length : 0;
+    held = {pid: L[i].id, it, ci, same, t: au.currentTime}; run++; if (lastW) lastW.classList.remove("say"); lastW = null; ed.listenMode(false);
+    bar.querySelector('[data-l="play"]').textContent = "▶"; lab.textContent = head() + " · paused. Make your changes, then ▶ to go on." }
+  function resume(){ const h = held; held = null; const a = document.activeElement; if (a && a.blur) a.blur(); ed.listenMode(true);
+    let k = L.findIndex(x => x.id === h.pid); if (k < 0) return point(i); i = k; if (ed.sel().id !== h.pid) ed.go({k: "pt", id: h.pid});
+    const f = ed.findPt(h.pid); if (!f) return point(i + 1); plan = speakPlan(f.p); const r = ++run, it = h.it;
+    if (!it || !it.say) { q = 0; return go(r) }
+    const list = plan.map((x, n) => [x, n]).filter(([x]) => x.say && x.blk === it.blk); if (!list.length) { q = 0; return go(r) }
+    const exact = list.find(([x]) => x.say === it.say && JSON.stringify(x.vs) === JSON.stringify(it.vs)), [x, n] = exact || list[Math.min(h.same, list.length - 1)];
+    for (let m = 0; m < n; m++) if (plan[m].step) ed.stepTo(plan[m].step);
+    if (exact) { q = n; lab.textContent = head(); tts(x.say, x.vs).then(a => { if (!alive || r !== run) return; cur = a; au.src = a.url; au.playbackRate = +$("#ailr").value;
+        au.onloadedmetadata = () => { au.onloadedmetadata = null; au.currentTime = Math.max(0, h.t - .4) }; au.play().catch(() => {}); bar.querySelector('[data-l="play"]').textContent = "❚❚" }).catch(fail); return }
+    // The text changed: start again at the sentence that was being read.
+    const from = it.say.slice(0, h.ci + 1).search(/[^.!?]*[.!?]?\s*$/), key = it.say.slice(Math.max(0, from), from + 30).trim(); let cut = key ? x.say.indexOf(key) : -1;
+    if (cut < 0) { const fr = h.ci / it.say.length; cut = Math.max(0, x.say.lastIndexOf(". ", Math.floor(x.say.length * fr)) + 1); while (x.say[cut] === " ") cut++ }
+    plan[n] = cut > 0 ? {...x, say: x.say.slice(cut), map: x.map.slice(cut)} : x; q = n; go(r) }
   point(i) }
 
 // =====================================================================
@@ -549,7 +586,7 @@ Return JSON in this ${GEN_SHAPE}`, parts(`Title: ${st.title || "(choose)"}\nPict
 // =====================================================================
 window.TALKAI = {html: {
   img: (A) => imgButton(A),
-  talk: d => styleHTML(d),
+  talk: d => voiceHTML(d) + styleHTML(d),
   sec: s => `<div class="row aisecrow"><button type="button" class="btn small aib" data-act="aisec" data-id="${E(s.id)}">✨ AI draft of this movement</button></div>`,
   navsec: () => ` <button type="button" class="btn small aib" data-act="aisec">✨ With AI</button>`,
   split: () => ` <button type="button" class="btn small aib" data-act="aisplit">✨ Split into the key points</button>`,
