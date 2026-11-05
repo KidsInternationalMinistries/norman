@@ -11,8 +11,9 @@ nav.tree{padding:8px 6px}
 .tn i{font-style:normal;color:var(--muted);min-width:2.1em;font-size:12px;font-weight:700}
 .tn.l1{font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:.04em;margin-top:12px;color:var(--muted)}
 .tn.l2{font-weight:700;margin-top:4px}
-.tn.l3{padding-left:22px}
-.tn.l4{padding-left:40px;font-size:13px;color:var(--muted)}
+.tn.l2{padding-left:14px}
+.tn.l3{padding-left:34px}
+.tn.l4{padding-left:52px;font-size:13px;color:var(--muted)}
 .tn:hover{background:color-mix(in srgb,var(--surface) 70%,transparent)}
 .tn.cur{background:var(--cue);color:var(--cue-ink)}
 .tn .sc{margin-left:auto;font:700 10px/16px system-ui;background:var(--accent);color:#fff;border-radius:8px;min-width:16px;text-align:center;padding:0 4px}
@@ -72,3 +73,18 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 @media (max-width:1000px){.lay.v2e,.lay.v2s{grid-template-columns:1fr}.lay.v2e .side,.lay.v2s .side{position:static;max-height:none;border-left:0}nav.tree{max-height:40vh;overflow:auto}}
 .lay.v2e .side,.lay.v2s .side{display:flex;flex-direction:column}
 .lay.v2e .side>*,.lay.v2s .side>*{flex-shrink:0}
+/* Nov 5: number-only outline chips, movements as page headers, indented parts */
+.sg{display:block}
+.sg.l2{padding-left:1.4em}
+.sg.l3{padding-left:2.8em}
+.sg.l4{padding-left:4.2em}
+.v2e .rich.big .vchip.nd{padding:0 3px;margin-left:-1.4em;max-width:none}
+.v2e .rich.big .vchip.nd b{margin-right:0}
+.v2e .rich.big .vchip.nd.l1{display:inline-block;box-sizing:border-box;width:100%;margin:22px 0 6px;padding:8px 14px;border:0;border-radius:8px;font:800 20px/1.3 system-ui,sans-serif;white-space:normal;vertical-align:baseline}
+.v2e .rich.big .vchip.nd.l1 b{margin-right:10px;height:26px;min-width:26px;font-size:15px;border-radius:13px}
+.v2e .rich.big>.sg:first-child .vchip.nd.l1,.v2e .rich.big>.vchip.nd.l1:first-child{margin-top:0}
+.v2s .script .bmark{margin-left:-1.6em;min-width:1.2em;text-align:center}
+.v2s .script .bmark.l1{display:inline-block;box-sizing:border-box;width:100%;margin:26px 0 8px;padding:8px 14px;border-radius:8px;font:800 22px/1.3 system-ui,sans-serif;text-align:left}
+.v2s .script .ck{border-radius:4px;transition:background .2s}
+.v2s .script .ck.cur{background:color-mix(in srgb,#E9B949 35%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,#E9B949 35%,transparent)}
+.v2s .script{white-space:pre-wrap}

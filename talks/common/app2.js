@@ -3,9 +3,11 @@
 //   [#1 Movement]  [#2 Point]  [#3 Sub point]  [#4 Detail]   → the outline (numbers itself: 1, 1.a, 1, a)
 //   [Slide name]  [Stop]                                     → slides, in the order they appear
 //   [Pause] [Slow] [Excited] … [Normal]                     → reading cues (never a Next)
-// Next walks the tags in order: each outline tag is a Next (a slide tag right under it comes up with it),
-// and each other slide tag in its text is one more Next. A slide belongs to the point it's under: moving on to the
-// next point at the same level or higher brings back the slide of the point above (or keeps the last one if there's none).
+// Next always lights up the next stretch of text to read: the words between two tags (outline or slide tags; reading cues
+// don't count). A point with no words of its own is skipped. A slide comes up together with the words after it, so a slide
+// at the start of a point shows at once, and one in the middle comes up on the Next after the words before it. A slide with
+// no words after it (before the next point) still gets a Next of its own. A slide belongs to the point it's under: moving on
+// to the next point at the same level or higher brings back the slide of the point above (or keeps the last one if there's none).
 // Data: talks/<Folder>/talk2.json, format "talk/2". Pages: edit2.html, present2.html, slides2.html (mode edit2 | present2 | slides2).
 (function(){
 "use strict";
@@ -26,26 +28,28 @@ function parse(d){ const t = d.text || "", toks = [], nodes = [], cnt = [0, 0, 0
       const lab = lvl === 1 ? String(cnt[1]) : lvl === 2 ? (cnt[1] || 0) + "." + letter(cnt[2] - 1) : lvl === 3 ? String(cnt[3]) : letter(cnt[4] - 1);
       const n = {j: nodes.length, lvl, text: (nm[2] || "").trim(), at, end, lab, parent: stack[stack.length - 1] || null, top: lvl === 1 ? null : null, slides: []};
       n.full = lvl <= 2 ? lab : (stack.find(x => x.lvl === 2) ? stack.find(x => x.lvl === 2).lab + " · " : "") + lab;
-      nodes.push(n); stack.push(n); toks.push({k: "node", node: n, at, end}); continue }
+      nodes.push(n); stack.push(n); toks.push({k: "node", node: n, at, end, ref: r}); continue }
     const cue = CUETAG[r.toLowerCase()]; if (cue) { toks.push({k: "cue", cue, at, end, ref: r}); continue }
     const s = r.toLowerCase() === "stop" ? STOP : (d.slides || []).find(x => x && x.name && x.name.trim() === r);
     if (s) toks.push({k: "slide", slide: s, at, end, node: nodes[nodes.length - 1] || null, ref: r}) }
   nodes.forEach((n, i) => { n.stop = i + 1 < nodes.length ? nodes[i + 1].at : t.length;      // its own words end at the next tag of any level
     let k = i + 1; while (k < nodes.length && nodes[k].lvl > n.lvl) k++; n.last = k < nodes.length ? nodes[k].at : t.length });   // its whole branch ends at the next one at its level or higher
   return {toks, nodes, t} }
-// The Next steps. A slide right under an outline tag (only spaces between) comes up with it.
-function stepsOf(P){ const out = []; let prev = null;
-  for (const x of P.toks) { if (x.k === "cue") continue;
-    if (x.k === "node") { prev = {node: x.node, tok: x}; out.push(prev); continue }
-    if (prev && prev.tok.k === "node" && !prev.slide && !P.t.slice(prev.tok.end, x.at).trim()) { prev.slide = x.slide; prev.stok = x; x.node && x.node.slides.push(x); prev = {tok: x}; continue }
-    const st = {node: x.node, slide: x.slide, tok: x}; out.push(st); prev = st; if (x.node) x.node.slides.push(x) }
-  return out }
-// The slide on screen at each step (see the rule at the top).
-function shownList(S){ let stack = [], last = null;
-  return S.map(st => { const L = st.node ? st.node.lvl : 0;
-    if (st.tok.k === "node") stack = stack.filter(e => e.lvl < L);
-    if (st.slide && !st.slide.stop) { const at = st.slide.keep ? 0 : L; stack = stack.filter(e => e.lvl < at); stack.push({lvl: at, s: st.slide}) }
-    const top = stack.length ? stack[stack.length - 1].s : last; last = top; return top }) }
+// The Next steps: one per stretch of words between tags, each with the slide on screen (see the rule at the top).
+// A step: {node, a, b (the words, from a to b in the text; null for a slide with no words), pos, slide, pre, nxt (the tags around it, as indexes in P.toks)}.
+function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = null, last = null, pos = 0, pre = -1;
+  P.nodes.forEach(n => { n.slides = [] });
+  const top = () => stack.length ? stack[stack.length - 1].s : last;
+  const add = st => { S.push(st); last = st.slide; if (fresh) { fresh.step = S.length - 1; fresh = null } };
+  const bare = () => { const x = fresh; add({node: x.node, a: null, b: null, pos: x.at, slide: top(), pre: x.i, nxt: x.i}) };
+  const words = b => { if (b > pos && t.slice(pos, b).replace(TAG, " ").trim()) add({node: cur, a: pos, b, pos, slide: top(), pre, nxt: -1}) };
+  P.toks.forEach((x, i) => { x.i = i; if (x.k === "cue") return; const n0 = S.length; words(x.at); if (S.length > n0) S[S.length - 1].nxt = i;
+    if (fresh) bare();
+    if (x.k === "node") { stack = stack.filter(e => e.lvl < x.node.lvl); cur = x.node }
+    else { if (x.node) x.node.slides.push(x); if (!x.slide.stop) { const at = x.slide.keep ? 0 : cur ? cur.lvl : 0; stack = stack.filter(e => e.lvl < at); stack.push({lvl: at, s: x.slide}); fresh = x } }
+    pos = x.end; pre = i });
+  words(t.length); if (fresh) bare();
+  return S }
 function slideHTML(s, d){ if (!s) return d && d.titleImage ? `<div class="slide">${T.imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d ? d.title : ""});
   if (s.type === "verse") return verseSlide({ref: s.ref || s.name, text: s.text, version: s.version});
   return xsHTML(s.type && SLIDE_TYPES[s.type] ? s : {...s, type: "image"}) }
@@ -67,7 +71,7 @@ async function slides(){
   document.body.innerHTML = `<div id="s"></div><div id="ui"><button id="b" type="button">&larr; Back</button><span id="st"><b></b>Connecting&hellip;</span><button id="n" type="button">Next &rarr;</button><button id="f" type="button">Full screen</button></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#s").innerHTML = `<div class="txt">Couldn't load this talk.</div>`; return }
   document.title = d.title + " · slides"; T.preload(d.slides || [], d);
-  const S = stepsOf(parse(d)), SH = shownList(S); let pres = 0, local = 0, follow = true, pk = null, end = false, lastAt = 0, on = false;
+  const S = build(parse(d)), SH = S.map(x => x.slide); let pres = 0, local = 0, follow = true, pk = null, end = false, lastAt = 0, on = false;
   const st = $("#st");
   const show = () => { const k = follow ? pres : local, pv = follow && pk ? (d.slides || []).find(x => x.name === pk) : null;
     setSlide($("#s"), follow && end ? '<div class="slide blank"></div>' : slideHTML(pv || SH[k], d)); st.className = follow ? (on ? "on" : "") : "local";
@@ -90,18 +94,25 @@ function treeHTML(P, S, k, big){ const cur = S[k] && S[k].node; let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
     h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}" data-n="${n.j}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
   return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a movement, point, sub point or detail, or use ✨ Outline.</p>` }
-// The text with every tag drawn: nodes as numbered chips, slides as named chips, cues as small hints. inEdit: chips are editable tags.
-function textHTML(d, P, inEdit, segs){ const t = P.t; let h = "", last = 0, ni = 0;
-  const put = (a, b) => { h += E(t.slice(a, b)) };
-  for (const m of t.matchAll(TAG)) { const r = m[1].trim(), x = P.toks.find(q => q.at === m.index);
-    if (!x) continue; put(last, m.index); last = m.index + m[0].length;
-    if (x.k === "node") { const n = x.node; if (segs) h += (ni ? "</span>" : "") + `<span class="seg" data-n="${n.j}">`; ni++;
-      h += inEdit ? `<span class="vchip nd l${n.lvl}" contenteditable="false" data-ref="${E(r)}" title="${E(LV[n.lvl])}. Click to change it, drag to move it"><b>${E(n.lab)}</b>${E(n.text || "(no words)")}</span>`
-        : `<span class="bmark l${n.lvl}" data-n="${n.j}">${E(n.lab)} ${E(n.text)}</span>`; continue }
-    if (x.k === "cue") { h += inEdit ? `<span class="vchip cue cue-${x.cue.cue.replace(" ", "")}" contenteditable="false" data-ref="${E(r)}">${E(x.cue.icon + " " + x.cue.ref)}</span>` : `<span class="cuehint cue cue-${x.cue.cue.replace(" ", "")}">${E(x.cue.icon + " " + x.cue.ref)}</span>`; continue }
-    const s = x.slide; h += inEdit ? `<span class="vchip sl${s.stop ? " stop" : ""}" contenteditable="false" data-ref="${E(r)}" title="${s.stop ? "Stop: a pause that keeps the slide" : "Slide. Click to show it; drag to move it"}">${icon(s)} ${E(s.name)}</span>`
-      : `<button type="button" class="vtag sl${s.stop ? " stop" : ""}" data-pk="${E(s.name)}">${icon(s)} ${E(s.name)}</button>` }
-  put(last, t.length); if (segs && ni) h += "</span>"; return h }
+// The text with every tag drawn: nodes as numbered chips (a movement as a header with its words), slides as named chips, cues as small hints.
+// inEdit: chips are editable tags. S: wrap each stretch of words in a span (Stage). blocks: wrap each node's part in an indented block.
+const ndTitle = n => `${LV[n.lvl]} ${n.lab}: ${n.text || "(no words)"}`;
+const ndInner = n => n.lvl === 1 ? `<b>${E(n.lab)}</b>${E(n.text || "(no words)")}` : `<b>${E(n.lab)}</b>`;
+function textHTML(d, P, inEdit, S, blocks){ const t = P.t; let h = "", pos = 0, open = false; const byA = new Map(); if (S) S.forEach((st, i) => { if (st.a != null) byA.set(st.a, i) });
+  const tok = x => { const r = x.ref;
+    if (x.k === "node") { const n = x.node; return inEdit ? `<span class="vchip nd l${n.lvl}" contenteditable="false" data-ref="${E(r)}" title="${E(ndTitle(n))}. Click to change it, drag to move it">${ndInner(n)}</span>`
+      : `<span class="bmark l${n.lvl}" data-n="${n.j}" title="${E(ndTitle(n))}">${n.lvl === 1 ? E(n.lab + " " + n.text) : E(n.lab)}</span>` }
+    if (x.k === "cue") return inEdit ? `<span class="vchip cue cue-${x.cue.cue.replace(" ", "")}" contenteditable="false" data-ref="${E(r)}">${E(x.cue.icon + " " + x.cue.ref)}</span>` : `<span class="cuehint cue cue-${x.cue.cue.replace(" ", "")}">${E(x.cue.icon + " " + x.cue.ref)}</span>`;
+    const s = x.slide; return inEdit ? `<span class="vchip sl${s.stop ? " stop" : ""}" contenteditable="false" data-ref="${E(r)}" title="${s.stop ? "Stop: a pause that keeps the slide" : "Slide. Click to show it; drag to move it"}">${icon(s)} ${E(s.name)}</span>`
+      : `<button type="button" class="vtag sl${s.stop ? " stop" : ""}" data-pk="${E(s.name)}">${icon(s)} ${E(s.name)}</button>` };
+  const piece = (a, b) => { let o = "", p = a; for (const x of P.toks) { if (x.k !== "cue" || x.at < a || x.at >= b) continue; o += E(t.slice(p, x.at)) + tok(x); p = x.end } return o + E(t.slice(p, b)) };
+  const words = b => { if (b <= pos) return; const i = byA.get(pos), w = piece(pos, b); h += i != null ? `<span class="ck" data-s="${i}">${w}</span>` : w };
+  for (const x of P.toks) { if (x.k === "cue") continue; words(x.at);
+    if (blocks && x.k === "node") { h += (open ? "</div>" : "") + `<div class="sg l${x.node.lvl}" data-seg="1">`; open = true }
+    h += tok(x); pos = x.end }
+  words(t.length); if (open) h += "</div>"; return h }
+// The first step at or after an outline node (clicking a point in a list).
+const firstAt = (S, n) => n ? S.findIndex(z => z.pos >= n.at) : -1;
 // Bring a range into view below the sticky parts: in the middle if it fits, else its start at the top.
 function scrollToPart(r, top, bottom){ if (!r || !r.height) return; const room = bottom - top, y = r.height <= room - 16 ? r.top - top - (room - r.height) / 2 : r.top - top - 10;
   if (Math.abs(y) > 2) window.scrollTo({top: Math.max(0, scrollY + y), behavior: "smooth"}) }
@@ -113,15 +124,15 @@ async function present(){
   document.body.innerHTML = `<p class="status">Loading&hellip;</p>`;
   let d; try { d = (await load(false)).d } catch (e) { document.body.innerHTML = `<p class="status">Couldn't load this talk (${E(e.message)}).</p>`; return }
   document.title = d.title + " · Stage"; T.preload(d.slides || [], d);
-  const P = parse(d), S = stepsOf(P), SH = shownList(S);
+  const P = parse(d), S = build(P), SH = S.map(x => x.slide);
   let k = 0, peek = null, end = false, showText = true; try { const v = +localStorage.getItem("pres2-" + FOLDER); if (v >= 0 && v < S.length) k = v; showText = localStorage.getItem("pres2-text") !== "0" } catch (e) {}
   document.body.innerHTML = topBar(d, "present") + `<div class="lay v2s"><nav class="cues" id="nav"></nav><main class="pane" id="m">
-      <div class="olbox" id="ol"></div><div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><p class="script" id="sc"></p></div></main>
+      <div class="olbox" id="ol"></div><div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><div class="script" id="sc"></div></div></main>
       <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
-  $("#sc").innerHTML = textHTML(d, P, false, true);
+  $("#sc").innerHTML = textHTML(d, P, false, S, true);
   const TIMER = CountTimer($("#ct"), "pres2-timer-" + FOLDER); TIMER.setMinutes(timerMinutes(d, []));
   // The left list: movements and points to jump to.
   $("#nav").innerHTML = P.nodes.filter(n => n.lvl <= 2).map(n => n.lvl === 1 ? `<div class="sec" data-n="${n.j}">${E(n.lab)}. ${E(n.text)}</div>` : `<button type="button" class="it" data-n="${n.j}"><i>${E(n.lab)}</i><span>${E(n.text)}</span></button>`).join("");
@@ -129,18 +140,18 @@ async function present(){
   function draw(){ const st = S[k], n = st && st.node, b = n ? branch(n) : null;
     // the outline of the point you're in, big, with the current line lit and its slide chips
     let h = ""; if (b) { const list = P.nodes.filter(x => x.at >= b.at && x.at < b.last);
-      h = `<div class="olh">${E(b.lab)} ${E(b.text)}</div><ul class="ol">` + list.filter(x => x !== b).map(x => `<li class="l${x.lvl}${x === n ? " cur" : ""}" data-n="${x.j}"><span class="kn">${E(x.lab)}</span>${E(x.text)}${x.slides.filter(q => q.slide).map(q => { const i = S.findIndex(z => z.tok === q || z.stok === q); return ` <button type="button" class="vtag${q.slide.stop ? " stop" : ""}${i === k ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("")}</li>`).join("") + "</ul>";
-      const own = b.slides.filter(q => q.slide); if (own.length) h = h.replace("</div>", " " + own.map(q => { const i = S.findIndex(z => z.tok === q || z.stok === q); return `<button type="button" class="vtag${i === k ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("") + "</div>");
+      h = `<div class="olh">${E(b.lab)} ${E(b.text)}</div><ul class="ol">` + list.filter(x => x !== b).map(x => `<li class="l${x.lvl}${x === n ? " cur" : ""}" data-n="${x.j}"><span class="kn">${E(x.lab)}</span>${E(x.text)}${x.slides.filter(q => q.slide && !q.slide.stop).map(q => { return ` <button type="button" class="vtag${q.step === k || (SH[k] === q.slide && q.step <= k) ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("")}</li>`).join("") + "</ul>";
+      const own = b.slides.filter(q => q.slide && !q.slide.stop); if (own.length) h = h.replace("</div>", " " + own.map(q => { return `<button type="button" class="vtag${SH[k] === q.slide && q.step <= k ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("") + "</div>");
       if (n === b) h = h.replace('class="olh"', 'class="olh cur"') }
     $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`;
     document.querySelectorAll("#nav [data-n]").forEach(e => e.classList.toggle("cur", !!b && +e.dataset.n === b.j));
     const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
-    document.querySelectorAll("#sc .seg").forEach(e => e.classList.toggle("cur", !!n && +e.dataset.n === n.j));
+    document.querySelectorAll("#sc .ck.cur").forEach(e => e.classList.remove("cur")); const ck = $(`#sc .ck[data-s="${k}"]`); if (ck && !end) ck.classList.add("cur");
     const s = peek ? (d.slides || []).find(x => x.name === peek) : SH[k]; setSlide($("#m").parentElement.querySelector(".scr"), end ? '<div class="slide blank"></div>' : slideHTML(s, d));
     $("#cap").textContent = end ? "End of the talk" : peek ? "Showing " + peek + " · Next or Back goes back" : s ? s.name : "Title slide";
-    const nx = S.slice(k + 1).find(z => z.node && z.tok.k === "node"); $("#nx").innerHTML = nx ? `Up next: <b>${E(nx.node.lab)}</b> ${E(nx.node.text)}` : "End of the talk";
+    const nx = S.slice(k + 1).find(z => z.node && z.node !== n); $("#nx").innerHTML = nx ? `Up next: <b>${E(nx.node.lab)}</b> ${E(nx.node.text)}` : "End of the talk";
     $("#pos").textContent = (k + 1) + " of " + S.length; vid();
-    requestAnimationFrame(() => { const el = n && $(`#sc .seg[data-n="${n.j}"]`); const ol = $("#ol"), tb = $(".top");
+    requestAnimationFrame(() => { const el = ck || (n && $(`#sc .bmark[data-n="${n.j}"]`)); const ol = $("#ol"), tb = $(".top");
       if (showText && el) { const top = (tb ? tb.offsetHeight : 0) + (ol ? ol.offsetHeight : 0) + 20, bar = $(".bar"); scrollToPart(el.getBoundingClientRect(), top, bar ? bar.getBoundingClientRect().top : innerHeight) } }) }
   function vid(){ const v = $(".side .slide.vid[data-next]"); if (!v || v.dataset.hooked) return; v.dataset.hooked = 1; const at = k; v.addEventListener("vidend", () => setTimeout(() => { if (k === at && !peek) next() }, 1200)) }
   async function push(){ const m = {v: 2, step: k, at: Date.now()}; if (peek) m.pk = peek; if (end) m.end = 1; try { localStorage.setItem("pres2-" + FOLDER, k) } catch (e) {}
@@ -153,7 +164,7 @@ async function present(){
   $("#n").onclick = next; $("#b").onclick = back;
   $("#stx").onchange = e => { showText = e.target.checked; $("#ft").hidden = !showText; try { localStorage.setItem("pres2-text", showText ? "1" : "0") } catch (_) {} draw() };
   document.body.addEventListener("click", e => { const pk = e.target.closest("[data-pk]"); if (pk) { const nm = pk.dataset.pk; if (nm === "Stop") return; peek = peek === nm ? null : nm; draw(); push(); return }
-    const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = S.findIndex(z => z.node && z.node.j === j && z.tok.k === "node"); if (i >= 0) go(i) } });
+    const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = firstAt(S, P.nodes[j]); if (i >= 0) go(i) } });
   $("#pop").onclick = () => { window.open("slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { if (locked() || e.target.closest("input,textarea")) return; if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); back() } });
   draw(); presenterGate(C.passHash, "pres-ok", () => { push(); TIMER.at(k === 0) }) }
@@ -168,11 +179,11 @@ async function edit(){
     if (e.status === 401 || e.status === 403) { try { localStorage.removeItem("gh-token") } catch (_) {} tokenSetup(() => edit()); return }
     document.body.innerHTML = `<p class="status">Couldn't load this talk's new version from GitHub (${E(e.message)}).</p>`; return }
   d.slides = d.slides || []; document.title = d.title + " · Edit"; T.preload(d.slides, d);
-  let P = parse(d), S = stepsOf(P), SH = shownList(S), k = 0, peek = null, dirty = false, saving = false, timer = null, panel = "lib";
+  let P = parse(d), S = build(P), SH = S.map(x => x.slide), k = 0, peek = null, dirty = false, saving = false, timer = null, panel = "lib";
   const hist = [];                 // earlier versions of the text and slides, for Undo
   document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2e"><nav class="cues tree" id="tree"></nav>
     <main class="pane" id="m"><div class="tools"><button type="button" class="btn small" id="det">Talk details</button><button type="button" class="btn small" id="undo" disabled title="Undo the last change">↶ Undo</button>
-      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (movements, points, sub points, details); you check them first">✨ Outline from the text</button>
+      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (movements and points); you check them first">✨ Outline from the text</button>
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main>
     <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div>
@@ -182,7 +193,7 @@ async function edit(){
   const setSave = (t, err) => { const s = $("#save"); s.textContent = t; s.className = err ? "err" : "" };
   // ---- saving: the whole file, a moment after the last change ----
   function changed(snap){ if (snap !== false) { hist.push(snap); if (hist.length > 100) hist.shift(); $("#undo").disabled = false }
-    P = parse(d); S = stepsOf(P); SH = shownList(S); if (k >= S.length) k = Math.max(0, S.length - 1); dirty = true; setSave("Saving…"); clearTimeout(timer); timer = setTimeout(flush, 900); redraw() }
+    P = parse(d); S = build(P); SH = S.map(x => x.slide); if (k >= S.length) k = Math.max(0, S.length - 1); dirty = true; setSave("Saving…"); clearTimeout(timer); timer = setTimeout(flush, 900); redraw() }
   const snapshot = () => JSON.stringify({text: d.text, slides: d.slides});
   async function flush(){ if (saving || !dirty) return; saving = true; dirty = false; const body = JSON.stringify(d, null, 1) + "\n";
     try { SHA = await GH.put(FILE, b64e(body), SHA, "Edit " + d.title + " (new version)"); setSave(dirty ? "Saving…" : "Saved. The live pages update in about a minute.") }
@@ -193,17 +204,18 @@ async function edit(){
 
   // ---- the text box ----
   const box = () => $("#ftext .rich.big");
-  function drawText(){ $("#ftext").innerHTML = `<div class="rich big" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="The talk" data-ph="Type what you want to say. Then use / or ✨ Outline to add the points." data-f="script">${textHTML(d, P, true)}</div>`; hl(true) }
+  function drawText(){ $("#ftext").innerHTML = `<div class="rich big" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="The talk" data-ph="Type what you want to say. Then use / or ✨ Outline to add the points." data-f="script">${textHTML(d, P, true, null, true)}</div>`; shape = shapeOf(); hl(true) }
+  let shape = ""; const shapeOf = () => P.nodes.map(n => n.lvl).join("");
   function richText(el){ let out = ""; const walk = n => { for (const c of n.childNodes) {
       if (c.nodeType === 3) out += c.nodeValue.replace(/​/g, "");
       else if (c.nodeType === 1) { if (c.classList.contains("vchip")) out += "[" + c.dataset.ref + "]"; else if (c.tagName === "BR") out += "\n";
-        else { if (/^(DIV|P)$/.test(c.tagName) && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } }; walk(el); return out.replace(/\n$/, "") }
+        else { if (/^(DIV|P)$/.test(c.tagName) && !c.dataset.seg && out && !out.endsWith("\n")) out += "\n"; walk(c) } } } }; walk(el); return out.replace(/\n$/, "") }
   let typeT = null;
   function saveText(){ clearTimeout(typeT); const b = box(); if (!b) return; const t = richText(b); if (t === (d.text || "")) return; const s = snapshot(); d.text = t; changed(s); relabel() }
   // Number the outline chips again after a change (the text box itself is left as you're typing it).
-  function relabel(){ const b = box(); if (!b) return; const cs = [...b.querySelectorAll(".vchip.nd")]; cs.forEach((c, i) => { const n = P.nodes[i]; if (!n) return; const h = `<b>${E(n.lab)}</b>${E(n.text || "(no words)")}`; if (c.innerHTML !== h) c.innerHTML = h; c.className = "vchip nd l" + n.lvl }) }
+  function relabel(){ const b = box(); if (!b) return; const cs = [...b.querySelectorAll(".vchip.nd")]; cs.forEach((c, i) => { const n = P.nodes[i]; if (!n) return; const h = ndInner(n); if (c.innerHTML !== h) c.innerHTML = h; c.className = "vchip nd l" + n.lvl; c.title = ndTitle(n) + ". Click to change it, drag to move it" }) }
   document.addEventListener("input", e => { if (!e.target.closest || !e.target.closest("#ftext .rich.big")) return; clearTimeout(typeT); typeT = setTimeout(saveText, 800) });
-  document.addEventListener("focusout", e => { if (e.target.closest && e.target.closest("#ftext .rich.big")) saveText() });
+  document.addEventListener("focusout", e => { if (e.target.closest && e.target.closest("#ftext .rich.big")) { saveText(); if (shapeOf() !== shape) drawText() } });   // new or moved points: draw the blocks again
   const selText = () => { const sl = getSelection(); if (!sl.rangeCount) return ""; const dv = document.createElement("div"); dv.appendChild(sl.getRangeAt(0).cloneContents()); return richText(dv) };
   const chipsHTML = t => { const fake = {...d, text: t}; return textHTML(fake, parse(fake), true).replace(/\n/g, "<br>") };
   document.addEventListener("copy", e => { if (!e.target.closest || !e.target.closest("#ftext .rich.big")) return; e.preventDefault(); e.clipboardData.setData("text/plain", selText()) });
@@ -251,8 +263,8 @@ async function edit(){
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } $("#nx").focus() }
   // ---- slides: library, editor ----
   const usesOf = nm => P.toks.filter(x => x.k === "slide" && x.slide.name === nm).length;
-  function plist(){ const el = $("#plist"); if (panel === "run") { const L = S.map((st, i) => [st, i]).filter(([st]) => st.slide && !st.slide.stop);
-      el.innerHTML = L.length ? L.map(([st, i]) => `<div class="pi run${i === k ? " cur" : ""}" data-step="${i}"><div class="th">${slideHTML(st.slide, d)}</div><div class="pn"><b>${E(st.slide.name)}</b><span>${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}</span></div></div>`).join("") : `<p class="note">No slides in the text yet.</p>`; return }
+  function plist(){ const el = $("#plist"); if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null);
+      el.innerHTML = L.length ? L.map(x => { const i = x.step; return `<div class="pi run${SH[k] === x.slide && i <= k ? " cur" : ""}" data-step="${i}"><div class="th">${slideHTML(x.slide, d)}</div><div class="pn"><b>${E(x.slide.name)}</b><span>${x.node ? E(x.node.full + " " + x.node.text) : "Opening"}</span></div></div>` }).join("") : `<p class="note">No slides in the text yet.</p>`; return }
     el.innerHTML = d.slides.map((s, i) => { const u = usesOf(s.name); return `<div class="pi${u ? "" : " unused"}${SH[k] === s ? " cur" : ""}" draggable="true" data-si="${i}"><div class="th">${slideHTML(s, d)}</div><div class="pn"><b>${icon(s)} ${E(s.name)}</b><span>${E(TYPES[s.type] || "Slide")}${u > 1 ? ` · used ${u}×` : u ? "" : " · not in the text"}</span></div></div>` }).join("") || `<p class="note">No slides yet. Press + New slide.</p>` }
   function slideNew(done){ const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">New slide</div>` + Object.entries(TYPES).map(([t, n]) => `<button type="button" data-t="${t}">${E(n)}</button>`).join("");
     document.body.appendChild(m); const r = ($("#sadd") || document.body).getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 260)) + "px"; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
@@ -307,15 +319,15 @@ async function edit(){
       g.style.left = e.clientX + 10 + "px"; g.style.top = e.clientY + 10 + "px"; const r = spot(e), rc = r && r.getBoundingClientRect(); mark.hidden = !rc || !rc.height; if (rc && rc.height) { mark.style.left = rc.left + "px"; mark.style.top = rc.top + "px"; mark.style.height = rc.height + "px" }
       if (e.clientY > innerHeight - 40) scrollBy(0, 14); else if (e.clientY < 140) scrollBy(0, -14) };
     const up = e => { removeEventListener("pointermove", mv); removeEventListener("pointerup", up); if (!g) return; dragged = true; setTimeout(() => dragged = false, 300); g.remove(); mark.remove(); c.classList.remove("dragging");
-      const r = spot(e); if (!r) return; c.remove(); r.insertNode(c); const pv = c.previousSibling, nx = c.nextSibling; if (pv && pv.nodeType === 3 && /\S$/.test(pv.nodeValue)) pv.nodeValue += " "; if (!nx || nx.nodeType !== 3 || /^\S/.test(nx.nodeValue)) c.after(document.createTextNode(" ")); saveText() };
+      const r = spot(e); if (!r) return; c.remove(); r.insertNode(c); const pv = c.previousSibling, nx = c.nextSibling; if (pv && pv.nodeType === 3 && /\S$/.test(pv.nodeValue)) pv.nodeValue += " "; if (!nx || nx.nodeType !== 3 || /^\S/.test(nx.nodeValue)) c.after(document.createTextNode(" ")); saveText(); if (c.classList.contains("nd")) drawText() };
     addEventListener("pointermove", mv); addEventListener("pointerup", up) });
   // ---- stepping like Stage, with the slide on the right ----
   function hl(quiet){ const b = box(), st = S[k]; document.querySelectorAll("#ftext .vchip.on").forEach(c => c.classList.remove("on")); try { CSS.highlights && CSS.highlights.delete("kpcur") } catch (e) {}
-    if (!b || !st) return; const nodes = b.querySelectorAll(".vchip.nd"), chips = [...b.querySelectorAll(".vchip")], toks = P.toks.filter(x => true);
-    const chipOf = tok => chips[toks.indexOf(tok)]; const n = st.node, c = n ? nodes[n.j] : null, sc = st.tok.k === "slide" ? chipOf(st.tok) : st.stok ? chipOf(st.stok) : null;
-    if (c) c.classList.add("on"); if (sc) sc.classList.add("on"); if (!c) return;
-    const r = document.createRange(); r.setStartBefore(c); if (nodes[n.j + 1]) r.setEndBefore(nodes[n.j + 1]); else r.setEnd(b, b.childNodes.length);
-    try { if (window.Highlight && CSS.highlights) CSS.highlights.set("kpcur", new Highlight(r)) } catch (e) {}
+    if (!b || !st) return; const chips = [...b.querySelectorAll(".vchip")], nodes = b.querySelectorAll(".vchip.nd"), c = st.node ? nodes[st.node.j] : null;
+    if (c) c.classList.add("on"); const r = document.createRange();
+    if (st.a == null) { const sc = chips[st.pre]; if (!sc) return; sc.classList.add("on"); r.selectNode(sc) }      // a slide with no words after it
+    else { if (st.pre >= 0 && chips[st.pre]) r.setStartAfter(chips[st.pre]); else r.setStart(b, 0); if (st.nxt >= 0 && chips[st.nxt]) r.setEndBefore(chips[st.nxt]); else r.setEnd(b, b.childNodes.length);
+      try { if (window.Highlight && CSS.highlights) CSS.highlights.set("kpcur", new Highlight(r)) } catch (e) {} }
     if (!quiet) { const tb = $(".top"), tl = $("#m .tools"); scrollToPart(r.getBoundingClientRect(), (tb ? tb.offsetHeight : 0) + (tl ? tl.offsetHeight : 0) + 12, innerHeight - 8) } }
   function side(){ const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
@@ -325,7 +337,7 @@ async function edit(){
   $("#en").onclick = () => { if (peek) { peek = null; side(); return } step(k + 1) }; $("#eb").onclick = () => { if (peek) { peek = null; side(); return } step(k - 1) };
   document.addEventListener("keydown", e => { if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable='true'],dialog")) return; if (["PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); $("#en").click() } else if (["PageUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); $("#eb").click() } });
   document.addEventListener("click", e => { const tg = e.target;
-    const tn = tg.closest("#tree [data-n]"); if (tn) { const j = +tn.dataset.n, i = S.findIndex(z => z.node && z.node.j === j && z.tok.k === "node"); if (i >= 0) step(i); return }
+    const tn = tg.closest("#tree [data-n]"); if (tn) { const i = firstAt(S, P.nodes[+tn.dataset.n]); if (i >= 0) step(i); return }
     const nd = tg.closest("#ftext .vchip.nd"); if (nd) { if (dragged) return; const v = nd.dataset.ref.match(/^#([1-4])\s*([\s\S]*)$/);
       nodeEdit({lvl: +v[1], text: v[2] || ""}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text; d.text = richText(box()); changed(s); drawText() }, true); return }
     const sc = tg.closest("#ftext .vchip.sl"); if (sc) { if (dragged || sc.classList.contains("stop")) return; const nm = sc.dataset.ref; peek = peek === nm ? null : nm; side(); return }
