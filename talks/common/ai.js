@@ -397,10 +397,10 @@ function speakPlan(p){ const out = [], vs = p.verses || [], B = T.splitBlocks(p.
     for (const m of t.matchAll(/\[([^\[\]\n]{1,60})\]/g)) { say(last, m.index); last = m.index + m[0].length; const r = m[1].trim(), v = T.tagOf(p, r.replace(/^!/, "")); if (!v || v.anchor) continue;
       if (v.cue) { const c = v.cue; if (c === "pause" || c === "long pause") out.push({pause: c === "pause" ? 1.2 : 2.5}); else if (c === "normal") { mode.speed = ""; mode.tone = "" } else if (c === "slow" || c === "fast") mode.speed = c; else mode.tone = c; cv = voiceOf(mode); continue }
       const key = T.tagKey(v); n[key] = (n[key] || 0) + 1; if (blk !== "intro") out.push({step: blk + "|" + key + "#" + n[key]});
-      const vt = vs.find(x => x && x.ref && x.ref.trim() === r.replace(/^!/, "")); if (vt && vt.text) out.push({say: vt.ref + ". " + vt.text.replace(/\*\*|__/g, "").replace(/\s+/g, " "), blk: null, vs: cv}) }
+    }
     say(last, t.length) };
   seg("intro", T.trimBlk(B.intro)); for (const x of p.keyPoints || []) { const id = T.kpId(x); if (id) seg(id, T.trimBlk(B.text[id])) }
-  if (!out.some(x => x.say)) { const k = (p.keyPoints || []).map(noTags).filter(Boolean).join(". "); if (k) out.push({say: k, blk: null, vs: voiceOf({})}) }
+  if (!out.some(x => x.say)) out.push({pause: 3});      // no full text: show the slides a moment, then go on (slide words are never read)
   // Each part is voiced on its own, so give the voice the words around it; then the tone and pace carry on smoothly across parts.
   const S = out.filter(x => x.say); S.forEach((x, k) => { x.prev = S.slice(0, k).map(y => y.say).join("\n").slice(-500); x.next = S.slice(k + 1).map(y => y.say).join("\n").slice(0, 300) });
   return out }
