@@ -1,6 +1,6 @@
 // Talk pages, version 2 (trial, Nov 5 2026): the whole talk is ONE text plus a library of named slides.
 // Tags in the text build everything else:
-//   [#1 Movement]  [#2 Point]  [#3 Sub point]  [#4 Detail]   → the outline (numbers itself: 1, 1.a, 1, a)
+//   [#1 Section]  [#2 Point]  [#3 Sub point]  ([#4 Detail], old)  → the outline (numbers itself: 1, 1.a, 1, a)
 //   [Slide name]  [Stop]                                     → slides, in the order they appear
 //   [Pause] [Slow] [Excited] … [Normal]                     → reading cues (never a Next)
 // Next always lights up the next stretch of text to read: the words between two tags (outline or slide tags; reading cues
@@ -16,7 +16,7 @@ const {C, E, $, GH, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, letter, TAG,
 const MODE = document.body.dataset.mode;
 const parts = location.pathname.replace(/\/[^/]*\.html$/, "/").split("/").filter(Boolean);
 const FOLDER = decodeURIComponent(parts[parts.length - 1] || ""), PATH = C.root + "/" + FOLDER, FILE = PATH + "/talk2.json";
-const LV = ["", "Movement", "Point", "Sub point", "Detail"];
+const LV = ["", "Section", "Point", "Sub point", "Detail"];
 const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video"};
 const STOP = {name: "Stop", stop: true};
 
@@ -93,8 +93,8 @@ async function slides(){
 function treeHTML(P, S, k, big){ const cur = S[k] && S[k].node; let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
     h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}" data-n="${n.j}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
-  return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a movement, point, sub point or detail, or use ✨ Outline.</p>` }
-// The text with every tag drawn: nodes as numbered chips (a movement as a header with its words), slides as named chips, cues as small hints.
+  return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a section, point or sub point, or use ✨ Outline.</p>` }
+// The text with every tag drawn: nodes as numbered chips (a section as a header with its words), slides as named chips, cues as small hints.
 // inEdit: chips are editable tags. S: wrap each stretch of words in a span (Stage). blocks: wrap each node's part in an indented block.
 const ndTitle = n => `${LV[n.lvl]} ${n.lab}: ${n.text || "(no words)"}`;
 const ndInner = n => n.lvl === 1 ? `<b>${E(n.lab)}</b>${E(n.text || "(no words)")}` : `<b>${E(n.lab)}</b>`;
@@ -134,9 +134,9 @@ async function present(){
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   $("#sc").innerHTML = textHTML(d, P, false, S, true);
   const TIMER = CountTimer($("#ct"), "pres2-timer-" + FOLDER); TIMER.setMinutes(timerMinutes(d, []));
-  // The left list: movements and points to jump to.
+  // The left list: sections and points to jump to.
   $("#nav").innerHTML = P.nodes.filter(n => n.lvl <= 2).map(n => n.lvl === 1 ? `<div class="sec" data-n="${n.j}">${E(n.lab)}. ${E(n.text)}</div>` : `<button type="button" class="it" data-n="${n.j}"><i>${E(n.lab)}</i><span>${E(n.text)}</span></button>`).join("");
-  const branch = n => { let p = n; while (p && p.lvl > 2) p = p.parent; return p };     // the point (or movement) you're in
+  const branch = n => { let p = n; while (p && p.lvl > 2) p = p.parent; return p };     // the point (or section) you're in
   function draw(){ const st = S[k], n = st && st.node, b = n ? branch(n) : null;
     // the outline of the point you're in, big, with the current line lit and its slide chips
     let h = ""; if (b) { const list = P.nodes.filter(x => x.at >= b.at && x.at < b.last);
@@ -183,12 +183,12 @@ async function edit(){
   const hist = [];                 // earlier versions of the text and slides, for Undo
   document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2e"><nav class="cues tree" id="tree"></nav>
     <main class="pane" id="m"><div class="tools"><button type="button" class="btn small" id="det">Talk details</button><button type="button" class="btn small" id="undo" disabled title="Undo the last change">↶ Undo</button>
-      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (movements and points); you check them first">✨ Outline from the text</button>
+      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button>
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main>
     <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div>
       <div class="ptabs"><button type="button" data-tab="lib" class="on">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd">+ New slide</button></div><div class="plist" id="plist"></div></aside></div>
-    <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog>`;
+    <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog><dialog class="sdlg pdlg" id="pdlg"></dialog>`;
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
   const setSave = (t, err) => { const s = $("#save"); s.textContent = t; s.className = err ? "err" : "" };
   // ---- saving: the whole file, a moment after the last change ----
@@ -232,8 +232,8 @@ async function edit(){
   let menu = null, mrange = null;
   const closeMenu = () => { if (menu) { menu.remove(); menu = null } };
   function openMenu(){ const b = box(), sl = getSelection(); if (!b || !sl.rangeCount) return; const r = sl.getRangeAt(0); if (r.startContainer.nodeType !== 3 || r.startContainer.nodeValue[r.startOffset - 1] !== "/") return; mrange = r.cloneRange();
-    const items = [[1, "Movement"], [2, "Point"], [3, "Sub point"], [4, "Detail"]].map(([l, n]) => ({node: l, label: `<b>${["", "1", "1.a", "1", "a"][l]}</b> ${n}`}))
-      .concat(d.slides.filter(s => s && s.name).map(s => ({slide: s.name, label: `${icon(s)} ${E(s.name)}`})), [{newSlide: true, label: "+ New slide…"}, {slide: "Stop", label: "■ Stop (a pause that keeps the slide)"}],
+    const items = [[1, "Section"], [2, "Point"], [3, "Sub point"]].map(([l, n]) => ({node: l, label: `<b>${["", "1", "1.a", "1"][l]}</b> ${n}`}))
+      .concat([{pickSlide: true, label: "▣ Slide…"}, {slide: "Stop", label: "■ Stop (a pause that keeps the slide)"}],
         Object.values(CUETAG).map(c => ({cue: c.ref, label: E(c.icon + " " + c.ref)})));
     closeMenu(); menu = document.createElement("div"); menu.className = "vmenu v2m";
     menu.innerHTML = `<input class="mf" placeholder="Type to find…" aria-label="Find"><div class="ml">${items.map((it, i) => `<button type="button" data-i="${i}" class="${it.node ? "nd" : it.cue ? "cueo" : ""}${i ? "" : " on"}">${it.label}</button>`).join("")}</div>`;
@@ -248,14 +248,14 @@ async function edit(){
   function restore(){ const b = box(); if (!b || !mrange) return; b.focus(); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(mrange) }
   function pick(it){ closeMenu(); restore();
     if (it.node) { nodeEdit({lvl: it.node, text: ""}, v => { restore(); insertAtCaret("#" + v.lvl + " " + v.text, true) }); return }
-    if (it.newSlide) { slideNew(nm => { restore(); insertAtCaret(nm, true) }); return }
+    if (it.pickSlide) { slidePick(nm => { restore(); insertAtCaret(nm, true) }); return }
     insertAtCaret(it.slide || it.cue, true) }
   document.addEventListener("keydown", e => { if (menu) return; const b = e.target.closest && e.target.closest("#ftext .rich.big"); if (!b) return;
     if (e.key === "/") setTimeout(openMenu, 0); else if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak") } });
   document.addEventListener("mousedown", e => { if (menu && !menu.contains(e.target)) closeMenu() });
   // ---- outline tag pop-up ----
   function nodeEdit(cur, done, canDel){ const dl = $("#ndlg");
-    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Outline</b></div><div class="row">${[1, 2, 3, 4].map(l => `<label class="chk"><input type="radio" name="nl" value="${l}"${l === cur.lvl ? " checked" : ""}> ${LV[l]}</label>`).join("")}</div>
+    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Outline</b></div><div class="row">${[1, 2, 3].concat(cur.lvl === 4 ? [4] : []).map(l => `<label class="chk"><input type="radio" name="nl" value="${l}"${l === cur.lvl ? " checked" : ""}> ${LV[l]}</label>`).join("")}</div>
       <label>Words (what you glance at while you speak)<input id="nx" autocomplete="off" value="${E(cur.text)}"></label>
       <div class="row"><span style="flex:1"></span>${canDel ? '<button class="btn small danger" type="button" id="ndel">Remove (keeps the text)</button>' : ""}<button class="btn small" type="button" id="ncan">Cancel</button><button class="btn small pri" type="submit">Save</button></div></form>`;
     $("#ncan").onclick = () => dl.close(); if (canDel) $("#ndel").onclick = () => { dl.close(); done(null) };
@@ -272,6 +272,15 @@ async function edit(){
     m.onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; m.remove(); removeEventListener("mousedown", off); const t = b.dataset.t; let n = d.slides.length + 1, nm; do { nm = (t === "verse" ? "Verse " : "Slide ") + n++ } while (d.slides.some(s => s.name === nm));
       const s = snapshot(), o = {name: nm, type: t}; if (t === "verse") Object.assign(o, {ref: "", text: "", version: "ESV"}); else if (t === "quote") Object.assign(o, {quote: "", by: ""}); else if (t === "video") Object.assign(o, {url: "", video: "", autoNext: true}); else Object.assign(o, {slideTitle: "", slide: "", eyebrow: "", layout: "center", image: "", bullets: ""});
       d.slides.push(o); changed(s); slideEdit(d.slides.length - 1, done) } }
+  // The / menu's "Slide…": every slide as a small picture with its name; pick one to put it in the text.
+  function slidePick(done){ const dl = $("#pdlg");
+    dl.innerHTML = `<div class="ed"><div class="pgh"><b>Put a slide in the text</b><input class="pf" placeholder="Find a slide…" aria-label="Find a slide"><button type="button" class="btn small" id="pcan">Cancel</button></div>
+      <div class="pgrid"><button type="button" class="pt new" data-new="1"><div class="th"><span>+</span></div><b>New slide</b></button>${d.slides.map((x, i) => `<button type="button" class="pt" data-si="${i}"><div class="th">${slideHTML(x, d)}</div><b>${icon(x)} ${E(x.name)}</b></button>`).join("")}</div></div>`;
+    const f = dl.querySelector(".pf"); f.oninput = () => { const q = f.value.toLowerCase(); dl.querySelectorAll(".pt[data-si]").forEach(b => b.hidden = !!q && !b.textContent.toLowerCase().includes(q)) };
+    f.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); const b = [...dl.querySelectorAll(".pt[data-si]")].find(x => !x.hidden); if (b) b.click() } };
+    $("#pcan").onclick = () => { dl.close(); restore() };
+    dl.onclick = e => { const b = e.target.closest(".pt"); if (!b) return; dl.close(); if (b.dataset.new) slideNew(done); else done(d.slides[+b.dataset.si].name) };
+    try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } f.focus() }
   function renameIn(a, b){ const rep = x => x.split("[" + a + "]").join(b ? "[" + b + "]" : ""); d.text = rep(d.text || "") }
   function slideEdit(i, onSave){ const dl = $("#sdlg"), o = d.slides[i]; if (!o) return; const A = f => `data-f="${f}"`;
     const fld = (f, lb, ta, ph) => ta ? `<label>${lb}<textarea class="auto" ${A(f)} placeholder="${E(ph || "")}">${E(o[f])}</textarea></label>` : `<label>${lb}<input ${A(f)} value="${E(o[f])}" placeholder="${E(ph || "")}"></label>`;
@@ -362,7 +371,7 @@ async function edit(){
     $("#olc").onclick = () => dl.close(); try { dl.showModal() } catch (e) {}
     const has = P.nodes.length;
     const j = await TALKAI.chat(`You build the speaking outline for a talk by a Christian ministry leader. He talks from the outline, glancing at it, not reading the text.
-The outline is only a memory hint for stretches of talk, so keep it sparse. Read the whole text and mark where each part starts. Levels: 1 = movement (a big section of the talk, usually 5 to 15 minutes), 2 = point (one stretch of talk, usually 30 seconds to 4 minutes, roughly 80 to 600 words; a 2-6 word cue). Use level 3 (sub point) only rarely, when a long point has clearly separate parts, and never level 4. Never mark single sentences or small ideas. Keep every phrase short (2 to 6 words), in his words where possible, in the order of the text. Every point is inside a movement. Each starts at the beginning of a sentence.
+The outline is only a memory hint for stretches of talk, so keep it sparse. Read the whole text and mark where each part starts. Levels: 1 = section (a big part of the talk, usually 5 to 15 minutes), 2 = point (one stretch of talk, usually 30 seconds to 4 minutes, roughly 80 to 600 words; a 2-6 word cue). Use level 3 (sub point) only rarely, when a long point has clearly separate parts, and never level 4. Never mark single sentences or small ideas. Keep every phrase short (2 to 6 words), in his words where possible, in the order of the text. Every point is inside a section. Each starts at the beginning of a sentence.
 For each give "start": the first 6 to 10 words of the sentence where it starts, copied exactly from the text.
 Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.stringify({title: d.title, text: PM.x}), {effort: "medium"});
     const L = Array.isArray(j.outline) ? j.outline : []; let from = 0; const out = [];

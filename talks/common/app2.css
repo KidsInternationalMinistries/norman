@@ -88,3 +88,14 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 .v2s .script .ck{border-radius:4px;transition:background .2s}
 .v2s .script .ck.cur{background:color-mix(in srgb,#E9B949 35%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,#E9B949 35%,transparent)}
 .v2s .script{white-space:pre-wrap}
+/* the slide picker (/ → Slide…) */
+.pdlg{width:min(980px,94vw)}
+.pdlg .pgh{display:flex;gap:10px;align-items:center}
+.pdlg .pf{flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:15px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;max-height:65vh;overflow:auto;padding:4px}
+.pgrid .pt{display:grid;gap:5px;border:2px solid transparent;border-radius:8px;background:none;padding:4px;cursor:pointer;text-align:center;color:var(--ink)}
+.pgrid .pt:hover,.pgrid .pt:focus-visible{border-color:var(--accent)}
+.pgrid .pt .th{border-radius:5px;overflow:hidden;pointer-events:none;aspect-ratio:16/9}
+.pgrid .pt .th .slide{border-radius:5px}
+.pgrid .pt b{font-size:13px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pgrid .pt.new .th{display:grid;place-items:center;border:2px dashed var(--line);font-size:34px;color:var(--muted)}
