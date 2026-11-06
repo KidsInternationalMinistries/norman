@@ -813,6 +813,10 @@ async function audience(){
   const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
   const stepL = dd => { let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < pres && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(pres, i)); local = i >= pres ? null : i; show() };
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
+  $("#audl").onclick = async e => { const f = d.pdf, a = $("#audl"); if (!f) return; e.preventDefault(); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent; a.textContent = "Downloading…";
+    try { let r = await fetch(f.file + "?t=" + (f.at || ""), {cache: "no-store"}).catch(() => null); if (!r || !r.ok) r = await fetch(RAW + PATH + "/" + f.file + "?t=" + (f.at || ""), {cache: "no-store"}); if (!r.ok) throw 0;
+      const u = URL.createObjectURL(await r.blob()), x = document.createElement("a"); x.href = u; x.download = a.getAttribute("download"); document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) }
+    catch (_) { alert("The PDF isn't ready yet. Try again in a minute.") } finally { delete a.dataset.busy; a.textContent = t0 } };
   const dl = () => { const f = d.pdf, a = $("#audl"); a.hidden = !f; if (f) { a.href = f.file + "?t=" + (f.at || ""); a.setAttribute("download", (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + ".pdf") } }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
