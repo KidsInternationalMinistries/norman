@@ -165,3 +165,10 @@ body[data-mode="edit2"],body[data-mode="present2"]{overflow:hidden}
 .v2s .tabbody .tpn{font-size:26px}
 .v2s .script{font-family:Georgia,serif;font-size:20px;line-height:1.65}
 @media (max-width:900px){body[data-mode="edit2"],body[data-mode="present2"]{overflow:auto}.lay.v2x{grid-template-columns:1fr;height:auto}.v2x .gut{display:none}.lay.v2x>main.pane{height:auto;overflow:visible}}
+/* make the dividers easy to see and grab */
+.lay.v2x{grid-template-columns:var(--c1,260px) 10px minmax(0,1fr) 10px var(--c3,420px)}
+.v2x .gut{background:color-mix(in srgb,var(--line) 70%,transparent)}
+.v2x .gut::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:44px;transform:translate(-50%,-50%);border-radius:2px;background:var(--muted);opacity:.55}
+.v2x .gut.h{height:10px}
+.v2x .gut.h::after{width:44px;height:4px}
+.v2x .gut:hover::after,.v2x .gut.on::after{background:#fff;opacity:1}
