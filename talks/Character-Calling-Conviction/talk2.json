@@ -104,7 +104,7 @@
    "tr": {
     "Tagalog": {
      "slideTitle": "Pagkatao, pagtawag, paninindigan...",
-     "slide": "Bunga ang mga ito...\n\n...at hindi natin kayang magbunga nang mag-isa."
+     "slide": "Sa palagay ko...Bunga ang mga ito...\n\n...at hindi natin kayang magbunga nang mag-isa."
     }
    },
    "trSrc": {
@@ -127,7 +127,7 @@
    "sbW": 56,
    "tr": {
     "Tagalog": {
-     "slideTitle": "Mga Nakakandadong Pinto",
+     "slideTitle": "Ito ay...Mga Nakakandadong Pinto",
      "slide": "Paninindigan?\nPagkatao?\nTawag?"
     }
    },
@@ -245,8 +245,8 @@
    "sbW": 56,
    "tr": {
     "Tagalog": {
-     "slideTitle": "Tumanggap ng kapangyarihan ang mga alagad\nat nagdala ito ng bilangguan, alitan, at kahinaan.",
-     "slide": "Huwag mong asahang magmukhang iba ito."
+     "slideTitle": "Nang Tumanggap ng kapangyarihan ang mga alagad\n-nagdala ito ng bilangguan, alitan, at kahinaan.",
+     "slide": "Huwag mong asahang magmumukhang iba ito."
     }
    },
    "trSrc": {
@@ -1128,10 +1128,13 @@
   "lppr4": {
    "html": "<ul><li>God’s power is not mainly about outward signs; it is about what He turns us into as His witnesses.</li><li>Question to think about: What do you actually expect God’s power to produce in you?</li></ul>",
    "tr": {
-    "Tagalog": "<ul><li>Ang kapangyarihan ng Diyos ay hindi pangunahing tungkol sa panlabas na mga tanda; higit itong tungkol sa kung paano niya tayo binabago bilang kanyang mga saksi.</li><li><b>Tanong na pag-isipan: Ano ba talaga ang inaasahan mong ibunga ng kapangyarihan ng Diyos sa iyo?</b></li></ul>"
+    "Tagalog": "<ul><li>Ang kapangyarihan ng Diyos ay hindi pangunahing tungkol sa panlabas na mga tanda; higit itong tungkol sa kung paano niya tayo binabago bilang kanyang mga saksi.</li><li><b>Tanong na pag-isipan: Ano ba talaga ang inaasahan mong ibubunga ng kapangyarihan ng Diyos sa iyo?</b></li></ul>"
    },
    "src": {
     "Tagalog": "<ul><li>God’s power is not mainly about outward signs; it is about what He turns us into as His witnesses.</li><li>Question to think about: What do you actually expect God’s power to produce in you?</li></ul>"
+   },
+   "ed": {
+    "Tagalog": true
    }
   },
   "wu297": {
@@ -1146,19 +1149,25 @@
   "04xli": {
    "html": "<ul><li>God’s power came on the apostles, and it led to prison, flogging, stoning, death, and a scattered church—not a comfortable throne.</li><li>We often expect: if God’s power is really on us, the church will grow, money will come, and people will agree with us.</li><li>But when things are hard, it may not mean we failed; it may be exactly what God’s power looks like.</li><li>Question to think about: Have I quietly assumed that a truly ‘anointed’ ministry must look successful and smooth?</li></ul>",
    "tr": {
-    "Tagalog": "<ul><li>Bumaba ang kapangyarihan ng Diyos sa mga apostol, at nauwi ito sa pagkakabilanggo, pagpapahagupit, pagbabato, kamatayan, at pagkakawatak-watak ng iglesia—hindi sa isang maginhawang trono.</li><li>Madalas ganito ang iniisip natin: kung talagang nasa atin ang kapangyarihan ng Diyos, lalago ang iglesia, darating ang pera, at sasang-ayon sa atin ang mga tao.</li><li>Pero kapag mahirap ang mga nangyayari, hindi ibig sabihin na nabigo tayo; maaaring iyon mismo ang hitsura ng kapangyarihan ng Diyos.</li><li>Tanong para pag-isipan: Tahimik ko bang ipinalalagay na ang tunay na ‘pinahiran’ na ministeryo ay dapat mukhang matagumpay at maayos ang takbo?</li></ul>"
+    "Tagalog": "<ul><li>Bumaba ang kapangyarihan ng Diyos sa mga apostol, at nauwi ito sa pagkakabilanggo, pagpapahagupit, pagbabato, kamatayan, at pagkakawatak-watak ng Sambahan—hindi sa isang maginhawang trono.</li><li>Madalas ganito ang iniisip natin: kung talagang nasa atin ang kapangyarihan ng Diyos, lalago ang Sambahan, darating ang pera, at sasang-ayon sa atin ang mga tao.</li><li>Pero kapag mahirap ang mga nangyayari, hindi ibig sabihin na nabigo tayo; maaaring iyon mismo ang hitsura ng kapangyarihan ng Diyos.</li><li>Tanong para pag-isipan: Tahimik ko bang ipinalalagay na ang tunay na ‘pinahiran’ o 'pinagpala' na ministeryo ay dapat mukhang matagumpay at maayos ang takbo?</li></ul>"
    },
    "src": {
     "Tagalog": "<ul><li>God’s power came on the apostles, and it led to prison, flogging, stoning, death, and a scattered church—not a comfortable throne.</li><li>We often expect: if God’s power is really on us, the church will grow, money will come, and people will agree with us.</li><li>But when things are hard, it may not mean we failed; it may be exactly what God’s power looks like.</li><li>Question to think about: Have I quietly assumed that a truly ‘anointed’ ministry must look successful and smooth?</li></ul>"
+   },
+   "ed": {
+    "Tagalog": true
    }
   },
   "97wbu": {
    "html": "<ul><li>God’s power in our lives also comes in the middle of difficulties, opposition, conflict, and weakness.</li><li>“You will receive power” may bring jail cells, thorns in the flesh, and situations that expose how weak we really are.</li><li>But in our weakness He is strong—He heals, saves, brings revival, transforms us, and even changes the world.</li><li>Question to think about: When I ask for God’s power, am I expecting comfort, or am I ready for His power to work through my weakness?</li></ul>",
    "tr": {
-    "Tagalog": "<ul><li>Ang kapangyarihan ng Diyos sa buhay natin ay dumarating din sa gitna ng mga kahirapan, pagsalungat, alitan, at kahinaan.</li><li>Ang “Tatatanggap kayo ng kapangyarihan” ay maaaring magdala ng mga selda ng bilangguan, mga tinik sa laman, at mga sitwasyong naglalantad kung gaano talaga tayo kahina.</li><li>Pero sa ating kahinaan, Siya ay malakas—Siya ang nagpapagaling, nagliligtas, nagdadala ng pagbabagong-buhay, nagbabago sa atin, at maging sa buong mundo.</li><li>Tanong para pag-isipan: Kapag humihingi ako ng kapangyarihan ng Diyos, inaasahan ko ba ang kaginhawaan, o handa ba ako na kumilos ang Kanyang kapangyarihan sa gitna ng aking kahinaan?</li></ul>"
+    "Tagalog": "<ul><li>Ang kapangyarihan ng Diyos sa buhay natin ay dumarating din sa gitna ng mga kahirapan, pagsalungat, alitan, at kahinaan.</li><li>Ang “Tatanggap kayo ng kapangyarihan” ay maaaring magdala ng mga selda ng bilangguan, mga tinik sa laman, at mga sitwasyong naglalantad kung gaano talaga tayo kahina.</li><li>Pero sa ating kahinaan, Siya ay malakas—Siya ang nagpapagaling, nagliligtas, nagdadala ng pagbabagong-buhay, nagbabago sa atin, at maging sa buong mundo.</li><li>Tanong para pag-isipan: Kapag humihingi ako ng kapangyarihan ng Diyos, inaasahan ko ba ang kaginhawaan, o handa ba ako na kumilos ang Kanyang kapangyarihan sa gitna ng aking kahinaan?</li></ul>"
    },
    "src": {
     "Tagalog": "<ul><li>God’s power in our lives also comes in the middle of difficulties, opposition, conflict, and weakness.</li><li>“You will receive power” may bring jail cells, thorns in the flesh, and situations that expose how weak we really are.</li><li>But in our weakness He is strong—He heals, saves, brings revival, transforms us, and even changes the world.</li><li>Question to think about: When I ask for God’s power, am I expecting comfort, or am I ready for His power to work through my weakness?</li></ul>"
+   },
+   "ed": {
+    "Tagalog": true
    }
   },
   "0ajj6": {
@@ -1222,6 +1231,7 @@
  "v3Feel": "",
  "reviewsDone": [
   "mw4u5mmuqrm6",
-  "mw4u78cn1fws"
+  "mw4u78cn1fws",
+  "mw4v5xqdqf8h"
  ]
 }
