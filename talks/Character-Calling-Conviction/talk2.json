@@ -163,7 +163,16 @@
    "type": "verse",
    "ref": "John 20:19",
    "text": "On the evening of that first day of the week, when the disciples were together, with the doors locked for fear of the Jewish leaders, Jesus came and stood among them and said, \"Peace be with you!\"",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Juan 20:19",
+     "text": "Nang kinahapunan nga nang araw na yaon, na unang araw ng sanglinggo, at nang ang mga pinto ng kinaroroonan ng mga alagad ay nangakasarado dahil sa pagkatakot nila sa mga Judio, dumating si Jesus at tumayo sa gitna, at sa kanila'y sinabi, Kapayapaan ang sumainyo."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"John 20:19\",\"text\":\"On the evening of that first day of the week, when the disciples were together, with the doors locked for fear of the Jewish leaders, Jesus came and stood among them and said, \\\"Peace be with you!\\\"\"}"
+   }
   },
   {
    "name": "Nothing changed",
