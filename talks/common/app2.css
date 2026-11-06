@@ -259,3 +259,7 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .playcap:empty{display:none}
 .psq{position:sticky;top:0;z-index:2;width:100%;box-sizing:border-box;margin:0 0 8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px}
 .psq[hidden]{display:none}
+.slide.vidph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5cqw;background:#111;color:#fff;text-align:center}
+.slide.vidph .vpi{font-size:9cqw;opacity:.8}
+.slide.vidph .vpt{font-size:4.5cqw;font-weight:700;padding:0 6%}
+.slide.vidph .vps{font-size:3cqw;opacity:.7}
