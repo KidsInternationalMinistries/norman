@@ -577,18 +577,7 @@ async function edit(){
     if (!ch.length) { const s0 = snapshot(); finish(); changed(s0); K().toast("Those reviews have no changes from what you have now ✓"); return }
     review("Translation review", ch, acc => { const s0 = snapshot(); acc.forEach(c => c.apply()); finish(); changed(s0); drawTP(true) });
     const dl = $("#ai2rev"); if (dl) dl.addEventListener("close", () => { if (rvIn.length && !ch.some(c => c.ok)) { if (confirm("Mark these reviews as looked at, so they don't come back?")) { const s0 = snapshot(); finish(); changed(s0) } } }, {once: true}) }
-  // Audience PDFs: made when Norman goes to Stage and something the audience sees changed since the last ones.
-  const pdfHash = () => { const t = JSON.stringify([d.title, d.text, d.slides, d.audNotes || {}, d.languages || []]); let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 ^ t.charCodeAt(i)) >>> 0; return h.toString(36) };
-  const hasAU = () => Object.values(d.audNotes || {}).some(a => noteText(a.html));
-  async function makePDFs(){ saveTP(); const hash = pdfHash(), path = "pdf/audience.pdf";
-    const b64 = await talkPDF(d, S, (n, m) => setSave(`Making the audience PDF ${n}/${m}…`)); setSave("Saving the audience PDF…");
-    let sha = (d.pdf || {}).sha || null, out;
-    for (let t = 0; ; t++) { try { out = await GH.put(PATH + "/" + path, b64, sha, "Audience PDF"); break } catch (e) { if ((e.status !== 409 && e.status !== 422) || t >= 3) throw e; await new Promise(r => setTimeout(r, 1500 * (t + 1)));
-        if (e.status === 422 || t > 0) { sha = null; try { sha = (await GH.get(PATH + "/" + path)).sha } catch (_) {} } setSave("Saving the audience PDF (trying again)…") } }
-    d.pdf = {file: path, at: Date.now(), sha: out}; delete d.pdfs; d.pdfHash = hash; dirty = true; flush() }
-  document.querySelectorAll('a[href="present2.html"]').forEach(a => a.addEventListener("click", async e => { if (!hasAU() || d.pdfHash === pdfHash()) return; e.preventDefault();
-    if (a.dataset.busy) return; if (!confirm("The slides or audience notes changed since the audience PDF was made. Make a new one now? It takes about a minute.\n\nCancel goes to Stage without it.")) { location.href = a.href; return }
-    a.dataset.busy = "1"; try { await makePDFs(); while (dirty || saving) await new Promise(r => setTimeout(r, 200)); location.href = a.href } catch (err) { delete a.dataset.busy; setSave("The PDF wasn't made (" + (err.detail || err.message) + ").", true) } }));
+  // (The audience PDF is no longer saved from here: each phone makes its own when someone taps ⤓ PDF.)
   async function translateSlides(langs, only, force){ const L = langs || d.languages || []; const jobs = [];
     (only || d.slides || []).forEach(sl => { const src = slSrc(sl); if (src) L.forEach(lg => { if (force || (sl.trSrc || {})[lg] !== src) jobs.push([sl, lg, src]) }) });
     if (!jobs.length) return 0; let i = 0, err = null, done = 0; K().toast(`Translating the words on ${new Set(jobs.map(j => j[0])).size} slide(s)…`);
@@ -1034,8 +1023,8 @@ function auNoteAt(d, S, i, lang){ const st = S[i], n0 = st && st.node;
   for (let p = n0; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" }
 const loadLib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
 // One PDF of the whole talk for the audience: each slide, its words in the language, then the notes. Made in Edit and saved with the talk.
-async function talkPDF(d, S, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-  const SH = S.map(x => x.slide), L = ["", ...(d.languages || [])], items = []; let prev = null;
+async function talkPDF(d, S, prog, langs){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const SH = S.map(x => x.slide), L = langs || ["", ...(d.languages || [])], items = []; let prev = null;
   for (let i = 0; i < S.length; i++) { const key = L.map(lg => auNoteAt(d, S, i, lg)).join("|") + "|" + (SH[i] && SH[i].name); if (key !== prev) { prev = key; items.push(i) } }
   const bare = i => L.every(lg => !noteText(auNoteAt(d, S, i, lg)));
   for (let n = items.length - 2; n >= 0; n--) if (bare(items[n]) && SH[items[n]] === SH[items[n + 1]]) items.splice(n, 1);
@@ -1112,11 +1101,14 @@ async function audience(){
   setInterval(() => { const was = show.alive; show.alive = alive(); if (was !== show.alive) show() }, 5000);
   const stepL = dd => { const live = on && !end && alive(), max = live ? pres : S.length - 1; let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < max && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(max, i)); local = live && i >= pres ? null : i; show() };
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
-  $("#audl").onclick = async e => { const f = d.pdf, a = $("#audl"); if (!f) return; e.preventDefault(); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent; a.textContent = "Downloading…";
-    try { let r = await fetch(f.file + "?t=" + (f.at || ""), {cache: "no-store"}).catch(() => null); if (!r || !r.ok) r = await fetch(RAW + PATH + "/" + f.file + "?t=" + (f.at || ""), {cache: "no-store"}); if (!r.ok) throw 0;
-      const u = URL.createObjectURL(await r.blob()), x = document.createElement("a"); x.href = u; x.download = a.getAttribute("download"); document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) }
-    catch (_) { alert("The PDF isn't ready yet. Try again in a minute.") } finally { delete a.dataset.busy; a.textContent = t0 } };
-  const dl = () => { const f = d.pdf, a = $("#audl"); a.hidden = !f; if (f) { a.href = f.file + "?t=" + (f.at || ""); a.setAttribute("download", (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + ".pdf") } }; dl();
+  // ⤓ PDF: made right here on the phone, in the language picked, so nothing has to be uploaded beforehand.
+  $("#audl").onclick = async e => { e.preventDefault(); const a = $("#audl"); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent;
+    try { const b64 = await talkPDF(d, S, (n, m) => { a.textContent = `Making ${n}/${m}…` }, [lang]); a.textContent = "Saving…";
+      const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+      const u = URL.createObjectURL(new Blob([u8], {type: "application/pdf"})), x = document.createElement("a"); x.href = u;
+      x.download = (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + (lang ? "-" + lang : "") + ".pdf"; document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) }
+    catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0 } };
+  const dl = () => { $("#audl").hidden = !S.some((x, k) => noteText(auNoteAt(d, S, k, "")) || (x.slide && x.slide.type !== "video")) }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; hear(); show() }; es.onerror = () => { conn = false; show() }; es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) { conn = false }
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
