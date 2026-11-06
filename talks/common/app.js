@@ -7,7 +7,7 @@ const MODE = document.body.dataset.mode;
 const $ = s => document.querySelector(s);
 const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const parts = location.pathname.replace(/\/(index|present|edit|present2|edit2|slides2|audience|review)\.html$/, "/").split("/").filter(Boolean);
-const FOLDER = MODE === "index" ? "" : decodeURIComponent(parts[parts.length - 1] || "");
+const FOLDER = window.OFFLINE ? window.OFFLINE.folder : MODE === "index" ? "" : decodeURIComponent(parts[parts.length - 1] || "");
 const PATH = C.root + "/" + FOLDER;                    // repo path of this talk's folder
 const RAW = `https://raw.githubusercontent.com/${C.owner}/${C.repo}/${C.branch}/`;
 
@@ -983,8 +983,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=112"><link rel="stylesheet" href="../common/countdown.css?v=112"><link rel="stylesheet" href="../common/gate.css?v=112"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=112"></script><script src="../common/countdown.js?v=112"></script><script src="../common/gate.js?v=112"></script><script src="../common/app.js?v=112"></script>${mode === "edit" ? '<script src="../common/ai.js?v=112"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=113"><link rel="stylesheet" href="../common/countdown.css?v=113"><link rel="stylesheet" href="../common/gate.css?v=113"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=113"></script><script src="../common/countdown.js?v=113"></script><script src="../common/gate.js?v=113"></script><script src="../common/app.js?v=113"></script>${mode === "edit" ? '<script src="../common/ai.js?v=113"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -993,8 +993,8 @@ const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase()
 // ---- New version (talk/2): one text with outline tags and a slide library ----
 const STUB2 = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=112"><link rel="stylesheet" href="../common/app2.css?v=112"><link rel="stylesheet" href="../common/countdown.css?v=112"><link rel="stylesheet" href="../common/gate.css?v=112"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=112"></script><script src="../common/countdown.js?v=112"></script><script src="../common/gate.js?v=112"></script><script src="../common/app.js?v=112"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=112"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=112"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=113"><link rel="stylesheet" href="../common/app2.css?v=113"><link rel="stylesheet" href="../common/countdown.css?v=113"><link rel="stylesheet" href="../common/gate.css?v=113"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=113"></script><script src="../common/countdown.js?v=113"></script><script src="../common/gate.js?v=113"></script><script src="../common/app.js?v=113"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=113"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=113"></script>' : ""}</body></html>
 `;
 const relayTopic = () => "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
 const newTalk2 = title => ({format: "talk/2", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", relayTopic: relayTopic(),

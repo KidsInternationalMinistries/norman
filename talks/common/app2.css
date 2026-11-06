@@ -316,3 +316,10 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 #rvgo{font-size:17px;padding:10px 18px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
 #rvgo:disabled{opacity:.7}
 @media (min-width:760px){.rvsend{position:sticky;bottom:0}}
+/* the first page of the offline copy */
+.offs{max-width:640px;margin:40px auto;padding:0 16px;font-family:system-ui,sans-serif}
+.offs h1{font-size:26px;margin:0 0 6px}
+.offb{display:block;border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0;text-decoration:none;color:var(--ink);background:var(--surface)}
+.offb:hover{border-color:var(--accent)}
+.offb b:first-child{display:block;font-size:22px;margin-bottom:6px}
+.offb span{color:var(--muted);line-height:1.5}

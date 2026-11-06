@@ -15,7 +15,7 @@ const T = window.TALKAPP; if (!T) return;
 const {C, E, $, GH, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, letter, TAG, CUETAG, fmtVerse, slideBox, xsHTML, verseSlide, setSlide, SLIDE_TYPES} = T;
 const MODE = document.body.dataset.mode;
 const parts = location.pathname.replace(/\/[^/]*\.html$/, "/").split("/").filter(Boolean);
-const FOLDER = decodeURIComponent(parts[parts.length - 1] || ""), PATH = C.root + "/" + FOLDER, FILE = PATH + "/talk2.json";
+const FOLDER = window.OFFLINE ? window.OFFLINE.folder : decodeURIComponent(parts[parts.length - 1] || ""), PATH = C.root + "/" + FOLDER, FILE = PATH + "/talk2.json";
 const LV = ["", "Section", "Point", "Sub point", "Detail"];
 const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video", qr: "QR code to the audience page"};
 const STOP = {name: "Stop", stop: true};
@@ -66,7 +66,7 @@ function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = nu
   words(t.length); if (fresh) bare();
   return S }
 // The audience page (people follow the talk on their phones) and the QR code slide that opens it.
-const audienceURL = () => new URL("audience.html", location.href.replace(/[?#].*$/, "")).href;
+const audienceURL = () => new URL("audience.html", window.OFFLINE ? window.OFFLINE.site : location.href.replace(/[?#].*$/, "")).href;
 function qrSVG(url){ try { const q = window.qrcode(0, "M"); q.addData(url); q.make(); return q.createSvgTag({scalable: true, margin: 2}) } catch (e) { return `<div class="qrno">QR code</div>` } }
 function qrSlide(s){ const u = audienceURL(); return `<div class="slide qrs"><div class="qrx"><div class="qrt">${E(s.slideTitle || "Follow along on your phone")}</div>${(s.slide || "").trim() ? `<div class="qrs2">${E(s.slide)}</div>` : ""}<div class="qru">${E(u.replace(/^https?:\/\//, ""))}</div></div><div class="qri">${qrSVG(u)}</div></div>` }
 function qrOver(s){ const q = s.qr; return `<div class="qro" style="left:${+q.x || 0}%;top:${+q.y || 0}%;width:${+q.w || 20}%">${qrSVG(audienceURL())}<i class="qrh" title="Drag to resize"></i></div>` }
@@ -76,12 +76,17 @@ function slideHTML0(s, d){ if (s && s.type === "qr") return qrSlide(s); if (!s) 
   return xsHTML(s.type && SLIDE_TYPES[s.type] ? s : {...s, type: "image"}) }
 const icon = s => s.type === "qr" ? "⌗" : s.stop ? "■" : s.type === "verse" ? "✝" : s.type === "video" ? "▶" : s.type === "quote" ? "❝" : /bullets/.test(s.type) ? "☰" : "▣";
 
-async function load(fresh){
+async function load(fresh){ if (window.OFFLINE) return {d: offD(), sha: null};
   if (fresh || token()) { try { const g = await GH.get(FILE); return {d: JSON.parse(g.text), sha: g.sha} } catch (e) { if (fresh) throw e } }
   const r = await fetch("talk2.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) throw new Error("talk2.json " + r.status); return {d: await r.json(), sha: null} }
+// The offline copy (⤓ Backup in Edit): one .html file with the talk, the code, the pictures and the videos inside.
+// Its media are base64 blocks turned into blob URLs at start; a linked video file becomes an "uploaded" one so it plays from the file.
+function offD(){ const O = window.OFFLINE, d = JSON.parse(JSON.stringify(O.d)); Object.assign(T.LOCALIMG, O.urls || {});
+  (d.slides || []).forEach(x => { if (x.type === "video" && x.url && (O.urls || {})[x.url]) { x.video = x.url; x.url = "" } }); return d }
 let bc = null; try { bc = new BroadcastChannel("talk2-" + FOLDER) } catch (e) {}
 const relay = d => C.relay + "/" + d.relayTopic;
-function topBar(d, active){ return `<div class="top"><h1>${E(d.title)} <span class="v2">new version</span></h1><div class="mode">
+function topBar(d, active){ if (window.OFFLINE) return `<div class="top"><h1>${E(d.title)} <span class="v2">offline copy</span></h1><div class="mode"><a class="btn${active === "present" ? " on" : ""}" href="#stage">Stage</a><a class="btn" href="#slides" target="_blank" rel="noopener">Slides</a><a class="btn" href="#">Start</a></div></div>`;
+  return `<div class="top"><h1>${E(d.title)} <span class="v2">new version</span></h1><div class="mode">
   <a class="btn${active === "edit" ? " on" : ""}" href="edit2.html">Edit</a><a class="btn${active === "present" ? " on" : ""}" href="present2.html">Stage</a>
   <a class="btn" href="slides2.html" target="_blank" rel="noopener">Slides</a><a class="btn" href="audience.html" target="_blank" rel="noopener" title="The page the audience follows on their phones">Audience</a><a class="btn" href="edit.html" title="The version you used before">Old version</a></div></div>` }
 
@@ -104,7 +109,7 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
   document.addEventListener("keydown", e => { if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); step(1) } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); step(-1) } else if (e.key === "f" || e.key === "F") full() });
   let hideT; const ui = $("#ui"), wake = () => { ui.classList.remove("hide"); clearTimeout(hideT); hideT = setTimeout(() => ui.classList.add("hide"), 3000) };
   document.addEventListener("mousemove", wake); document.addEventListener("touchstart", wake); wake();
-  if (bc) bc.onmessage = e => from(e.data);
+  if (bc) bc.onmessage = e => from(e.data); addEventListener("message", e => { if (e.source === window.opener) from(e.data) });
   try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const L = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (L.length) from(L[L.length - 1]) } catch (e) {}
   show() }
@@ -257,7 +262,7 @@ async function present(){
       if (showText && el) scrollPane($("#m"), el.getBoundingClientRect(), $("#m .tt") ? $("#m .tt").offsetHeight : 0) }) }
   function vid(){ const v = $(".side .slide.vid[data-next]"); if (!v || v.dataset.hooked) return; v.dataset.hooked = 1; const at = k; v.addEventListener("vidend", () => setTimeout(() => { if (k === at && !peek) next() }, 1200)) }
   async function push(){ const m = {v: 2, step: k, at: Date.now()}; if (peek) m.pk = peek; if (end) m.end = 1; try { localStorage.setItem("pres2-" + FOLDER, k) } catch (e) {}
-    if (bc) try { bc.postMessage(m) } catch (e) {} const se = $("#sync");
+    if (bc) try { bc.postMessage(m) } catch (e) {} try { if (pw && !pw.closed) pw.postMessage(m, "*") } catch (e) {} const se = $("#sync");
     try { const r = await fetch(relay(d), {method: "POST", body: JSON.stringify(m)}); se.className = r.ok ? "ok" : "bad"; se.lastChild.textContent = r.ok ? "Monitors following" : "Sync failed" } catch (e) { se.className = "bad"; se.lastChild.textContent = "Offline: only the slides window follows" } }
   const locked = () => !!$("#gate");
   function go(i, rec){ if (locked()) return; if (rec) record(); const p0 = ptOf(S[k]); peek = null; end = false; k = Math.max(0, Math.min(S.length - 1, i)); if (!rec || ptOf(S[k]) !== p0 || true) arrive = Date.now(); draw(); push(); TIMER.at(k === 0); pace() }
@@ -273,10 +278,10 @@ async function present(){
   $("#stx").onchange = e => { showText = e.target.checked; $("#ft").hidden = !showText; try { localStorage.setItem("pres2-text", showText ? "1" : "0") } catch (_) {} draw() };
   document.body.addEventListener("click", e => { const pk = e.target.closest("[data-pk]"); if (pk) { const nm = pk.dataset.pk; if (nm === "Stop") return; peek = peek === nm ? null : nm; draw(); push(); return }
     const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = firstAt(S, P.nodes[j]); if (i >= 0) go(i) } });
-  $("#pop").onclick = () => { window.open("slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
+  let pw = null; $("#pop").onclick = () => { pw = window.open(window.OFFLINE ? location.href.split("#")[0] + "#slides" : "slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { if (locked() || e.target.closest("input,textarea")) return; if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); back() } });
   layout($("#lay"), () => { const ck = !end && $(`#sc .ck[data-s="${k}"]`); if (ck && showText) { const r = document.createRange(); r.selectNodeContents(ck); hlBox($("#ft"), $("#sc"), r) } });
-  draw(); presenterGate(C.passHash, "pres-ok", () => { push(); TIMER.at(k === 0) }) }
+  draw(); (window.OFFLINE ? (a, b, f) => f() : presenterGate)(C.passHash, "pres-ok", () => { push(); TIMER.at(k === 0) }) }
 
 // =====================================================================
 // EDIT: one text for the whole talk, the outline on the left, the slides on the right.
@@ -292,7 +297,7 @@ async function edit(){
   const hist = [];                 // earlier versions of the text and slides, for Undo
   document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2x v2e" id="lay"><nav class="cues tree" id="tree"></nav><div class="gut" data-g="c1" title="Drag to resize; double-click to reset"></div>
     <main class="pane" id="m"><div class="tools"><button type="button" class="btn small" id="det">Talk details</button><button type="button" class="btn small" id="undo" disabled title="Undo the last change">↶ Undo</button>
-      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button><button type="button" class="btn small aib" id="aisp" title="Spelling in the whole text and on every slide; you check each change">✨ Check spelling</button><button type="button" class="btn small" id="lis" title="The AI voice reads the talk from where you are; Next steps along">▶ Listen from here</button><button type="button" class="btn small aib" id="narr" title="The whole talk read in the AI voice and saved, with a link anyone can open to watch the slides while it plays">🔊 Narrated version</button>
+      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button><button type="button" class="btn small aib" id="aisp" title="Spelling in the whole text and on every slide; you check each change">✨ Check spelling</button><button type="button" class="btn small" id="lis" title="The AI voice reads the talk from where you are; Next steps along">▶ Listen from here</button><button type="button" class="btn small aib" id="narr" title="The whole talk read in the AI voice and saved, with a link anyone can open to watch the slides while it plays">🔊 Narrated version</button><button type="button" class="btn small" id="bkup" title="Download a copy that works with no internet (Stage and slides), and a PowerPoint for the media team">⤓ Backup</button>
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main><div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
     <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
@@ -1006,6 +1011,16 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   // the × on a voice tag removes it (and its end tag)
   document.addEventListener("click", e => { const x = e.target.closest("#ftext .vchip.cue .cx"); if (!x) return; e.stopPropagation(); saveText(); const c = x.closest(".vchip"), i = [...box().querySelectorAll(".vchip")].indexOf(c), tk = P.toks[i]; if (!tk) return;
     const sn = snapshot(); let t = d.text; const pr = tk.pair != null ? P.toks[tk.pair] : null; if (pr) t = t.slice(0, pr.at) + t.slice(pr.end); t = t.slice(0, tk.at) + t.slice(tk.end); d.text = t; changed(sn); drawText() }, true);
+  $("#bkup").onclick = () => { saveTP(); const k0 = K(), dl = k0.dlg("bkdlg", `<div class="ed"><div class="pgh"><b>Backup for the talk</b><button type="button" class="btn small" data-x>Close</button></div>
+      <p><button type="button" class="btn pri" id="bkoff">⤓ Offline copy (.html)</button></p><p class="note">One file with everything inside. Double-click it on any computer and pick <b>Stage</b> (you) or <b>Slides only</b> (the media team, who press → for each slide). It works with no internet. Make a new one after you change the talk.</p>
+      <p><button type="button" class="btn" id="bkppt">⤓ PowerPoint (.pptx)</button></p><p class="note">One slide each time the slide changes, with videos inside. The notes under each slide say when to change it. The words are pictures, so change them here, not in PowerPoint.</p>
+      <p class="aimsg" id="bkm"></p></div>`); k0.show(dl); dl.querySelector("[data-x]").onclick = () => dl.close();
+    const run = async (b, f) => { if (b.disabled) return; dl.querySelectorAll("#bkoff, #bkppt").forEach(x => x.disabled = true); const m = $("#bkm");
+      try { await f(m) } catch (err) { m.textContent = "It didn't work: " + (err.message || err) } finally { dl.querySelectorAll("#bkoff, #bkppt").forEach(x => x.disabled = false) } };
+    $("#bkoff").onclick = e => run(e.target, async m => { m.textContent = "Getting everything together…"; const r = await offlineHTML(d, (i, n) => { m.textContent = `Packing pictures and videos ${i} of ${n}…` });
+      saveBlob(r.blob, fileName(d) + "-offline.html"); m.textContent = `Downloaded ✓ (${(r.blob.size / 1048576).toFixed(1)} MB)` + (r.miss.length ? `. These couldn't be packed and need the internet: ${r.miss.join(", ")}` : "") });
+    $("#bkppt").onclick = e => run(e.target, async m => { m.textContent = "Making the PowerPoint…"; const r = await talkPPTX(d, (i, n) => { m.textContent = `Making slide ${i} of ${n}…` });
+      saveBlob(r.blob, fileName(d) + ".pptx"); m.textContent = `Downloaded ✓ ${r.count} slides (${(r.blob.size / 1048576).toFixed(1)} MB)` + (r.miss.length ? `. These videos couldn't be put in: ${r.miss.join(", ")}` : "") }) };
   layout($("#lay"), () => hl(true)); $("#m").addEventListener("scroll", () => { const el = $("#selai"); if (el && !el.dataset.open) el.remove() });
   drawText(); redraw(); hl(true)
 }
@@ -1107,6 +1122,58 @@ async function audience(){
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
   show() }
 // =====================================================================
+// BACKUP: the offline copy (works with no internet: Stage + Slides window, or Slides only with the arrow keys)
+// and a PowerPoint with one slide each time the slide changes.
+// =====================================================================
+const ytInfo = u => { const m = (u || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/); return m ? {id: m[1]} : null };
+const b64of = b => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = no; r.readAsDataURL(b) });
+const getBlob = async u => { for (const x of [u, RAW + PATH + "/" + u]) { if (!x || (x !== u && /^(https?:|data:|blob:)/.test(u))) continue; try { const r = await fetch(x, {cache: "no-store"}); if (r.ok) return await r.blob() } catch (e) {} } return null };
+const usedSlides = (d, S) => [...new Set(S.map(x => x.slide).filter(Boolean))];
+function mediaOf(d, S){ const out = new Set(); usedSlides(d, S).forEach(x => { if (x.image) out.add(x.image); if (x.type === "video") { if (x.url && !ytInfo(x.url)) out.add(x.url); else if (!x.url && x.video) out.add(x.video) } }); if (d.titleImage) out.add(d.titleImage); return [...out] }
+async function offlineHTML(d, prog){ const P = parse(d), S = build(P), base = new URL("../common/", location.href).href, miss = [];
+  const txt = async u => { const r = await fetch(u, {cache: "no-store"}); if (!r.ok) throw new Error("Couldn't get " + u.split("/").pop()); return r.text() };
+  const js = t => t.replace(/<\/script/gi, "<\\/script");
+  const css = (await Promise.all(["app.css", "app2.css", "countdown.css", "gate.css"].map(f => txt(base + f)))).join("\n");
+  const code = await Promise.all([...["config.js", "countdown.js", "gate.js", "app.js"].map(f => base + f), "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js", base + "app2.js"].map(txt));
+  const M = mediaOf(d, S), parts = []; let n = 0;
+  for (const u of M) { if (prog) prog(++n, M.length); const b = await getBlob(u); if (!b) { miss.push(u); continue } parts.push(`<script type="text/plain" data-media="${E(u)}" data-type="${E(b.type || "application/octet-stream")}">${await b64of(b)}</script>\n`) }
+  const dd = JSON.parse(JSON.stringify(d)); delete dd.pdf; delete dd.pdfHash;
+  const boot = `(function(){ var O = window.OFFLINE; O.urls = {};
+  document.querySelectorAll("script[data-media]").forEach(function(sc){ try { var s = atob(sc.textContent.trim()), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); O.urls[sc.getAttribute("data-media")] = URL.createObjectURL(new Blob([a], {type: sc.getAttribute("data-type")})) } catch (e) {} sc.textContent = "" });
+  var h = location.hash.slice(1); document.body.dataset.mode = {stage: "present2", slides: "slides2"}[h] || "offline";
+  addEventListener("hashchange", function(){ location.reload() }) })();`;
+  const head = `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${E(d.title)} · offline copy</title><style>\n${css}\n</style></head>\n<body data-mode="offline">\n<script>window.OFFLINE = ${js(JSON.stringify({d: dd, folder: FOLDER, made: new Date().toISOString(), site: location.href.replace(/[^/]*([?#].*)?$/, "")}))};</script>\n`;
+  const tail = `<script>${boot}</script>\n` + code.map(c => `<script>\n${js(c)}\n</script>\n`).join("") + `</body></html>\n`;
+  return {blob: new Blob([head, ...parts, tail], {type: "text/html"}), miss} }
+// The first page of the offline copy: pick Stage (the speaker) or Slides only (the media team).
+function offlineStart(){ const O = window.OFFLINE, d = O.d, when = new Date(O.made).toLocaleString();
+  document.title = d.title + " · offline copy";
+  document.body.innerHTML = `<div class="offs"><h1>${E(d.title)}</h1><p class="note">Offline copy made ${E(when)}. It works with no internet.</p>
+    <a class="offb" href="#stage"><b>🎤 Stage</b><span>For the speaker. Press <b>Slides window</b> there and drag that window to the projector: it follows your Next.</span></a>
+    <a class="offb" href="#slides"><b>🖥 Slides only</b><span>For the media team. Press → (or the space bar) for the next slide and ← to go back. Press F for full screen. If there is internet, it also follows the speaker's Next.</span></a>
+    <p class="note">YouTube videos need the internet. Everything else is inside this file.</p></div>` }
+async function talkPPTX(d, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js");
+  const P = parse(d), S = build(P), SH = S.map(x => x.slide), items = [], miss = [];
+  for (let i = 0; i < S.length; i++) if (i === 0 || SH[i] !== SH[i - 1]) items.push(i);
+  const say = i => { for (let j = i; j < S.length; j++) if (S[j].a != null) { const w = P.t.slice(S[j].a, S[j].b).replace(TAG, " ").replace(/\s+/g, " ").trim().split(" "); return w.slice(0, 14).join(" ") + (w.length > 14 ? "…" : "") } return "" };
+  const pp = new window.PptxGenJS(); pp.layout = "LAYOUT_WIDE"; pp.title = d.title || "Talk";
+  const box = document.createElement("div"); box.style.cssText = "position:fixed;left:-10000px;top:0;width:1280px"; document.body.appendChild(box);
+  const shot = async html => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
+    box.querySelectorAll(".qrh").forEach(x => x.remove()); const c = await window.html2canvas(box.firstElementChild, {scale: 1.5, backgroundColor: "#000000", useCORS: true}); return c.toDataURL("image/jpeg", 0.85) };
+  try { for (let n = 0; n < items.length; n++) { const i = items[n], sl = SH[i], st = S[i], sd = pp.addSlide(); if (prog) prog(n + 1, items.length); sd.background = {color: "000000"};
+      const where = st && st.node ? `${st.node.full} ${st.node.text}` : "Start", w = say(i);
+      sd.addNotes(`${n + 1} of ${items.length} · ${where}` + (sl ? ` · ${sl.name}` : "") + (w ? `\nChange to this slide when the speaker says: "${w}"` : ""));
+      if (sl && sl.type === "video") { const yt = ytInfo(sl.url || ""), src = sl.url && !yt ? sl.url : !sl.url ? sl.video : "";
+        const b = src ? await getBlob(src) : null;
+        if (b) { sd.addMedia({type: "video", data: (b.type || "video/mp4") + ";base64," + await b64of(b), extn: (src.split("?")[0].split(".").pop() || "mp4").toLowerCase(), x: 0, y: 0, w: 13.333, h: 7.5}); continue }
+        if (yt) { sd.addMedia({type: "online", link: "https://www.youtube.com/embed/" + yt.id, x: 0, y: 0, w: 13.333, h: 7.5}); continue }
+        miss.push(sl.name); sd.addText(`Video: ${sl.name}`, {x: 0, y: 3, w: 13.333, h: 1.5, align: "center", color: "FFFFFF", fontSize: 32}); continue }
+      sd.addImage({data: await shot(`<div>${slideHTML(sl, d)}</div>`), x: 0, y: 0, w: 13.333, h: 7.5}) }
+    pp.addSlide().background = {color: "000000"};
+    return {blob: await pp.write({outputType: "blob"}), miss, count: items.length} } finally { box.remove() } }
+const saveBlob = (b, name) => { const u = URL.createObjectURL(b), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) };
+const fileName = d => (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-");
+// =====================================================================
 // REVIEW TRANSLATIONS: a public page (no sign-in) where a speaker of the language checks and fixes the translations.
 // The English shows first, the translation under it (side by side on a computer) to edit. "Send" posts the changes to the
 // talk's relay; Norman sees them in Edit (Audience notes) and accepts them there.
@@ -1167,5 +1234,5 @@ async function reviewPage(){
       fields().forEach(el => { if (el.dataset.n != null) { const a = d.audNotes[el.dataset.n]; a.tr = a.tr || {}; a.tr[lang] = val(el) } else { const sl = d.slides.find(x => x.name === el.dataset.s); sl.tr = sl.tr || {}; sl.tr[lang] = sl.tr[lang] || {}; sl.tr[lang][el.dataset.f] = val(el) } });
       count(); b.textContent = "Sent ✓ Thank you!"; setTimeout(() => { b.disabled = false; b.textContent = "Send my changes" }, 4000) }
     catch (e) { b.disabled = false; b.textContent = "Send my changes"; alert("It didn't send. Check the internet connection and try again. Your changes are still here.") } } }
-({edit2: edit, present2: present, slides2: slides, audience2: audience, review2: reviewPage}[MODE] || (() => {}))();
+({edit2: edit, present2: present, slides2: slides, audience2: audience, review2: reviewPage, offline: offlineStart}[MODE] || (() => {}))();
 })();
