@@ -39,7 +39,7 @@
    "ttSize": 117,
    "tr": {
     "Tagalog": {
-     "slideTitle": "Pagkatao, Tawag at Paninindigan."
+     "slideTitle": "Pagkatao, Tawag at Paninindigan"
     }
    },
    "trSrc": {
@@ -55,7 +55,7 @@
    "tr": {
     "Tagalog": {
      "ref": "Juan 15:5",
-     "text": "Sapagkat hiwalay sa akin ay wala kayong magagawa."
+     "text": "Sapagkat hiwalay sa akin ay wala kayong magagawa.."
     }
    },
    "trSrc": {
@@ -1221,6 +1221,7 @@
  "voiceModel": "v4",
  "v3Feel": "",
  "reviewsDone": [
-  "mw4u5mmuqrm6"
+  "mw4u5mmuqrm6",
+  "mw4u78cn1fws"
  ]
 }
