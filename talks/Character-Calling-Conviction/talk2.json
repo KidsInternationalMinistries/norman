@@ -426,6 +426,12 @@
    "slide": "Listen for what He's making you into.",
    "layout": "left",
    "image": "slides/bg/p6e.jpg"
+  },
+  {
+   "name": "QR code",
+   "type": "qr",
+   "slideTitle": "Follow along on your phone",
+   "slide": "Scan for the slides and notes in your language"
   }
  ],
  "times": {
