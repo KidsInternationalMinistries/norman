@@ -526,10 +526,11 @@ async function edit(){
   const tpPress = n => tpPick || !n ? 0 : Math.max(0, ownSteps(S, n).indexOf(k));      // which Next press of the tag you're on (0 = the first)
   // The same editor holds the talking points (tpMode "tp") or the audience notes ("au"; auLang "" = the original, else one translation).
   let tpMode = "tp", auLang = "";
+  const ak = n => n && n.id ? nk(n.id, tpJ) : "";      // the audience note key of the press you're on
   const AU = id => { d.audNotes = d.audNotes || {}; return d.audNotes[id] || (d.audNotes[id] = {html: "", tr: {}, src: {}}) };
-  const getNote = (n, j) => !n || !n.id ? "" : tpMode === "tp" ? (d.notes || {})[nk(n.id, j == null ? tpJ : j)] || "" : (d.audNotes || {})[n.id] ? (auLang ? (d.audNotes[n.id].tr || {})[auLang] || "" : d.audNotes[n.id].html || "") : "";
-  function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; const j = tpMode === "tp" ? tpPress(n) : 0; if (!force && ((keyOf(n) === tpKey && j === tpJ) || document.activeElement === e)) return; if (tpKey && (keyOf(n) !== tpKey || j !== tpJ)) saveTP(); tpKey = keyOf(n); tpJ = j;
-    const np = n && tpMode === "tp" ? ownSteps(S, n).length : 0;
+  const getNote = (n, j) => !n || !n.id ? "" : tpMode === "tp" ? (d.notes || {})[nk(n.id, j == null ? tpJ : j)] || "" : (d.audNotes || {})[nk(n.id, j == null ? tpJ : j)] ? (auLang ? (d.audNotes[nk(n.id, j == null ? tpJ : j)].tr || {})[auLang] || "" : d.audNotes[nk(n.id, j == null ? tpJ : j)].html || "") : "";
+  function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; const j = tpPress(n); if (!force && ((keyOf(n) === tpKey && j === tpJ) || document.activeElement === e)) return; if (tpKey && (keyOf(n) !== tpKey || j !== tpJ)) saveTP(); tpKey = keyOf(n); tpJ = j;
+    const np = n ? ownSteps(S, n).length : 0;
     const what = tpMode === "tp" ? "Talking points" : "Audience notes" + (auLang ? " (" + auLang + ")" : "");
     $("#tpt").textContent = n ? what + " · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text + (np > 1 ? ` · Next ${tpJ + 1} of ${np}` : "") : what + " (step into a point first)"; const none = nil(P, n) && !noteText(getNote(n)); e.contentEditable = n && !none ? "true" : "false"; $("#tpbox").classList.toggle("none", none);
     e.dataset.ph = tpMode === "tp" ? (np > 1 ? `What you glance at during this part of ${n.full} (Next ${tpJ + 1} of ${np}): a few short lines. At the end of them, press Next.` : "What you glance at while you talk: a few short lines. Bold, underline and bullets work.") : auLang ? "No " + auLang + " yet. Write the notes in the original, then press ✨ Translate this. You can change the translation here by hand." : "What the audience sees on their phones for this part: the main idea, a verse, a question to think about…";
@@ -540,18 +541,18 @@ async function edit(){
     if (getNote(n) === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
     if (!n.id) { if (!has) return; const id = newId(); d.text = d.text.slice(0, n.end - 1) + "|" + id + d.text.slice(n.end - 1); n.id = id; tpKey = id; var redrawText = true }
     if (tpMode === "tp") { const key = nk(n.id, tpJ); if (has) d.notes[key] = h; else delete d.notes[key] }
-    else { const a = AU(n.id); if (auLang) { a.tr[auLang] = has ? h : ""; a.ed = a.ed || {}; a.ed[auLang] = true; if (a.src[auLang] == null) a.src[auLang] = a.html } else a.html = has ? h : "" }
+    else { const a = AU(ak(n)); if (auLang) { a.tr[auLang] = has ? h : ""; a.ed = a.ed || {}; a.ed[auLang] = true; if (a.src[auLang] == null) a.src[auLang] = a.html } else a.html = has ? h : "" }
     changed(s); if (redrawText) drawText(); drawAU(n) }
   // ---- languages and translations of the audience notes ----
   const trBusy = new Set();
   const stale = (id, L) => { const a = (d.audNotes || {})[id]; return !!(a && noteText(a.html) && (a.src || {})[L] !== a.html) };
   const nodeSlides = n => n ? [...new Set(n.slides.map(x => x.slide).filter(Boolean))] : [];
   const slStale = (sl, lg) => { const src = slSrc(sl); return !!src && (sl.trSrc || {})[lg] !== src };
-  function trShow(n){ const r = $("#trrow"); if (!r) return; const a = n && n.id && (d.audNotes || {})[n.id], L = auLang ? [auLang] : (d.languages || []);
-    const need = tpMode === "au" && n && n.id ? L.filter(lg => !trBusy.has(n.id + "|" + lg) && ((a && noteText(a.html) && stale(n.id, lg)) || nodeSlides(n).some(sl => slStale(sl, lg)))) : [];
+  function trShow(n){ const r = $("#trrow"); if (!r) return; const a = n && n.id && (d.audNotes || {})[ak(n)], L = auLang ? [auLang] : (d.languages || []);
+    const need = tpMode === "au" && n && n.id ? L.filter(lg => !trBusy.has(ak(n) + "|" + lg) && ((a && noteText(a.html) && stale(ak(n), lg)) || nodeSlides(n).some(sl => slStale(sl, lg)))) : [];
     r.hidden = !need.length; if (need.length) $("#trone").textContent = "✨ Translate into " + need.join(", ") }
   function drawAU(n){ const bar = $("#aubar"); if (!bar) return; bar.hidden = tpMode !== "au"; if (bar.hidden) { trShow(n); return } const L = d.languages || [];
-    const st = lg => !n || !n.id || !noteText(((d.audNotes || {})[n.id] || {}).html) ? "" : trBusy.has(n.id + "|" + lg) ? " …" : stale(n.id, lg) ? " ○" : (((d.audNotes || {})[n.id] || {}).ed || {})[lg] ? " ✎" : " ✓";
+    const st = lg => !n || !n.id || !noteText(((d.audNotes || {})[ak(n)] || {}).html) ? "" : trBusy.has(ak(n) + "|" + lg) ? " …" : stale(ak(n), lg) ? " ○" : (((d.audNotes || {})[ak(n)] || {}).ed || {})[lg] ? " ✎" : " ✓";
     bar.innerHTML = `<div class="row"><span class="note">Show:</span><button type="button" class="lgb${auLang ? "" : " on"}" data-lg="">Original</button>${L.map(lg => `<button type="button" class="lgb${auLang === lg ? " on" : ""}" data-lg="${E(lg)}" title="${{"✓": "Translated", "○": "The original changed: needs translating", "✎": "Translated and changed by hand", "…": "Translating…"}[st(lg).trim()] || ""}">${E(lg)}${st(lg)}</button>`).join("")}</div>
       <div class="row"><span class="note">Languages:</span>${L.map(lg => `<span class="lgc">${E(lg)}<i data-rmlg="${E(lg)}" title="Remove this language">×</i></span>`).join("") || '<span class="note">none yet</span>'}<button type="button" class="btn small" id="addlg">+ Add a language</button>${L.length ? `<button type="button" class="btn small aib" id="trall" title="Drafts a translation of every audience note and slide that is new or changed, into every language, keeping what was already translated">✨ Draft all translations</button>` : ""}</div>${L.length ? '<p class="note trwarn">AI translations can have mistakes. Have someone who speaks the language check them before you use them.</p>' : ""}`; trShow(n) }
   // Audience PDFs: made when Norman goes to Stage and something the audience sees changed since the last ones.
@@ -586,14 +587,14 @@ async function edit(){
               `ORIGINAL BEFORE (what the existing translation was made from):\n${was || "(unknown)"}\n\nEXISTING ${lg.toUpperCase()} TRANSLATION (keep its changes):\n${prev}\n\nNEW ORIGINAL (translate this):\n${src}`, {effort: "high"})
             : await K().chat(sys, src, {effort: "high"});
           if (j.html && a.html === src) { const s = snapshot(); a.tr = a.tr || {}; a.src = a.src || {}; a.tr[lg] = cleanHTML(String(j.html)); a.src[lg] = src; if (a.ed) delete a.ed[lg]; changed(s) } } catch (e) { err = e } finally { trBusy.delete(id + "|" + lg) } } }));
-    if (err) aiFail(err); else K().toast("Translated ✓ Have someone who speaks the language check it before you use it."); const n = tpNode(); drawAU(n); if (auLang && n && ids.includes(n.id) && document.activeElement !== $("#tpe")) $("#tpe").innerHTML = cleanHTML(getNote(n)) }
+    if (err) aiFail(err); else K().toast("Translated ✓ Have someone who speaks the language check it before you use it."); const n = tpNode(); drawAU(n); if (auLang && n && ids.includes(ak(n)) && document.activeElement !== $("#tpe")) $("#tpe").innerHTML = cleanHTML(getNote(n)) }
   document.addEventListener("click", e => { const t = e.target; if (!t.closest || !t.closest("#aubar, #trrow")) return;
     const lb = t.closest("[data-lg]"); if (lb) { saveTP(); auLang = lb.dataset.lg; drawTP(true); return }
     const rm = t.closest("[data-rmlg]"); if (rm) { const lg = rm.dataset.rmlg; if (!confirm(`Remove ${lg}? Its translations are deleted too.`)) return; const s = snapshot(); d.languages = (d.languages || []).filter(x => x !== lg); Object.values(d.audNotes || {}).forEach(a => { if (a.tr) delete a.tr[lg]; if (a.src) delete a.src[lg] }); if (auLang === lg) auLang = ""; changed(s); drawTP(true); return }
     if (t.closest("#addlg")) { const lg = (prompt("Which language? (for example Tagalog, Cebuano, Spanish, Korean)") || "").replace(/[<>"]/g, "").trim(); if (!lg) return; const nm = lg[0].toUpperCase() + lg.slice(1);
       if ((d.languages || []).some(x => x.toLowerCase() === nm.toLowerCase())) return; const s = snapshot(); d.languages = [...(d.languages || []), nm]; changed(s); drawAU(tpNode()); K().toast(nm + " added. Press ✨ Translate all that changed when the notes are ready."); return }
     if (t.closest("#trall")) { if (!(d.languages || []).length) { K().toast("Add a language first."); return } (async () => { const n = await translateSlides(); if (n) K().toast(`Slide words translated (${n}) ✓`); await translateNotes(Object.keys(d.audNotes || {}), null, false, !!n) })(); return }
-    if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } (async () => { const L = auLang ? [auLang] : null; await translateSlides(L, nodeSlides(n)); await translateNotes([n.id], L, false, true); trShow(tpNode()) })(); return }
+    if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } (async () => { const L = auLang ? [auLang] : null; await translateSlides(L, nodeSlides(n)); await translateNotes([ak(n)], L, false, true); trShow(tpNode()) })(); return }
     if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
   document.addEventListener("input", e => { if (e.target.id === "psq") plist() });
   document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(() => { saveTP(); trShow(tpNode()) }, 700) } });
@@ -632,23 +633,31 @@ Return JSON {"presses": [{"press": 1, "lines": [{"text": "...", "level": 1, "bol
       if (!out.size) throw new Error("The AI didn't answer. Try again."); putDrafts(out); k0.toast(`Drafted ${out.size} parts` + (bad ? `; ${bad} failed, so press ✨ Draft all again for those` : "")) }
     catch (err) { aiFail(err) } finally { dl.close() } };
   const auCan = n => !!n && !nil(P, n) && words(d.text.slice(n.end, n.stop)) >= 5;
-  async function auHTML(n){ const j = await K().chat(`You write the notes people in the audience see on their phones while a Christian ministry leader speaks. For this part of the talk: 2 to 5 short lines: the main idea in plain words, any Bible verse he reads (reference and its key words), and if it fits one question to think about. Friendly and clear, no jargon, no retelling of the whole story. Plain text only: no asterisks or Markdown. Return JSON {"lines": [{"text": "...", "bold": false}]}.`, `${brief()}\n\nThis part: ${n.full} ${n.text}\n\n${plain(d.text.slice(n.end, n.stop))}`, {effort: "low"});
-    return "<ul>" + (j.lines || []).filter(x => x && x.text).map(x => { const t = unmd(x.text); return `<li>${x.bold ? "<b>" + E(t) + "</b>" : E(t)}</li>` }).join("") + "</ul>" }
+  // ✨ Draft audience notes: a short set for each Next press of the part (the phones show the set for the press the speaker is on)
+  async function auHTML(n){ const ps = pressesOf(n), st = ownSteps(S, n);
+    const j = await K().chat(`You write the notes people in the audience see on their phones while a Christian ministry leader speaks. The part is split into numbered presses: each time he presses Next, the next press comes up on the phones (often with a new slide). For EACH press write its own 1 to 4 short lines: the main idea of that press in plain words, any Bible verse he reads in it (reference and its key words), and where it fits one question to think about (at most one question in the whole part). Friendly and clear, no jargon, no retelling of the story. A press with no words (only a slide) gets one line about what the slide shows, or none. Plain text only: no asterisks or Markdown. Return JSON {"presses": [{"press": 1, "lines": [{"text": "...", "bold": false}]}]} with exactly one entry per press, in order.`, `${brief()}\n\nThis part: ${n.full} ${n.text} (${ps.length} press${ps.length === 1 ? "" : "es"})\n\n${ps.join("\n\n")}`, {effort: "low"});
+    const out = (j.presses || (j.lines ? [{lines: j.lines}] : [])).slice(0, ps.length).map(x => { const L = ((x && x.lines) || []).filter(y => y && y.text); return L.length ? "<ul>" + L.map(y => { const t = unmd(y.text); return `<li>${y.bold ? "<b>" + E(t) + "</b>" : E(t)}</li>` }).join("") + "</ul>" : "" });
+    while (out.length < st.length) out.push(""); return out }
+  // put drafted sets into the talk (ids added to tags without one), replacing that tag's audience notes; returns the keys written
+  function putAU(map){ const s0 = snapshot(); d.audNotes = d.audNotes || {}; let t = d.text; const keys = [];
+    [...map.keys()].sort((a, b) => b.end - a.end).forEach(n => { let id = n.id; if (!id) { id = newId(); t = t.slice(0, n.end - 1) + "|" + id + t.slice(n.end - 1) }
+      Object.keys(d.audNotes).forEach(x => { if (x === id || x.startsWith(id + ":")) delete d.audNotes[x] }); map.get(n).forEach((h, q) => { if (noteText(h)) { AU(nk(id, q)).html = cleanHTML(h); keys.push(nk(id, q)) } }) });
+    d.text = t; tpKey = null; changed(s0); drawText(); drawTP(true); return keys }
   async function auDraftAll(){ const list = P.nodes.filter(auCan); if (!list.length) return; const L = d.languages || [];
-    if (!confirm(`Draft new audience notes for all ${list.length} parts?` + (L.length ? ` Then they're translated into ${L.join(", ")}.` : "") + " This replaces the audience notes there now (↶ Undo brings them back).")) return;
+    if (!confirm(`Draft new audience notes for all ${list.length} parts, a set for each Next press?` + (L.length ? ` Then they're translated into ${L.join(", ")}.` : "") + " This replaces the audience notes there now (↶ Undo brings them back).")) return;
     saveTP(); const k0 = K(), dl = k0.dlg("ai2busy", `<div class="ed"><p class="aimsg" id="abm"></p></div>`); k0.show(dl); const out = new Map(); let done = 0, bad = 0; const m = () => { $("#abm").textContent = `Drafting audience notes… ${done} of ${list.length}` + (bad ? ` (${bad} failed)` : "") }; m();
     try { let q = 0; await Promise.all([0, 1, 2, 3].map(async () => { while (q < list.length) { const n = list[q++]; try { out.set(n, await auHTML(n)) } catch (e) { bad++ } done++; m() } }));
       if (!out.size) throw new Error("The AI didn't answer. Try again.");
-      const s0 = snapshot(); let t = d.text; const ids = [];
-      [...out.keys()].sort((a, b) => b.end - a.end).forEach(n => { let id = n.id; if (!id) { id = newId(); t = t.slice(0, n.end - 1) + "|" + id + t.slice(n.end - 1) } AU(id).html = cleanHTML(out.get(n)); ids.push(id) });
-      d.text = t; tpKey = null; changed(s0); drawText(); drawTP(true); dl.close();
-      if (L.length) { await translateSlides(null); await translateNotes(ids, null, false, true); trShow(tpNode()) }
+      const keys = putAU(out); dl.close();
+      if (L.length) { await translateSlides(null); await translateNotes(keys, null, false, true); trShow(tpNode()) }
       k0.toast(`Drafted ${out.size} parts` + (L.length ? " and translated them" : "") + (bad ? `; ${bad} failed, so press ✨ Draft all again for those` : "")) }
     catch (err) { aiFail(err) } finally { try { dl.close() } catch (e) {} } }
-  async function auDraft(n){ if (auLang) { if (!n.id) { K().toast("Write the notes in Original first."); return } saveTP(); await translateSlides([auLang], nodeSlides(n), true); await translateNotes([n.id], [auLang], true, true); trShow(tpNode()); return } const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own, so there's nothing to draft from.`); return }
-    const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the audience notes that are there now?")) return; const stop = busy("Drafting the audience notes…");
-    try { e.innerHTML = cleanHTML(await auHTML(n)); tpKey = keyOf(n); saveTP() } catch (err) { aiFail(err); return } finally { stop() }
-    if ((d.languages || []).length && n.id) { await translateSlides(null, nodeSlides(n)); await translateNotes([n.id], null, false, true); trShow(tpNode()) } }
+  async function auDraft(n){ if (auLang) { if (!n.id) { K().toast("Write the notes in Original first."); return } saveTP(); await translateSlides([auLang], nodeSlides(n), true); await translateNotes([ak(n)], [auLang], true, true); trShow(tpNode()); return }
+    if (!auCan(n)) { K().toast(`${n.full} ${n.text} has no text of its own, so there's nothing to draft from.`); return } saveTP();
+    const np = ownSteps(S, n).length, has = n.id && Object.keys(d.audNotes || {}).some(x => (x === n.id || x.startsWith(n.id + ":")) && noteText(d.audNotes[x].html));
+    if (has && !confirm(`Replace the audience notes of ${n.full} ${n.text}` + (np > 1 ? ` (all ${np} Next presses)` : "") + "?")) return; const stop = busy("Drafting the audience notes…"); let keys = [];
+    try { keys = putAU(new Map([[n, await auHTML(n)]])) } catch (err) { aiFail(err); return } finally { stop() }
+    if ((d.languages || []).length && keys.length) { await translateSlides(null, nodeSlides(tpNode() || n)); await translateNotes(keys, null, false, true); trShow(tpNode()) } }
   function side(){ drawTP(); const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
@@ -983,7 +992,11 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
 // =====================================================================
 // AUDIENCE (phones): follows the presenter: the slide on top and that part's audience notes, in the language you pick.
 // =====================================================================
-function auNoteAt(d, S, i, lang){ const st = S[i]; for (let p = st && st.node; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" }
+// Audience notes go with each Next press too: d.audNotes[id] is press 1, d.audNotes[id + ":2"] press 2… (a tag with only [id] shows it for all its presses).
+const auPer = (d, id) => !!id && Object.keys(d.audNotes || {}).some(x => x.startsWith(id + ":"));
+function auNoteAt(d, S, i, lang){ const st = S[i], n0 = st && st.node;
+  if (n0 && n0.id && auPer(d, n0.id)) { const a = (d.audNotes || {})[nk(n0.id, Math.max(0, ownSteps(S, n0).indexOf(i)))]; if (!a) return ""; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; return noteText(h) ? h : "" }
+  for (let p = n0; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" }
 const loadLib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
 // One PDF of the whole talk for the audience: each slide, its words in the language, then the notes. Made in Edit and saved with the talk.
 async function talkPDF(d, S, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");

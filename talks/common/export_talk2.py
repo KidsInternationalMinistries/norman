@@ -57,11 +57,14 @@ for kind, v in parts:
         sets = [(k, plain(notes[k])) for k in keys if notes.get(k) and plain(notes[k])]
         for k, pl in sets:
             L += ["**Talking points" + ((" (Next " + (k.split(":")[1] if ":" in k else "1") + ")") if len(keys) > 1 else "") + ":**"] + pl + [""]
-    a = aud.get(nid) if nid else None
-    if a and plain(a.get("html")):
-        L += ["**Audience notes:**"] + plain(a.get("html")) + [""]
+    akeys = ([nid] + sorted([k for k in aud if k.startswith(nid + ":")], key=lambda k: int(k.split(":")[1]))) if nid else []
+    for ak in akeys:
+        a = aud.get(ak)
+        if not (a and plain(a.get("html"))): continue
+        tag = (" (Next " + (ak.split(":")[1] if ":" in ak else "1") + ")") if len(akeys) > 1 else ""
+        L += [f"**Audience notes{tag}:**"] + plain(a.get("html")) + [""]
         for lg, h in (a.get("tr") or {}).items():
-            if plain(h): L += [f"*Audience notes ({lg}):*"] + plain(h) + [""]
+            if plain(h): L += [f"*Audience notes{tag} ({lg}):*"] + plain(h) + [""]
 
 L += ["## Slide library", ""]
 for n, s in slides.items():
