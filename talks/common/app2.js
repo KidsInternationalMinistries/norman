@@ -216,7 +216,7 @@ async function present(){
       <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
         <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><span class="zm" data-z="n"><button type="button" data-d="-1" title="Smaller talking points">A−</button><button type="button" data-d="1" title="Bigger talking points">A+</button></span></div><div class="tabbody"><div class="olbox" id="ol"></div></div></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
-      <label class="pchk" title="Practice: press Next when you finish each part; the time on each point is saved and shows in the outline"><input type="checkbox" id="prc"> Practice</label><span class="pst" id="pst"></span><button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
+      <span class="pst" id="pst"></span><button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   $("#sc").innerHTML = textHTML(d, P, false, S, true);
   const pts = P.nodes.filter(n => n.lvl === 2), total = () => P.nodes.filter(n => n.lvl === 1).reduce((a, n) => a + planSecs(P, n).s, 0) || pts.reduce((a, n) => a + planSecs(P, n).s, 0);
@@ -224,7 +224,6 @@ async function present(){
   // Practice: each Next adds the time since you came to that step to its point; the point's time is saved in talk2.json (d.times) and shows in the outline.
   const ptOf = st => { let p = st && st.node; while (p && p.lvl > 2) p = p.parent; return p && p.lvl === 2 ? p : null };
   let run = false, arrive = Date.now(), acc = {}, queue = {}, saveT = null, psaving = false, pmsg = "";
-  try { run = localStorage.getItem("pres2-prc-" + FOLDER) === "1" } catch (e) {}
   const record = () => { if (!run || end) return; const p = ptOf(S[k]); const t = (Date.now() - arrive) / 1000; if (!p || t < 1 || t > 3600) return; const key = tkey(p); acc[key] = (acc[key] || 0) + t; queue[key] = Math.round(acc[key]); P.times[key] = queue[key]; clearTimeout(saveT); saveT = setTimeout(savePractice, 1500) };
   async function savePractice(){ if (psaving) { saveT = setTimeout(savePractice, 1000); return } const q = queue; queue = {}; if (!Object.keys(q).length) return; psaving = true;
     try { if (!token()) { pmsg = "Practice times aren't saved on this computer (no GitHub sign-in)."; return }
@@ -233,7 +232,7 @@ async function present(){
     catch (e) { Object.assign(queue, q); pmsg = "Practice times not saved yet (" + (e.detail || e.message) + ")"; saveT = setTimeout(savePractice, 5000) } finally { psaving = false; pace() } }
   function pace(){ const el = $("#pst"); if (!el) return; if (pmsg) { el.textContent = pmsg; el.className = "pst slow"; return }
     if (run) { const p = ptOf(S[k]); el.className = "pst"; el.textContent = end ? "Last part timed ✓ Untick Practice when you're done" : p ? `Timing ${p.lab} · ${mmss((Date.now() - arrive) / 1000 + (acc[tkey(p)] || 0))}` : "Practice: press Next at the end of each part"; return }
-    const e = TIMER.elapsed(), p = ptOf(S[k]); if (e == null || !p || end) { el.textContent = d.lastPractice ? "Practiced " + new Date(d.lastPractice.date).toLocaleDateString() + " · " + mmss(d.lastPractice.total) : ""; el.className = "pst"; return }
+    const e = TIMER.elapsed(), p = ptOf(S[k]); if (e == null || !p || end) { el.textContent = ""; el.className = "pst"; return }
     const before = P.fit ? wordsIn(P, 0, p.at) / P.wpm * 60 + vidsIn(P, 0, p.at) : pts.filter(x => x.at < p.at).reduce((a, x) => a + planSecs(P, x).s, 0), here = planSecs(P, p).s, plan = before + Math.min((Date.now() - arrive) / 1000, here), dl = e - plan;
     el.className = "pst " + (Math.abs(dl) < 20 ? "even" : dl > 0 ? "slow" : "fast"); el.textContent = Math.abs(dl) < 20 ? "On pace" : dl > 0 ? mmss(dl) + " behind · speed up" : mmss(-dl) + " ahead · slow down" }
   setInterval(pace, 1000);
@@ -265,7 +264,7 @@ async function present(){
   function next(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (k < S.length - 1) go(k + 1, true); else if (!end) { record(); end = true; arrive = Date.now(); draw(); push(); pace() } }
   function back(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (end) { end = false; draw(); push(); return } if (k > 0) go(k - 1) }
   $("#n").onclick = next; $("#b").onclick = back;
-  $("#prc").checked = run; $("#prc").onchange = e => { run = e.target.checked; acc = {}; arrive = Date.now(); try { localStorage.setItem("pres2-prc-" + FOLDER, run ? "1" : "0") } catch (_) {} if (!run) { clearTimeout(saveT); savePractice() } pace() };
+
   addEventListener("resize", () => draw());
   // A− / A+ for the text and the talking points, kept on this computer
   let Z = {t: 1, n: 1}; try { Z = {...Z, ...JSON.parse(localStorage.getItem("v2-zoom") || "{}")} } catch (e) {}
