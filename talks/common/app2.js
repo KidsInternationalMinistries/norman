@@ -275,7 +275,7 @@ async function edit(){
       <div class="tp" id="tpbox"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button></div>
         <div class="aubar" id="aubar" hidden></div>
         <div class="tpe" id="tpe" contenteditable="true" spellcheck="true" data-ph="What you glance at while you talk: a few short lines. Bold, underline and bullets work."></div><div class="trrow" id="trrow" hidden><button type="button" class="btn small aib" id="trone"></button></div></div>
-      <div class="plist" id="plist" hidden></div></div></div></aside></div>
+      <input class="psq" id="psq" type="search" placeholder="Find a slide (name or words on it)…" aria-label="Find a slide" hidden><div class="plist" id="plist" hidden></div></div></div></aside></div>
     <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog><dialog class="sdlg pdlg" id="pdlg"></dialog>`;
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
   const setSave = (t, err) => { const s = $("#save"); s.textContent = t; s.className = err ? "err" : "" };
@@ -356,9 +356,11 @@ async function edit(){
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } $("#nx").focus() }
   // ---- slides: library, editor ----
   const usesOf = nm => P.toks.filter(x => x.k === "slide" && x.slide.name === nm).length;
-  function plist(){ const el = $("#plist"); if (panel === "tp" || panel === "au") return; if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null);
-      el.innerHTML = L.length ? L.map(x => { const i = x.step; return `<div class="pi run${SH[k] === x.slide && i <= k ? " cur" : ""}" data-step="${i}"><div class="th">${slideHTML(x.slide, d)}</div><div class="pn"><b>${E(x.slide.name)}</b><span>${x.node ? E(x.node.full + " " + x.node.text) : "Opening"}</span></div></div>` }).join("") : `<p class="note">No slides in the text yet.</p>`; return }
-    el.innerHTML = d.slides.map((s, i) => { const u = usesOf(s.name); return `<div class="pi${u ? "" : " unused"}${SH[k] === s ? " cur" : ""}" draggable="true" data-si="${i}"><div class="th">${slideHTML(s, d)}</div><div class="pn"><b>${icon(s)} ${E(s.name)}</b><span>${E(TYPES[s.type] || "Slide")}${u > 1 ? ` · used ${u}×` : u ? "" : " · not in the text"}</span></div></div>` }).join("") || `<p class="note">No slides yet. Press + New slide.</p>` }
+  const slideWords = s => [s.name, s.slideTitle, s.slide, s.eyebrow, s.bullets, s.quote, s.by, s.ref, s.text, s.version, TYPES[s.type]].filter(Boolean).join(" ").toLowerCase();
+  const slideHit = (s, q) => !q || q.split(/\s+/).every(w => slideWords(s).includes(w));
+  function plist(){ const el = $("#plist"); if (panel === "tp" || panel === "au") return; const q = (($("#psq") || {}).value || "").trim().toLowerCase(); if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null && slideHit(x.slide, q));
+      el.innerHTML = L.length ? L.map(x => { const i = x.step; return `<div class="pi run${SH[k] === x.slide && i <= k ? " cur" : ""}" data-step="${i}"><div class="th">${slideHTML(x.slide, d)}</div><div class="pn"><b>${E(x.slide.name)}</b><span>${x.node ? E(x.node.full + " " + x.node.text) : "Opening"}</span></div></div>` }).join("") : `<p class="note">${q ? "No slide matches." : "No slides in the text yet."}</p>`; return }
+    el.innerHTML = d.slides.map((s, i) => { if (!slideHit(s, q)) return ""; const u = usesOf(s.name); return `<div class="pi${u ? "" : " unused"}${SH[k] === s ? " cur" : ""}" draggable="true" data-si="${i}"><div class="th">${slideHTML(s, d)}</div><div class="pn"><b>${icon(s)} ${E(s.name)}</b><span>${E(TYPES[s.type] || "Slide")}${u > 1 ? ` · used ${u}×` : u ? "" : " · not in the text"}</span></div></div>` }).join("") || (q ? `<p class="note">No slide matches.</p>` : `<p class="note">No slides yet. Press + New slide.</p>`) }
   function slideNew(done){ const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">New slide</div>` + Object.entries(TYPES).filter(([t]) => t !== "qr").map(([t, n]) => `<button type="button" data-t="${t}">${E(n)}</button>`).join("");
     document.body.appendChild(m); const r = ($("#sadd") || document.body).getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 260)) + "px"; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
     const off = e => { if (!m.contains(e.target)) { m.remove(); removeEventListener("mousedown", off) } }; setTimeout(() => addEventListener("mousedown", off), 0);
@@ -367,9 +369,9 @@ async function edit(){
       draft = o; slideEdit(-1, done) } }      // a new slide is only a draft until Save
   // The / menu's "Slide…": every slide as a small picture with its name; pick one to put it in the text.
   function slidePick(done){ const dl = $("#pdlg");
-    dl.innerHTML = `<div class="ed"><div class="pgh"><b>Put a slide in the text</b><input class="pf" placeholder="Find a slide…" aria-label="Find a slide"><button type="button" class="btn small" id="pcan">Cancel</button></div>
+    dl.innerHTML = `<div class="ed"><div class="pgh"><b>Put a slide in the text</b><input class="pf" placeholder="Find a slide (name or words on it)…" aria-label="Find a slide"><button type="button" class="btn small" id="pcan">Cancel</button></div>
       <div class="pgrid"><button type="button" class="pt new" data-new="1"><div class="th"><span>+</span></div><b>New slide</b></button>${d.slides.map((x, i) => `<button type="button" class="pt" data-si="${i}"><div class="th">${slideHTML(x, d)}</div><b>${icon(x)} ${E(x.name)}</b></button>`).join("")}</div></div>`;
-    const f = dl.querySelector(".pf"); f.oninput = () => { const q = f.value.toLowerCase(); dl.querySelectorAll(".pt[data-si]").forEach(b => b.hidden = !!q && !b.textContent.toLowerCase().includes(q)) };
+    const f = dl.querySelector(".pf"); f.oninput = () => { const q = f.value.toLowerCase(); dl.querySelectorAll(".pt[data-si]").forEach(b => b.hidden = !slideHit(d.slides[+b.dataset.si], q.trim())) };
     f.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); const b = [...dl.querySelectorAll(".pt[data-si]")].find(x => !x.hidden); if (b) b.click() } };
     $("#pcan").onclick = () => { dl.close(); restore() };
     dl.onclick = e => { const b = e.target.closest(".pt"); if (!b) return; dl.close(); if (b.dataset.new) slideNew(done); else done(d.slides[+b.dataset.si].name) };
@@ -543,6 +545,7 @@ async function edit(){
     if (t.closest("#trall")) { if (!(d.languages || []).length) { K().toast("Add a language first."); return } (async () => { const n = await translateSlides(); if (n) K().toast(`Slide words translated (${n}) ✓`); await translateNotes(Object.keys(d.audNotes || {}), null, false, !!n) })(); return }
     if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } (async () => { const L = auLang ? [auLang] : null; await translateSlides(L, nodeSlides(n)); await translateNotes([n.id], L, false, true); trShow(tpNode()) })(); return }
     if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
+  document.addEventListener("input", e => { if (e.target.id === "psq") plist() });
   document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(() => { saveTP(); trShow(tpNode()) }, 700) } });
   document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
   document.addEventListener("keydown", e => { if (e.target.id !== "tpe" || e.key !== "Tab") return; e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent") });
@@ -579,7 +582,7 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
     const pe = tg.closest("[data-edit]"); if (pe) { const i = d.slides.findIndex(x => x.name === pe.dataset.edit); if (i >= 0) slideEdit(i); return }
     const pi = tg.closest(".pi[data-si]"); if (pi) { slideEdit(+pi.dataset.si); return }
     const pr = tg.closest(".pi[data-step]"); if (pr) { step(+pr.dataset.step); return }
-    const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); const tpm = panel === "tp" || panel === "au"; $("#tpbox").hidden = !tpm; $("#plist").hidden = tpm; $("#sadd").hidden = tpm; if (tpm) { saveTP(); tpMode = panel; drawTP(true) } plist(); return } });
+    const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); const tpm = panel === "tp" || panel === "au"; $("#tpbox").hidden = !tpm; $("#plist").hidden = tpm; $("#psq").hidden = tpm; $("#sadd").hidden = tpm; if (tpm) { saveTP(); tpMode = panel; drawTP(true) } plist(); return } });
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen(); $("#narr").onclick = () => narrate();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;

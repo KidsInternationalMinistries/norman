@@ -257,3 +257,5 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .tn.prc .tm{color:#2e8b57;font-weight:700}
 .playcap{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);max-width:min(900px,92vw);color:#fff;background:rgba(0,0,0,.55);padding:6px 14px;border-radius:10px;font-size:18px;line-height:1.4;text-align:center;pointer-events:none}
 .playcap:empty{display:none}
+.psq{position:sticky;top:0;z-index:2;width:100%;box-sizing:border-box;margin:0 0 8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px}
+.psq[hidden]{display:none}
