@@ -186,9 +186,9 @@
   {
    "name": "Nothing changed",
    "type": "image",
-   "eyebrow": "",
+   "eyebrow": "dfdf",
    "slideTitle": "You shall recieve power.",
-   "slide": "te",
+   "slide": "test",
    "layout": "left",
    "image": "slides/bg/p2a.jpg",
    "ttX": 4.2,
