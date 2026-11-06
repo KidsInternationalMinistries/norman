@@ -298,14 +298,32 @@
    "ttW": 56,
    "sbX": 7.8,
    "sbY": 53.9,
-   "sbW": 56
+   "sbW": 56,
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Pagkatao, pagtawag, paninindigan.",
+     "slide": "Hindi ang mga alagad ang nagbunga ng mga ito.\n\nKapangyarihan ni Cristo ang nagbunga ng mga ito."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"Character, calling, conviction.\",\"slide\":\"The disciples didn't produce them. \\n\\nChrist's power produced them.\"}"
+   }
   },
   {
    "name": "Acts 4:13",
    "type": "verse",
    "ref": "Acts 4:13",
    "text": "When they saw the courage of Peter and John and realized that they were unschooled, ordinary men, they were astonished and they took note that these men had been with Jesus.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Gawa 4:13",
+     "text": "Nang makita nga nila ang katapangan ni Pedro at ni Juan, at matalastas na sila'y mga taong walang pinag-aralan at mga mangmang, ay nangagtaka sila; at nangakilala nila sila'y nangakasama ni Jesus."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Acts 4:13\",\"text\":\"When they saw the courage of Peter and John and realized that they were unschooled, ordinary men, they were astonished and they took note that these men had been with Jesus.\"}"
+   }
   },
   {
    "name": "Makes us into",
@@ -330,7 +348,16 @@
    "type": "verse",
    "ref": "Jeremiah 18:4",
    "text": "But the pot he was shaping from the clay was marred in his hands; so the potter formed it into another pot, shaping it as seemed best to him.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Jeremias 18:4",
+     "text": "At nang masira ang sisidlang yaong hinuhubog ng magpapalyok sa luwad sa kaniyang kamay, ay hinubog niyang muli na ibang sisidlan, ayon sa inaakala ng magpapalyok na mainam na gawin."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Jeremiah 18:4\",\"text\":\"But the pot he was shaping from the clay was marred in his hands; so the potter formed it into another pot, shaping it as seemed best to him.\"}"
+   }
   },
   {
    "name": "2 Corinthians 12:9–10",
