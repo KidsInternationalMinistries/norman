@@ -801,7 +801,15 @@
    "slideTitle": "",
    "slide": "Listen for what He's making you into.",
    "layout": "left",
-   "image": "slides/bg/p6e.jpg"
+   "image": "slides/bg/p6e.jpg",
+   "tr": {
+    "Tagalog": {
+     "slide": "Pakinggan kung ano'ng hinuhubog Niya sa'yo."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"Listen for what He's making you into.\"}"
+   }
   },
   {
    "name": "2 Corinthians 4:7, Second Corinthians",
