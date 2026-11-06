@@ -230,4 +230,5 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .aupdf p{margin:0 18px 10px;color:#555}
 .aupdf .aus{padding:6px 0 0}
 .aupdf .aun{color:#111;padding:10px 6px}
-#audl{font-size:14px}
+.aubtm a.audl{font-size:15px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-decoration:none}
+.aubtm a.audl[hidden]{display:none}

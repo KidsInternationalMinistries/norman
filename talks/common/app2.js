@@ -435,7 +435,7 @@ async function edit(){
   function drawAU(n){ const bar = $("#aubar"); if (!bar) return; bar.hidden = tpMode !== "au"; if (bar.hidden) return; const L = d.languages || [];
     const st = lg => !n || !n.id || !noteText(((d.audNotes || {})[n.id] || {}).html) ? "" : trBusy.has(n.id + "|" + lg) ? " …" : stale(n.id, lg) ? " ○" : (((d.audNotes || {})[n.id] || {}).ed || {})[lg] ? " ✎" : " ✓";
     bar.innerHTML = `<div class="row"><span class="note">Show:</span><button type="button" class="lgb${auLang ? "" : " on"}" data-lg="">Original</button>${L.map(lg => `<button type="button" class="lgb${auLang === lg ? " on" : ""}" data-lg="${E(lg)}" title="${{"✓": "Translated", "○": "The original changed: needs translating", "✎": "Translated and changed by hand", "…": "Translating…"}[st(lg).trim()] || ""}">${E(lg)}${st(lg)}</button>`).join("")}</div>
-      <div class="row"><span class="note">Languages:</span>${L.map(lg => `<span class="lgc">${E(lg)}<i data-rmlg="${E(lg)}" title="Remove this language">×</i></span>`).join("") || '<span class="note">none yet</span>'}<button type="button" class="btn small" id="addlg">+ Add a language</button>${L.length ? `<button type="button" class="btn small aib" id="trone" title="Translate this note into ${E(auLang || "every language")}">✨ Translate this</button><button type="button" class="btn small aib" id="trall" title="Translate the words on the slides and every audience note that is new or changed">✨ Translate all that changed</button>` : ""}<button type="button" class="btn small" id="addqr" title="A slide with a QR code that opens the audience page">+ QR code slide</button><a class="btn small" href="audience.html" target="_blank" rel="noopener">Open the audience page</a></div>` }
+      <div class="row"><span class="note">Languages:</span>${L.map(lg => `<span class="lgc">${E(lg)}<i data-rmlg="${E(lg)}" title="Remove this language">×</i></span>`).join("") || '<span class="note">none yet</span>'}<button type="button" class="btn small" id="addlg">+ Add a language</button>${L.length ? `<button type="button" class="btn small aib" id="trone" title="Translate this note into ${E(auLang || "every language")}">✨ Translate this</button><button type="button" class="btn small aib" id="trall" title="Translate the words on the slides and every audience note that is new or changed">✨ Translate all that changed</button>` : ""}<button type="button" class="btn small" id="mkpdf" title="Make the PDF the audience can download, one per language">⤓ Create PDFs</button>${d.pdfs && d.pdfs[""] ? `<span class="note">PDFs made ${E(new Date(d.pdfs[""].at).toLocaleString())}</span>` : ""}<button type="button" class="btn small" id="addqr" title="A slide with a QR code that opens the audience page">+ QR code slide</button><a class="btn small" href="audience.html" target="_blank" rel="noopener">Open the audience page</a></div>` }
   async function translateSlides(langs){ const L = langs || d.languages || []; const jobs = [];
     (d.slides || []).forEach(sl => { const src = slSrc(sl); if (src) L.forEach(lg => { if ((sl.trSrc || {})[lg] !== src) jobs.push([sl, lg, src]) }) });
     if (!jobs.length) return 0; let i = 0, err = null, done = 0; K().toast(`Translating the words on ${new Set(jobs.map(j => j[0])).size} slide(s)…`);
@@ -464,6 +464,12 @@ async function edit(){
       if ((d.languages || []).some(x => x.toLowerCase() === nm.toLowerCase())) return; const s = snapshot(); d.languages = [...(d.languages || []), nm]; changed(s); drawAU(tpNode()); K().toast(nm + " added. Press ✨ Translate all that changed when the notes are ready."); return }
     if (t.closest("#trall")) { if (!(d.languages || []).length) { K().toast("Add a language first."); return } (async () => { const n = await translateSlides(); if (n) K().toast(`Slide words translated (${n}) ✓`); await translateNotes(Object.keys(d.audNotes || {}), null, false, !!n) })(); return }
     if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } translateNotes([n.id], auLang ? [auLang] : null, true); return }
+    if (t.closest("#mkpdf")) { const b = t.closest("#mkpdf"); if (b.disabled) return; saveTP(); b.disabled = true; const L = ["", ...(d.languages || [])], out = {};
+      (async () => { try { for (const lg of L) { const nm = (lg || "English").replace(/[^\w\-]+/g, ""), path = "pdf/" + nm + ".pdf";
+            const b64 = await talkPDF(d, S, lg, (n, m) => { b.textContent = `Making ${lg || "English"} ${n}/${m}…` }); b.textContent = `Saving ${lg || "English"}…`;
+            let sha = null; try { sha = (await GH.get(PATH + "/" + path)).sha } catch (_) {} await GH.put(PATH + "/" + path, b64, sha, "Audience PDF (" + (lg || "English") + ")"); out[lg] = {file: path, at: Date.now()} }
+          const s0 = snapshot(); d.pdfs = out; changed(s0); K().toast("PDFs saved ✓ The audience page offers them in about a minute.") }
+        catch (e) { aiFail(e) } finally { b.disabled = false; drawAU(tpNode()) } })(); return }
     if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
   document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(saveTP, 700) } });
   document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
@@ -755,9 +761,24 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
 // =====================================================================
 // AUDIENCE (phones): follows the presenter: the slide on top and that part's audience notes, in the language you pick.
 // =====================================================================
+function auNoteAt(d, S, i, lang){ const st = S[i]; for (let p = st && st.node; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" }
+const loadLib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
+// One PDF of the whole talk for the audience: each slide, its words in the language, then the notes. Made in Edit and saved with the talk.
+async function talkPDF(d, S, lang, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const SH = S.map(x => x.slide), items = []; let prev = null;
+  for (let i = 0; i < S.length; i++) { const key = auNoteAt(d, S, i, lang) + "|" + (SH[i] && SH[i].name); if (key !== prev) { prev = key; items.push(i) } }
+  const box = document.createElement("div"); box.className = "aupdf"; document.body.appendChild(box);
+  try { const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4"}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28; let y = M;
+    const put = async html => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
+      const c = await window.html2canvas(box, {scale: 2, backgroundColor: "#ffffff", useCORS: true}); const w = W - 2 * M, h = c.height * w / c.width;
+      if (y + h > H - M && y > M) { pdf.addPage(); y = M } pdf.addImage(c.toDataURL("image/jpeg", 0.85), "JPEG", M, y, w, Math.min(h, H - 2 * M)); y += h + 14 };
+    await put(`<h1>${E(d.title)}</h1>${lang ? `<p>${E(lang)}</p>` : ""}`);
+    for (let n = 0; n < items.length; n++) { const i = items[n]; if (prog) prog(n + 1, items.length); const sw = lang ? slideTrHTML(SH[i], lang) : "", h = auNoteAt(d, S, i, lang);
+      await put(`<div class="aupg"><div class="aus">${SH[i] && SH[i].type === "video" ? "" : slideHTML(SH[i], d)}</div><div class="aun">${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div></div>`) }
+    return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 async function audience(){
   document.body.innerHTML = `<div class="au"><div class="auh"><b id="aut">Loading…</b><select id="aul" aria-label="Language"></select></div><div class="aus" id="aus"></div><div class="aun" id="aun"></div>
-    <div class="aubtm"><button type="button" id="aub">&larr;</button><span id="aust">Connecting…</span><button type="button" id="aun2">&rarr;</button><button type="button" id="aulive" hidden>Back to live</button><button type="button" id="audl" title="Download the slides and notes so far as a PDF">⤓ PDF</button></div></div>`;
+    <div class="aubtm"><button type="button" id="aub">&larr;</button><span id="aust">Connecting…</span><button type="button" id="aun2">&rarr;</button><button type="button" id="aulive" hidden>Back to live</button><a id="audl" class="audl" hidden title="Download the slides and notes as a PDF">⤓ PDF</a></div></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#aut").textContent = "Couldn't load the talk."; return }
   document.title = d.title; $("#aut").textContent = d.title; T.preload(d.slides || [], d);
   const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [];
@@ -766,30 +787,14 @@ async function audience(){
   if (lang && !L.includes(lang)) lang = "";
   $("#aul").innerHTML = `<option value="">English</option>` + L.map(x => `<option${x === lang ? " selected" : ""}>${E(x)}</option>`).join(""); $("#aul").hidden = !L.length;
   let pres = 0, local = null, end = false, lastAt = 0, on = false;
-  const noteAt = i => { const st = S[i]; for (let p = st && st.node; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" };
+  const noteAt = i => auNoteAt(d, S, i, lang);
   const show = () => { const i = local == null ? pres : local; setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "");
     $("#aulive").hidden = local == null; $("#aust").textContent = local != null ? "Looking back" : on ? "Live" : "Waiting for the speaker…"; $("#aust").className = local == null && on ? "on" : "" };
   const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
   const stepL = dd => { let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < pres && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(pres, i)); local = i >= pres ? null : i; show() };
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
-  // Download: a PDF with each slide, its words in the chosen language, and the notes, up to where the speaker is now (everything once the talk is over).
-  const lib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
-  $("#audl").onclick = async () => { const btn = $("#audl"); if (btn.disabled) return; btn.disabled = true; const t0 = btn.textContent; btn.textContent = "Making…";
-    try { await lib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await lib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-      const upto = end || !on ? S.length - 1 : pres, items = []; let prev = null;
-      for (let i = 0; i <= upto; i++) { const key = noteAt(i) + "|" + (SH[i] && SH[i].name); if (key !== prev) { prev = key; items.push(i) } }
-      const box = document.createElement("div"); box.className = "aupdf"; document.body.appendChild(box);
-      const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4"}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28;
-      let y = M, first = true;
-      const put = async html => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
-        const c = await window.html2canvas(box, {scale: 2, backgroundColor: "#ffffff", useCORS: true}); const w = W - 2 * M, h = c.height * w / c.width;
-        if (y + h > H - M && y > M) { pdf.addPage(); y = M } pdf.addImage(c.toDataURL("image/jpeg", 0.85), "JPEG", M, y, w, Math.min(h, H - 2 * M)); y += h + 14 };
-      await put(`<h1>${E(d.title)}</h1>${lang ? `<p>${E(lang)}</p>` : ""}`);
-      for (const i of items) { btn.textContent = `Making… ${items.indexOf(i) + 1}/${items.length}`; const sw = lang ? slideTrHTML(SH[i], lang) : "", h = noteAt(i);
-        await put(`<div class="aupg"><div class="aus">${SH[i] && SH[i].type === "video" ? "" : slideHTML(SH[i], d)}</div><div class="aun">${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div></div>`) }
-      box.remove(); pdf.save((d.title || "talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + (lang ? "-" + lang : "") + ".pdf") }
-    catch (e) { alert("Couldn't make the PDF. Check the connection and try again.") } finally { btn.disabled = false; btn.textContent = t0; const b2 = document.querySelector(".aupdf"); if (b2) b2.remove() } };
-  $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} show() };
+  const dl = () => { const f = (d.pdfs || {})[lang || ""], a = $("#audl"); a.hidden = !f; if (f) { a.href = f.file + "?t=" + (f.at || ""); a.setAttribute("download", (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + "-" + f.file.split("/").pop()) } }; dl();
+  $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
   show() }
