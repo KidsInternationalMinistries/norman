@@ -487,7 +487,16 @@
    "type": "verse",
    "ref": "Proverbs 19:21",
    "text": "Many are the plans in a person's heart, but it is the LORD's purpose that prevails.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Kawikaan 19:21",
+     "text": "Maraming plano sa buhay ang tao, ngunit ang kalooban ni Yahweh ang magtatagumpay."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Proverbs 19:21\",\"text\":\"Many are the plans in a person's heart, but it is the LORD's purpose that prevails.\"}"
+   }
   },
   {
    "name": "Feeding",
@@ -514,7 +523,16 @@
    "slideTitle": "When I strive in my strength, I burn out.",
    "slide": "When I strive in His, I'm refreshed.",
    "layout": "left",
-   "image": "slides/bg/p4e.jpg"
+   "image": "slides/bg/p4e.jpg",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Kapag sa sariling lakas ako kumikilos, nauubos ako.",
+     "slide": "Kapag sa Kanyang lakas ako kumikilos, napapanibago ako."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"When I strive in my strength, I burn out.\",\"slide\":\"When I strive in His, I'm refreshed.\"}"
+   }
   },
   {
    "name": "Colossians 1:29",
