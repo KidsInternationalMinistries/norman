@@ -1105,8 +1105,9 @@ async function talkPDF(d, S, prog, langs){ await loadLib("https://cdnjs.cloudfla
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 // The PDF for the speaker or the team: one page part per slide, then the audience notes in English, a line, each translation, a line, and the words of the talk said while that slide is up.
 // The PDF of the talk (phones' ⤓ PDF and Edit's "PDF with the talk"), laid out by the outline:
-// each section starts a new page with a full-width colored band; each point (1.a, 1.b…) has its title, then each of its slides
-// small (a third of the width, on the left) with the audience notes under it: English, a line, each translation, a line.
+// each section starts a new page with a full-width colored band; each point (1.a, 1.b…) has its title and, indented under it,
+// each of its slides small on the right with the audience notes wrapping around it (English, a thin line, each translation).
+// A thicker line ends each point. The words flow from page to page; a page only breaks between lines, never through one.
 // The whole talk (English) comes at the end, starting on its own page.
 async function talkPDFFull(d, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
   const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [];
@@ -1116,34 +1117,45 @@ async function talkPDFFull(d, prog){ await loadLib("https://cdnjs.cloudflare.com
     if (!last || last.sec !== sec || last.pt !== pt || last.sl !== SH[i]) B.push({sec, pt, sl: SH[i], a: i, b: i + 1}); else last.b = i + 1 }
   const notes = (blk, lg) => { const seen = new Set(), out = []; for (let k = blk.a; k < blk.b; k++) { let h = auNoteAt(d, S, k, lg); if (lg && h === auNoteAt(d, S, k, "")) h = ""; if (noteText(h) && !seen.has(h)) { seen.add(h); out.push(cleanHTML(h)) } } return out.join("") };
   const thumb = sl => sl && sl.type === "video" ? `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(sl.name || "Video")}</div></div>` : slideHTML(sl, d);
+  const blkHTML = blk => { const parts = [], en = notes(blk, ""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
+    L.forEach(lg => { const sw = slideTrHTML(blk.sl, lg), h = notes(blk, lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
+    if (!blk.sl && !parts.length) return ""; return `<div class="fblk">${blk.sl ? `<div class="fth">${thumb(blk.sl)}</div>` : ""}<div class="aun">${parts.join('<hr class="auhr">')}</div></div>` };
+  const band = n => `<div class="fsec">${E(n.lab || n.full || "")} ${E(n.text)}</div>`, ptH = n => `<div class="fpt2"><b>${E(n.full)}</b> ${E(n.text)}</div>`;
   const box = document.createElement("div"); box.className = "aupdf fullpdf"; document.body.appendChild(box);
   try { const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4", compress: true}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28; let y = M;
     const newPage = () => { if (y > M) { pdf.addPage(); y = M } };
+    // draw some HTML at the current place; when it doesn't fit, break it at the lowest line end that fits on this page
     const place = async (html, gap) => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
-      const c = await window.html2canvas(box, {scale: 1.5, backgroundColor: "#ffffff", useCORS: true}), w = W - 2 * M, h = c.height * w / c.width, img = c.toDataURL("image/jpeg", 0.75);
-      if (y + h > H - M && y > M) { pdf.addPage(); y = M }
-      pdf.addImage(img, "JPEG", M, y, w, h); let off = H - M - y;
-      if (off >= h) { y += h + (gap || 0); return }
-      let start = off; while (start < h) { pdf.addPage(); pdf.addImage(img, "JPEG", M, M - start, w, h); y = M + (h - start); start += H - 2 * M } y += gap || 0 };
+      const top = box.getBoundingClientRect().top, bw = box.offsetWidth, bh = box.offsetHeight, cuts = new Set([bh]);
+      box.querySelectorAll("p, li, div, hr, h1, ul, ol, br").forEach(el => { const r = el.getBoundingClientRect(); if (r.height) cuts.add(Math.round(r.bottom - top)) });
+      const tw = document.createTreeWalker(box, NodeFilter.SHOW_TEXT); for (let t = tw.nextNode(); t; t = tw.nextNode()) { const rg = document.createRange(); rg.selectNodeContents(t); for (const r of rg.getClientRects()) cuts.add(Math.round(r.bottom - top) + 2) }
+      box.querySelectorAll(".slide").forEach(el => { const r = el.getBoundingClientRect(); for (let v = Math.round(r.top - top); v <= Math.round(r.bottom - top); v++) cuts.delete(v) });    // never through a slide
+      const C = [...cuts].filter(v => v > 0 && v <= bh).sort((a, b) => a - b);
+      const c = await window.html2canvas(box, {scale: 1.5, backgroundColor: "#ffffff", useCORS: true}), k = c.width / bw, r = (W - 2 * M) / bw;
+      let from = 0;
+      while (from < bh) { const room = (H - M - y) / r;
+        if (bh - from <= room) { slice(from, bh); y += (bh - from) * r + (gap || 0); return }
+        let cut = 0; for (const v of C) if (v > from && v - from <= room) cut = v;
+        if (!cut || (cut - from) * r < 30) { if (y > M) { pdf.addPage(); y = M; continue } cut = Math.min(bh, from + Math.floor(room)) }
+        slice(from, cut); from = cut; pdf.addPage(); y = M }
+      function slice(a, b){ const h = Math.max(1, Math.round((b - a) * k)), t = document.createElement("canvas"); t.width = c.width; t.height = h; t.getContext("2d").drawImage(c, 0, Math.round(a * k), c.width, h, 0, 0, c.width, h);
+        pdf.addImage(t.toDataURL("image/jpeg", 0.78), "JPEG", M, y, W - 2 * M, (b - a) * r) } };
     await place(`<h1>${E(d.title)}</h1><p>The outline, the slides and the notes${L.length ? " (English, " + L.map(E).join(", ") + ")" : ""}, then the whole talk at the end</p>`, 12);
-    const band = n => `<div class="fsec">${E(n.lab || n.full || "")} ${E(n.text)}</div>`, ptH = n => `<div class="fpt2"><b>${E(n.full)}</b> ${E(n.text)}</div>`;
-    let sec0 = null, pt0 = null, first = true;
-    for (let q = 0; q < B.length; q++) { const blk = B[q]; if (prog) prog(q + 1, B.length + 1);
-      if (blk.sec !== sec0) { sec0 = blk.sec; pt0 = null; if (blk.sec) { if (!first) newPage(); await place(band(blk.sec), 8) } }
-      first = false;
-      let head = ""; if (blk.pt && blk.pt !== pt0) { pt0 = blk.pt; head = ptH(blk.pt) }      // the point's title goes with its first slide, so it never sits alone at the bottom of a page
-      const parts = [], en = notes(blk, ""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
-      L.forEach(lg => { const sw = slideTrHTML(blk.sl, lg), h = notes(blk, lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
-      if (!blk.sl && !parts.length) { if (head) await place(head, 4); continue }
-      await place(head + `<div class="fblk">${blk.sl ? `<div class="fth">${thumb(blk.sl)}</div>` : ""}${parts.length ? `<div class="aun">${parts.join('<hr class="auhr">')}</div>` : ""}</div><hr class="fsep">`, 4) }
-    // the whole talk, on its own pages
-    if (prog) prog(B.length + 1, B.length + 1);
+    // group the blocks into sections and points
+    const secs = []; B.forEach(blk => { let sc = secs[secs.length - 1]; if (!sc || sc.sec !== blk.sec) secs.push(sc = {sec: blk.sec, groups: []}); let g = sc.groups[sc.groups.length - 1]; if (!g || g.pt !== blk.pt) sc.groups.push(g = {pt: blk.pt, blks: []}); g.blks.push(blk) });
+    let done = 0; const total = B.length + 1;
+    for (let si = 0; si < secs.length; si++) { const sc = secs[si]; if (sc.sec) { if (si) newPage(); await place(band(sc.sec), 8) }
+      for (const g of sc.groups) { const inner = g.blks.map(blkHTML).filter(Boolean).join('<hr class="fthin">'); done += g.blks.length; if (prog) prog(done, total);
+        if (!inner && !g.pt) continue;
+        await place(g.pt ? `<div class="fpoint">${ptH(g.pt)}<div class="find">${inner}</div></div>` : `<div class="fpoint">${inner}</div>`, 6) } }
+    // the whole talk, on its own pages (each section on a new page)
+    if (prog) prog(total, total);
     newPage(); await place(`<h1>The talk</h1>`, 6);
-    let sec1 = null, pt1 = null, buf = "";
-    const flush = async () => { if (buf.trim()) await place(`<div class="fpt">${buf}</div>`, 4); buf = "" };
+    let sec1, pt1, buf = "", head = "", firstSec = true;
+    const flush = async () => { if (buf.trim() || head) await place(`<div class="fpoint tk">${head}<div class="find fpt">${buf}</div></div>`, 4); buf = ""; head = "" };
     for (let k = 0; k < S.length; k++) { const n = S[k].node, sec = up(n, 1), pt = up(n, 2);
-      if (sec !== sec1) { await flush(); sec1 = sec; pt1 = null; if (sec) await place(band(sec), 6) }
-      if (pt && pt !== pt1) { await flush(); pt1 = pt; await place(ptH(pt), 2) }
+      if (sec !== sec1) { await flush(); sec1 = sec; pt1 = null; if (sec) { if (!firstSec) newPage(); firstSec = false; await place(band(sec), 6) } }
+      if (pt && pt !== pt1) { await flush(); pt1 = pt; head = ptH(pt) }
       if (S[k].a != null) { const t = P.t.slice(S[k].a, S[k].b).replace(TAG, "").trim(); if (t) buf += "<p>" + E(t).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>") + "</p>" } }
     await flush();
     return pdf.output("blob") } finally { box.remove() } }
