@@ -83,7 +83,7 @@ const pollShown = s => s.reveal !== "next" || REVEAL.has(pollKey(s));
 function pollInner(s, o){ o = o || {}; const A = pollAns(s, o.lang), c = POLLS[pollKey(s)] || {}, n = A.map((x, i) => +c[i] || 0), tot = n.reduce((a, b) => a + b, 0), max = Math.max(1, ...n), show = !o.hide && pollShown(s);
   return `<div class="pq">${E(pollQ(s, o.lang) || "Your question")}</div><div class="pans">${A.map((x, i) => `<div class="pa${o.mine === i ? " mine" : ""}"><div class="pl">${E(x)}</div><div class="pb"><i style="width:${show ? n[i] / max * 100 : 0}%"></i></div><div class="pn">${show ? n[i] : ""}</div></div>`).join("") || '<div class="pa"><div class="pl">Add answers, one per line</div></div>'}</div>
     <div class="pf">${tot} vote${tot === 1 ? "" : "s"}${show ? "" : s.reveal === "next" && !o.hide ? " · the results come up next" : ""}${o.foot ? " · " + E(o.foot) : " · vote on your phone"}</div>` }
-function pollSlide(s, o){ return `<div class="slide pollsl" data-poll="${E(pollKey(s))}">${pollInner(s, o)}</div>` }
+function pollSlide(s, o){ return `<div class="slide pollsl" data-n="${pollAns(s).length}" data-poll="${E(pollKey(s))}">${pollInner(s, o)}</div>` }
 // redraw every poll on the page (the counts or the reveal changed)
 function pollsDraw(d){ document.querySelectorAll(".slide.pollsl[data-poll]").forEach(el => { if (el.closest(".aupoll, #aus")) return; const s = (d.slides || []).find(x => x.type === "poll" && pollKey(x) === el.dataset.poll); if (s) el.innerHTML = pollInner(s) }) }
 // get the totals now, then follow them live (the relay sends "event: poll" on the same stream as Next)
