@@ -31,8 +31,8 @@ export class Room {
     if (kind === "json") return new Response(this.last ? this.last + "\n" : "", {headers: {...CORS, "Content-Type": "application/x-ndjson", "Cache-Control": "no-store"}});
     if (kind === "sse") {
       const {readable, writable} = new TransformStream(), w = writable.getWriter(); this.subs.add(w);
-      w.write(new TextEncoder().encode(": hello\n\n")).catch(() => this.subs.delete(w));
-      if (!this.beat) this.beat = setInterval(() => { if (!this.subs.size) { clearInterval(this.beat); this.beat = null; return } this.send(": keepalive\n\n") }, 25000);
+      w.write(new TextEncoder().encode(": hello\n\nevent: ping\ndata: 1\n\n")).catch(() => this.subs.delete(w));
+      if (!this.beat) this.beat = setInterval(() => { if (!this.subs.size) { clearInterval(this.beat); this.beat = null; return } this.send("event: ping\ndata: 1\n\n") }, 25000);      // a heartbeat phones can see, so they know they are still connected
       return new Response(readable, {headers: {...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-store"}});
     }
     return new Response("Not found", {status: 404, headers: CORS});
