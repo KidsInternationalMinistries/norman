@@ -67,7 +67,16 @@
    "type": "verse",
    "ref": "John 15:?",
    "text": " **__No branch can bear fruit by itself__**; it must remain in the vine...   “I am the vine; you are the branches. If you remain in me and I in you, you will bear much fruit; **apart from me you can do nothing**.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Juan 15:4-5",
+     "text": "**__Hindi mamumunga ang sangang hindi nananatili sa puno__**...   \"Ako ang puno ng ubas at kayo ang mga sanga. Ang nananatili sa akin, at ako sa kanya, ay mamumunga nang sagana, sapagkat **kayo'y hindi makagagawa ng anuman kung hiwalay kayo sa akin**.\""
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"John 15:?\",\"text\":\"**__No branch can bear fruit by itself__**; it must remain in the vine...   “I am the vine; you are the branches. If you remain in me and I in you, you will bear much fruit; **apart from me you can do nothing**.\"}"
+   }
   },
   {
    "name": "They are fruit",
