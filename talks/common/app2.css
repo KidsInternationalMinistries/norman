@@ -385,7 +385,7 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .prmx p{margin:0 0 12px}
 body.prlock{overflow:hidden}
 /* the QR code on a poll slide: a quarter of the height, square, tight in the top right corner; the question wraps around it */
-.slide.pollsl .pqr{position:absolute;top:0;right:0;height:25%;aspect-ratio:1;background:#fff;z-index:1;line-height:0}
+.slide.pollsl .pqr{position:absolute;top:1.6cqw;right:2cqw;border-radius:.4cqw;overflow:hidden;height:25%;aspect-ratio:1;background:#fff;z-index:1;line-height:0}
 .slide.pollsl .pqr svg{width:100%;height:100%;display:block}
-.slide.pollsl .pqs{float:right;width:11.6cqw;height:11.4cqw;margin-left:.15em}
+.slide.pollsl .pqs{float:right;width:13cqw;height:12.8cqw;margin-left:.15em}
 .aus .slide.pollsl .pqr,.fullpdf .slide.pollsl .pqr,.aus .slide.pollsl .pqs,.fullpdf .slide.pollsl .pqs{display:none}
