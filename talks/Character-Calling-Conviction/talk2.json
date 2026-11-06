@@ -661,7 +661,16 @@
    "type": "verse",
    "ref": "John 1:14",
    "text": "The Word became flesh and made his dwelling among us. We have seen his glory, the glory of the one and only Son, who came from the Father, full of grace and truth.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Juan 1:14",
+     "text": "Nagkatawang-tao ang Salita at nanirahan sa piling namin. Nakita namin ang kanyang kaluwalhatian, ang kaluwalhatiang ibinigay sa kanya bilang bugtong na Anak ng Ama. Siya ay puspos ng kagandahang-loob at ng katotohanan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"John 1:14\",\"text\":\"The Word became flesh and made his dwelling among us. We have seen his glory, the glory of the one and only Son, who came from the Father, full of grace and truth.\"}"
+   }
   },
   {
    "name": "The whole journey",
@@ -695,7 +704,16 @@
    "slideTitle": "Character, calling, conviction.",
    "slide": "We don't make them. They are made in the Mess.",
    "layout": "left",
-   "image": "slides/bg/p5f.jpg"
+   "image": "slides/bg/p5f.jpg",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Pagkatao, tawag, paninindigan.",
+     "slide": "Hindi natin sila ginagawa. Nahuhubog sila sa kaguluhan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"Character, calling, conviction.\",\"slide\":\"We don't make them. They are made in the Mess.\"}"
+   }
   },
   {
    "name": "Philippians 2:13",
