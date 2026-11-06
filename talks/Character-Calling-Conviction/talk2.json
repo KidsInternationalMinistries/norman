@@ -314,7 +314,16 @@
    "slideTitle": "His power isn't about how we change ourselves.",
    "slide": "It's about what He makes us into.",
    "layout": "left",
-   "image": "slides/bg/p3a.jpg"
+   "image": "slides/bg/p3a.jpg",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Ang kapangyarihan Niya ay hindi tungkol sa kung paano natin binabago ang sarili natin.",
+     "slide": "Tungkol ito sa kung ano ang ginagawa Niya sa atin."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"His power isn't about how we change ourselves.\",\"slide\":\"It's about what He makes us into.\"}"
+   }
   },
   {
    "name": "Jeremiah 18:4",
