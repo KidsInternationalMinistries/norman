@@ -437,12 +437,6 @@
    "image": "slides/bg/p6e.jpg"
   },
   {
-   "name": "QR code",
-   "type": "qr",
-   "slideTitle": "Follow along on your phone",
-   "slide": "Scan for the slides and notes in your language"
-  },
-  {
    "name": "2 Corinthians 4:7, Second Corinthians",
    "type": "verse",
    "ref": "2 Corinthians 4:7",
