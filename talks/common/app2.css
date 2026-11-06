@@ -348,3 +348,11 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .pvb.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .pvb:disabled:not(.on){opacity:.5}
 .pcnt{font-size:13px;color:var(--muted);white-space:nowrap}
+.fullpdf .fsec{background:#E9B949;color:#1c1a12;font:800 24px/1.2 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em;padding:12px 16px;border-radius:6px}
+.fullpdf .fpt2{font-size:19px;color:#111;margin:6px 4px 2px}
+.fullpdf .fpt2 b{color:#8a6d1f;margin-right:4px}
+.fullpdf .fblk{padding:2px 4px}
+.fullpdf .fth{width:33.3%}
+.fullpdf .fth .slide{border-radius:6px}
+.fullpdf .fblk .aun{padding:8px 2px 0}
+.fullpdf .fsep{border:0;border-top:1px solid #ddd;margin:8px 0 0}

@@ -1104,30 +1104,48 @@ async function talkPDF(d, S, prog, langs){ await loadLib("https://cdnjs.cloudfla
       if (top) await place(top, 4); y += 16 }
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 // The PDF for the speaker or the team: one page part per slide, then the audience notes in English, a line, each translation, a line, and the words of the talk said while that slide is up.
-// langs: the audience's copy (just the reader's language, "" = English, and the talk in English)
-async function talkPDFFull(d, prog, langs){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-  const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [], items = [];
-  for (let i = 0; i < S.length; i++) if (i === 0 || SH[i] !== SH[i - 1]) items.push(i);
+// The PDF of the talk (phones' ⤓ PDF and Edit's "PDF with the talk"), laid out by the outline:
+// each section starts a new page with a full-width colored band; each point (1.a, 1.b…) has its title, then each of its slides
+// small (a third of the width, on the left) with the audience notes under it: English, a line, each translation, a line.
+// The whole talk (English) comes at the end, starting on its own page.
+async function talkPDFFull(d, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [];
+  const up = (n, lv) => { let p = n; while (p && p.lvl > lv) p = p.parent; return p && p.lvl === lv ? p : null };
+  // blocks: a new one when the section, the point or the slide changes
+  const B = []; for (let i = 0; i < S.length; i++) { const n = S[i].node, sec = up(n, 1), pt = up(n, 2), last = B[B.length - 1];
+    if (!last || last.sec !== sec || last.pt !== pt || last.sl !== SH[i]) B.push({sec, pt, sl: SH[i], a: i, b: i + 1}); else last.b = i + 1 }
+  const notes = (blk, lg) => { const seen = new Set(), out = []; for (let k = blk.a; k < blk.b; k++) { let h = auNoteAt(d, S, k, lg); if (lg && h === auNoteAt(d, S, k, "")) h = ""; if (noteText(h) && !seen.has(h)) { seen.add(h); out.push(cleanHTML(h)) } } return out.join("") };
+  const thumb = sl => sl && sl.type === "video" ? `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(sl.name || "Video")}</div></div>` : slideHTML(sl, d);
   const box = document.createElement("div"); box.className = "aupdf fullpdf"; document.body.appendChild(box);
   try { const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4", compress: true}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28; let y = M;
+    const newPage = () => { if (y > M) { pdf.addPage(); y = M } };
     const place = async (html, gap) => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
-      const c = await window.html2canvas(box, {scale: 1.5, backgroundColor: "#ffffff", useCORS: true}), w = W - 2 * M, h = c.height * w / c.width, img = c.toDataURL("image/jpeg", 0.72);
+      const c = await window.html2canvas(box, {scale: 1.5, backgroundColor: "#ffffff", useCORS: true}), w = W - 2 * M, h = c.height * w / c.width, img = c.toDataURL("image/jpeg", 0.75);
       if (y + h > H - M && y > M) { pdf.addPage(); y = M }
       pdf.addImage(img, "JPEG", M, y, w, h); let off = H - M - y;
       if (off >= h) { y += h + (gap || 0); return }
       let start = off; while (start < h) { pdf.addPage(); pdf.addImage(img, "JPEG", M, M - start, w, h); y = M + (h - start); start += H - 2 * M } y += gap || 0 };
-    await place(`<h1>${E(d.title)}</h1><p>${langs ? "The slides, the notes and the whole talk" : `Slides, audience notes${L.length ? " (English, " + L.map(E).join(", ") + ")" : ""} and the words of the talk`}</p>`, 10);
-    for (let n = 0; n < items.length; n++) { const i = items[n], end = n + 1 < items.length ? items[n + 1] : S.length, sl = SH[i]; if (prog) prog(n + 1, items.length);
-      const notes = lg => { const seen = new Set(), out = []; for (let k = i; k < end; k++) { let h = auNoteAt(d, S, k, lg); if (lg && !langs && h === auNoteAt(d, S, k, "")) h = ""; if (noteText(h) && !seen.has(h)) { seen.add(h); out.push(cleanHTML(h)) } } return out.join("") };
-      const parts = [], en = langs ? "" : notes(""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
-      if (langs) langs.forEach(lg => { const sw = lg ? slideTrHTML(sl, lg) : "", h = notes(lg); if (sw || h) parts.push(`<div class="aulg">Notes</div>${sw}${h}`) });
-      else L.forEach(lg => { const sw = slideTrHTML(sl, lg), h = notes(lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
-      const words = []; for (let k = i; k < end; k++) if (S[k].a != null) words.push(P.t.slice(S[k].a, S[k].b).replace(TAG, "").trim());
-      const talk = words.filter(Boolean).join("\n\n"); if (talk) parts.push(`<div class="aulg">${langs && langs[0] ? "The talk (English)" : "The talk"}</div><div class="fpt">${E(talk).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>").replace(/^/, "<p>") + "</p>"}</div>`);
-      const st = S[i], where = st && st.node ? `${E(st.node.full)} ${E(st.node.text)}` : "Start";
-      await place(`<div class="fph">${where}${sl ? ` · ${E(sl.name)}` : ""}</div><div class="aus">${sl && sl.type === "video" ? `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(sl.name || "Video")}</div></div>` : slideHTML(sl, d)}</div>`, 4);
-      for (let q = 0; q < parts.length; q++) await place(`<div class="aun">${q ? '<hr class="auhr">' : ""}${parts[q]}</div>`, 2);
-      y += 18 }
+    await place(`<h1>${E(d.title)}</h1><p>The outline, the slides and the notes${L.length ? " (English, " + L.map(E).join(", ") + ")" : ""}, then the whole talk at the end</p>`, 12);
+    const band = n => `<div class="fsec">${E(n.lab || n.full || "")} ${E(n.text)}</div>`, ptH = n => `<div class="fpt2"><b>${E(n.full)}</b> ${E(n.text)}</div>`;
+    let sec0 = null, pt0 = null, first = true;
+    for (let q = 0; q < B.length; q++) { const blk = B[q]; if (prog) prog(q + 1, B.length + 1);
+      if (blk.sec !== sec0) { sec0 = blk.sec; pt0 = null; if (blk.sec) { if (!first) newPage(); await place(band(blk.sec), 8) } }
+      first = false;
+      let head = ""; if (blk.pt && blk.pt !== pt0) { pt0 = blk.pt; head = ptH(blk.pt) }      // the point's title goes with its first slide, so it never sits alone at the bottom of a page
+      const parts = [], en = notes(blk, ""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
+      L.forEach(lg => { const sw = slideTrHTML(blk.sl, lg), h = notes(blk, lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
+      if (!blk.sl && !parts.length) { if (head) await place(head, 4); continue }
+      await place(head + `<div class="fblk">${blk.sl ? `<div class="fth">${thumb(blk.sl)}</div>` : ""}${parts.length ? `<div class="aun">${parts.join('<hr class="auhr">')}</div>` : ""}</div><hr class="fsep">`, 4) }
+    // the whole talk, on its own pages
+    if (prog) prog(B.length + 1, B.length + 1);
+    newPage(); await place(`<h1>The talk</h1>`, 6);
+    let sec1 = null, pt1 = null, buf = "";
+    const flush = async () => { if (buf.trim()) await place(`<div class="fpt">${buf}</div>`, 4); buf = "" };
+    for (let k = 0; k < S.length; k++) { const n = S[k].node, sec = up(n, 1), pt = up(n, 2);
+      if (sec !== sec1) { await flush(); sec1 = sec; pt1 = null; if (sec) await place(band(sec), 6) }
+      if (pt && pt !== pt1) { await flush(); pt1 = pt; await place(ptH(pt), 2) }
+      if (S[k].a != null) { const t = P.t.slice(S[k].a, S[k].b).replace(TAG, "").trim(); if (t) buf += "<p>" + E(t).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>") + "</p>" } }
+    await flush();
     return pdf.output("blob") } finally { box.remove() } }
 // slides2.html?play: the narrated version. The slides show while the saved AI voice reads, and the voice moves the slides on.
 async function play(){
@@ -1203,7 +1221,7 @@ async function audience(){
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
   // ⤓ PDF: made right here on the phone, in the language picked, so nothing has to be uploaded beforehand.
   $("#audl").onclick = async e => { e.preventDefault(); const a = $("#audl"); if (a.dataset.busy || !pdfOK()) return; a.dataset.busy = 1; const t0 = a.textContent;
-    try { const pb = await talkPDFFull(d, (n, m) => { a.textContent = `Making ${n}/${m}…`; const g = $("#audlbig"); if (g) g.textContent = `Making the notes… ${n} of ${m}` }, [lang]); a.textContent = "Saving…";
+    try { const pb = await talkPDFFull(d, (n, m) => { a.textContent = `Making ${n}/${m}…`; const g = $("#audlbig"); if (g) g.textContent = `Making the notes… ${n} of ${m}` }); a.textContent = "Saving…";
       const u = URL.createObjectURL(pb), x = document.createElement("a"); x.href = u;
       x.download = (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + (lang ? "-" + lang : "") + ".pdf"; document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) }
     catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0; const g = $("#audlbig"); if (g) g.textContent = "⤓ Download the notes" } };
