@@ -437,7 +437,16 @@
    "slideTitle": "Character, calling, conviction.",
    "slide": "We don't make them. His power makes them in our weakness.",
    "layout": "left",
-   "image": "slides/bg/p3g.jpg"
+   "image": "slides/bg/p3g.jpg",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Pagkatao, tawag, paninindigan.",
+     "slide": "Hindi natin sila ginagawa. Kapangyarihan Niya ang gumagawa ng mga ito sa ating kahinaan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"Character, calling, conviction.\",\"slide\":\"We don't make them. His power makes them in our weakness.\"}"
+   }
   },
   {
    "name": "2 Corinthians 4:7",
