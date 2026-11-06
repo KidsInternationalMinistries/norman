@@ -258,14 +258,32 @@
    "type": "verse",
    "ref": "Acts 5:40–41",
    "text": "They called the apostles in and had them flogged. Then they ordered them not to speak in the name of Jesus, and let them go. The apostles left the Sanhedrin, rejoicing because they had been counted worthy of suffering disgrace for the Name.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Gawa 5:40–41",
+     "text": "At sila’y sumang-ayon sa kaniya. Kaya’t ipinasok nila ang mga apostol, ipinahagupit sa kanila, at pinagbawalan silang magsalita sa pangalan ni Jesus; pagkatapos, pinalaya sila. Umalis ang mga apostol mula sa Sanedrin na galak na galak sapagkat minarapat ng Diyos na sila’y hiyain alang-alang sa pangalan ni Jesus."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Acts 5:40–41\",\"text\":\"They called the apostles in and had them flogged. Then they ordered them not to speak in the name of Jesus, and let them go. The apostles left the Sanhedrin, rejoicing because they had been counted worthy of suffering disgrace for the Name.\"}"
+   }
   },
   {
    "name": "Acts 9:15–16",
    "type": "verse",
    "ref": "Acts 9:15–16",
    "text": "But the Lord said to Ananias, \"Go! This man is my chosen instrument to proclaim my name to the Gentiles and their kings and to the people of Israel. I will show him how much he must suffer for my name.\"",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Gawa 9:15–16",
+     "text": "Datapuwa't sinabi sa kaniya ng Panginoon, Yumaon ka: sapagka't siya'y sisidlang hirang ko, upang magdala ng aking pangalan sa harapan ng mga Gentil at mga hari, at ng mga anak ng Israel: Sapagka't ako'y magpapakita sa kaniya kung gaano karaming mga bagay na kinakailangang kaniyang tiisin dahil sa aking pangalan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Acts 9:15–16\",\"text\":\"But the Lord said to Ananias, \\\"Go! This man is my chosen instrument to proclaim my name to the Gentiles and their kings and to the people of Israel. I will show him how much he must suffer for my name.\\\"\"}"
+   }
   },
   {
    "name": "Refrain",
