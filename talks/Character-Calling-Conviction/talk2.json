@@ -695,7 +695,16 @@
    "type": "verse",
    "ref": "Philippians 1:6",
    "text": "being confident of this, that he who began a good work in you will carry it on to completion until the day of Christ Jesus.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Filipos 1:6",
+     "text": "Tiyak ko naman na ang Diyos na nagpasimula ng mabuting gawain sa inyo ay magpapatuloy hanggang sa ito'y lubusang maisakatuparan sa Araw ni Cristo Jesus."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Philippians 1:6\",\"text\":\"being confident of this, that he who began a good work in you will carry it on to completion until the day of Christ Jesus.\"}"
+   }
   },
   {
    "name": "Refrain (5.f)",
@@ -734,7 +743,15 @@
    "imagePrompt": "Edit the provided image by pulling the camera farther back into a wide 16:9 view of the nativity stable. Keep the baby’s tiny hand gently gripping the woman’s finger as the emotional focal point on the right side, softly lit by warm, golden lantern and lamplight. Reveal more of the rough, messy stable: uneven wooden beams, rough stone walls, scattered straw, a simple wooden feeding trough, a worn blanket, buckets and tools, with a cow and a donkey in soft focus behind them. Let the right side feel rich and detailed, yet humble and poor. Make the left 45% of the frame noticeably darker, calmer and more open, with only subtle shadows, straw and wall texture, so white and gold slide text will read clearly. Overall mood: reverent, hopeful, beauty and power shining quietly in the middle of the mess.",
    "sbX": 5,
    "sbY": 20.7,
-   "sbW": 56
+   "sbW": 56,
+   "tr": {
+    "Tagalog": {
+     "slide": "Sa gulo nananahan ang kapangyarihan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"The mess is where the power lives.\"}"
+   }
   },
   {
    "name": "1 Corinthians 1:18, 25",
