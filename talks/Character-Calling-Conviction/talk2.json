@@ -729,7 +729,16 @@
    "type": "verse",
    "ref": "Philippians 2:13",
    "text": "for it is God who works in you to will and to act in order to fulfill his good purpose.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Filipos 2:13",
+     "text": "Sapagka't Dios ang gumagawa sa inyo maging sa pagnanasa at sa paggawa, ayon sa kaniyang mabuting kalooban."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Philippians 2:13\",\"text\":\"for it is God who works in you to will and to act in order to fulfill his good purpose.\"}"
+   }
   },
   {
    "name": "Where the power lives",
@@ -767,7 +776,16 @@
    "slideTitle": "There's a thin line between faith and insanity.",
    "slide": "Walk the line.",
    "layout": "left",
-   "image": "slides/bg/p6c.jpg"
+   "image": "slides/bg/p6c.jpg",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "May manipis na guhit sa pagitan ng pananampalataya at kabaliwan.",
+     "slide": "Maglakad sa guhit."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"There's a thin line between faith and insanity.\",\"slide\":\"Walk the line.\"}"
+   }
   },
   {
    "name": "Ephesians 2:10",
