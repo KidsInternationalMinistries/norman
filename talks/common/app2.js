@@ -39,7 +39,7 @@ function parse(d){ const t = d.text || "", toks = [], nodes = [], cnt = [0, 0, 0
   toks.forEach((x, i) => { if (x.k !== "cue" || x.close) return; for (let q = i + 1; q < toks.length; q++) { const y = toks[q]; if (y.k === "cue" && y.cue === x.cue) { if (y.close && y.pairOf == null) { x.pair = q; y.pairOf = i } break } } });
   nodes.forEach((n, i) => { n.stop = i + 1 < nodes.length ? nodes[i + 1].at : t.length;      // its own words end at the next tag of any level
     let k = i + 1; while (k < nodes.length && nodes[k].lvl > n.lvl) k++; n.last = k < nodes.length ? nodes[k].at : t.length });   // its whole branch ends at the next one at its level or higher
-  return {toks, nodes, t, times: d.times || {}} }
+  return {toks, nodes, t, times: d.times || {}, wpm: wpmOf(d)} }
 // The Next steps: one per stretch of words between tags, each with the slide on screen (see the rule at the top).
 // A step: {node, a, b (the words, from a to b in the text; null for a slide with no words), pos, slide, pre, nxt (the tags around it, as indexes in P.toks)}.
 function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = null, last = null, pos = 0, pre = -1;
@@ -103,16 +103,18 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
 // The outline: every outline tag, indented by level; cur = the node of the step you're on.
 const nil = (P, n) => !!n && !P.t.slice(n.end, n.last).replace(TAG, " ").trim() && !n.slides.some(x => x.slide && !x.slide.stop);
 // Time keys and planned seconds: a point's practice time (d.times), else its words at 140 a minute; a section adds up its points.
+const wpmOf = d => Math.max(60, Math.min(300, +d.wpm || 140));
 const tkey = n => n.id || n.lvl + "|" + n.text;
 const mmss = x => { x = Math.max(0, Math.round(x)); return x < 60 ? x + "s" : Math.floor(x / 60) + ":" + String(x % 60).padStart(2, "0") };
 const wordsIn = (P, a, b) => P.t.slice(a, b).replace(TAG, " ").split(/\s+/).filter(Boolean).length;
-function planSecs(P, n){ if (n.lvl >= 2) { const t = P.times[tkey(n)]; if (t != null && +t >= 5 && n.lvl === 2) return {s: +t, pr: true}; const w = wordsIn(P, n.end, n.last); return {s: w ? Math.max(10, Math.round(w / 140 * 6) * 10) : 0, pr: false} }
+function planSecs(P, n){ if (n.lvl >= 2) { const t = P.times[tkey(n)]; if (t != null && +t >= 5 && n.lvl === 2) return {s: +t, pr: true}; const w = wordsIn(P, n.end, n.last); return {s: w ? Math.max(10, Math.round(w / P.wpm * 6) * 10) : 0, pr: false} }
   const kids = P.nodes.filter(x => x.parent === n && x.lvl === 2); let s = 0, pr = false, a = n.end;
-  for (const c of kids) { s += wordsIn(P, a, c.at) / 140 * 60; const q = planSecs(P, c); s += q.s; pr = pr || q.pr; a = c.last } s += wordsIn(P, a, n.last) / 140 * 60; return {s: s ? Math.max(10, Math.round(s / 10) * 10) : 0, pr} }
+  for (const c of kids) { s += wordsIn(P, a, c.at) / P.wpm * 60; const q = planSecs(P, c); s += q.s; pr = pr || q.pr; a = c.last } s += wordsIn(P, a, n.last) / P.wpm * 60; return {s: s ? Math.max(10, Math.round(s / 10) * 10) : 0, pr} }
 function treeHTML(P, S, k, big, pick){ const cur = pick || (S[k] && S[k].node); let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
     const q = n.lvl <= 2 ? planSecs(P, n) : {s: 0}, w = q.s, tm = w ? mmss(w) : "";
-    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}${nil(P, n) ? " nil" : ""}${q.pr ? " prc" : ""}" data-n="${n.j}" title="${w ? (q.pr ? "Practiced: " + tm : "About " + tm + " at 140 words a minute") : nil(P, n) ? "No words here yet" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
+    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}${nil(P, n) ? " nil" : ""}${q.pr ? " prc" : ""}" data-n="${n.j}" title="${w ? (q.pr ? "Practiced: " + tm : "About " + tm + " at " + P.wpm + " words a minute") : nil(P, n) ? "No words here yet" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}</button>` }
+  if (h && !big) { const top = P.nodes.filter(n => n.lvl === 1), tot = (top.length ? top : P.nodes.filter(n => n.lvl === 2)).reduce((a, n) => a + planSecs(P, n).s, 0); if (tot) h += `<div class="ttot"><span>Total (estimated)</span><span>${mmss(tot)}</span></div>` }
   return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a section, point or sub point, or use ✨ Outline.</p>` }
 // The text with every tag drawn: nodes as numbered chips (a section as a header with its words), slides as named chips, cues as small hints.
 // inEdit: chips are editable tags. S: wrap each stretch of words in a span (Stage). blocks: wrap each node's part in an indented block.
@@ -371,7 +373,7 @@ async function edit(){
   function nodeEdit(cur, done, canDel){ const dl = $("#ndlg");
     dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Outline</b></div><div class="row">${[1, 2, 3].concat(cur.lvl === 4 ? [4] : []).map(l => `<label class="chk"><input type="radio" name="nl" value="${l}"${l === cur.lvl ? " checked" : ""}> ${LV[l]}</label>`).join("")}</div>
       <label>Words (what you glance at while you speak)<input id="nx" autocomplete="off" value="${E(cur.text)}"></label>
-      ${cur.node ? `<div class="row ai2row"><span class="note">✨ For this ${E(LV[cur.node.lvl].toLowerCase())} and what's under it (about ${Math.max(1, Math.round(words(d.text.slice(cur.node.end, cur.node.last)) / 140 * 2) / 2)} min):</span><button type="button" class="btn small aib" data-nai="flow">✨ Grammar and flow</button><button type="button" class="btn small aib" data-nai="tight">✨ Tighten</button><button type="button" class="btn small aib" data-nai="slide">✨ Suggest a slide</button><button type="button" class="btn small aib" data-nai="cues">✨ Reading cues</button></div>` : ""}
+      ${cur.node ? `<div class="row ai2row"><span class="note">✨ For this ${E(LV[cur.node.lvl].toLowerCase())} and what's under it (about ${Math.max(1, Math.round(words(d.text.slice(cur.node.end, cur.node.last)) / wpmOf(d) * 2) / 2)} min):</span><button type="button" class="btn small aib" data-nai="flow">✨ Grammar and flow</button><button type="button" class="btn small aib" data-nai="tight">✨ Tighten</button><button type="button" class="btn small aib" data-nai="slide">✨ Suggest a slide</button><button type="button" class="btn small aib" data-nai="cues">✨ Reading cues</button></div>` : ""}
       <div class="row"><span style="flex:1"></span>${canDel ? '<button class="btn small danger" type="button" id="ndel">Remove (keeps the text)</button>' : ""}<button class="btn small" type="button" id="ncan">Cancel</button><button class="btn small pri" type="submit">Save</button></div></form>`;
     dl.querySelectorAll("[data-nai]").forEach(b => b.onclick = () => { dl.close(); nodeAI(cur.node, b.dataset.nai) });
     $("#ncan").onclick = () => dl.close(); if (canDel) $("#ndel").onclick = () => { dl.close(); done(null) };
@@ -609,7 +611,7 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen(); $("#narr").onclick = () => narrate();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
-    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}</div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
+    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}<label>Speaking speed (words a minute)<input data-k="wpm" type="number" min="60" max="300" step="5" value="${E(d.wpm || 140)}"></label></div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
     $("#aikeys").onclick = () => { try { K().settings() } catch (e) { aiFail(e) } };
     dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
@@ -693,8 +695,8 @@ Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.s
         else { const M = seg.split("\n"); for (const c of lines) if (M[c.i] === c.before) M[c.i] = c.after; let ns = M.join("\n"); if (mode === "tighten") ns = ns.replace(/\n{3,}/g, "\n\n"); d.text = now.slice(0, at) + ns + now.slice(at + seg.length) } }
       others.forEach(c => c.apply()); changed(s); drawText() }) }
   // ---- on an outline tag ----
-  async function tighten(n){ const now = words(d.text.slice(n.end, n.last)), m = prompt(`${n.lab} ${n.text} is about ${now} words, roughly ${Math.max(1, Math.round(now / 140 * 2) / 2)} minutes. How many minutes should it be?`, String(Math.max(.5, Math.round(now / 140 * 0.7 * 2) / 2)));
-    if (!m || !(+m > 0)) return; await lineEdit(n.end, n.last, "tighten", {minutes: +m, target: Math.round(+m * 140), now}) }
+  async function tighten(n){ const now = words(d.text.slice(n.end, n.last)), m = prompt(`${n.lab} ${n.text} is about ${now} words, roughly ${Math.max(1, Math.round(now / wpmOf(d) * 2) / 2)} minutes. How many minutes should it be?`, String(Math.max(.5, Math.round(now / 140 * 0.7 * 2) / 2)));
+    if (!m || !(+m > 0)) return; await lineEdit(n.end, n.last, "tighten", {minutes: +m, target: Math.round(+m * wpmOf(d)), now}) }
   async function slideFor(n){ const seg = d.text.slice(n.end, n.last); if (words(seg) < 20) { K().toast("Add some text to this part first."); return } const stop = busy("Thinking of a slide…"); let j;
     try { j = await K().chat(`You design one slide for a part of a talk by a Christian ministry leader. Slides show a few strong words, never the script. Pick the best kind: "image" (a picture with a short title and optional subtitle), "quote" (a striking line someone said), "bullets" (2-4 very short lines), or "verse" (only if a Bible verse is read there).
 Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse", "eyebrow": "", "slideTitle": "", "slide": "subtitle", "bullets": "lines separated by \\n", "quote": "", "by": "", "ref": "verse reference", "start": "the first 6-10 words of the sentence where the slide should come up, copied exactly from the text"}`,
@@ -873,7 +875,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     m.onmousedown = e => e.preventDefault();
     m.onclick = e => { const x = e.target.closest("button"); if (!x) return; const R = selRange(); m.remove(); btn.remove(); removeEventListener("mousedown", off); if (!R) return; const [a, b] = R;
       if (x.dataset.s === "listen") { listen(a); return }
-      if (x.dataset.s === "tighten") { const now = words(d.text.slice(a, b)), mm = prompt(`The selection is about ${now} words, roughly ${Math.max(.5, Math.round(now / 140 * 2) / 2)} minutes. How many minutes should it be?`, String(Math.max(.5, Math.round(now / 140 * .7 * 2) / 2))); if (!mm || !(+mm > 0)) return; lineEdit(a, b, "tighten", {minutes: +mm, target: Math.round(+mm * 140), now}).catch(aiFail); return }
+      if (x.dataset.s === "tighten") { const now = words(d.text.slice(a, b)), mm = prompt(`The selection is about ${now} words, roughly ${Math.max(.5, Math.round(now / wpmOf(d) * 2) / 2)} minutes. How many minutes should it be?`, String(Math.max(.5, Math.round(now / 140 * .7 * 2) / 2))); if (!mm || !(+mm > 0)) return; lineEdit(a, b, "tighten", {minutes: +mm, target: Math.round(+mm * 140), now}).catch(aiFail); return }
       if (x.dataset.s) { lineEdit(a, b, x.dataset.s).catch(aiFail); return }
       const sn = snapshot(), t = d.text;
       if (x.dataset.p) d.text = t.slice(0, a) + "[Pause] " + t.slice(a);
@@ -913,7 +915,7 @@ async function talkPDF(d, S, prog){ await loadLib("https://cdnjs.cloudflare.com/
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 // slides2.html?play: the narrated version. The slides show while the saved AI voice reads, and the voice moves the slides on.
 async function play(){
-  document.body.innerHTML = `<div id="s"></div><div class="playcap" id="pcap"></div><div id="ui"><button id="pb" type="button" title="Back">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next">⏭</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
+  document.body.innerHTML = `<div id="s"></div><div class="playcap" id="pcap"></div><div id="ui"><button id="pb" type="button" title="Back">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next">⏭</button><button id="psp" type="button" title="Speed">1×</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#pmsg").textContent = "Couldn't load this talk."; return }
   document.title = d.title + " · narrated"; const lib = n => n ? (d.slides || []).find(x => x.name === n) || null : null;
   let N = null; for (const u of ["narration2.json", RAW + PATH + "/narration2.json"]) { try { const r = await fetch(u + "?t=" + Date.now(), {cache: "no-store"}); if (r.ok) { N = await r.json(); break } } catch (e) {} }
@@ -922,9 +924,12 @@ async function play(){
   T.preload(L.map(x => lib(x.slide)).filter(Boolean), d);
   $("#pgo").disabled = false; $("#pgo").textContent = "▶ Play the talk"; $("#pmsg").textContent = "Narrated with an AI voice";
   const au = new Audio(), st = $("#st"); let run = 0, i = 0, paused = false, wake = null;
+  const SPD = [.75, 1, 1.25, 1.5, 1.75, 2]; let rate = 1; try { rate = +localStorage.getItem("play-rate") || 1 } catch (e) {} if (!SPD.includes(rate)) rate = 1;
+  const setRate = r => { rate = r; au.defaultPlaybackRate = r; au.playbackRate = r; au.preservesPitch = true; $("#psp").textContent = String(r).replace(/^0/, "") + "×"; try { localStorage.setItem("play-rate", r) } catch (e) {} }; setRate(rate);
+  $("#psp").onclick = () => setRate(SPD[(SPD.indexOf(rate) + 1) % SPD.length]);
   const pre = f => { const x = new Audio(); x.preload = "auto"; x.src = f };
-  const wait = (ms, r) => new Promise(ok => { let left = ms; const t = setInterval(() => { if (r !== run) { clearInterval(t); ok() } else if (!paused && (left -= 100) <= 0) { clearInterval(t); ok() } }, 100) });
-  const say = f => new Promise(ok => { let alt = false; wake = ok; au.onended = () => ok(); au.onerror = () => { if (alt) return ok(); alt = true; au.src = RAW + PATH + "/" + f; if (!paused) au.play().catch(() => {}) }; au.src = f; if (!paused) au.play().catch(() => {}) });
+  const wait = (ms, r) => new Promise(ok => { let left = ms; const t = setInterval(() => { if (r !== run) { clearInterval(t); ok() } else if (!paused && (left -= 100 * rate) <= 0) { clearInterval(t); ok() } }, 100) });
+  const say = f => new Promise(ok => { let alt = false; wake = ok; au.onended = () => ok(); au.onerror = () => { if (alt) return ok(); alt = true; au.src = RAW + PATH + "/" + f; au.playbackRate = rate; if (!paused) au.play().catch(() => {}) }; au.src = f; au.playbackRate = rate; if (!paused) au.play().catch(() => {}) });
   async function step(k){ const r = ++run; au.pause(); if (wake) { wake(); wake = null } if (k < 0) k = 0;
     if (k >= L.length) { setSlide($("#s"), `<div class="slide blank"><div class="txt">The end<br><button type="button" id="again" class="btn">▶ Play again</button></div></div>`); st.lastChild.textContent = "The end"; $("#pcap").textContent = ""; const g = $("#again"); if (g) g.onclick = () => step(0); return }
     i = k; const x = L[k]; setSlide($("#s"), slideHTML(lib(x.slide), d)); st.lastChild.textContent = x.label || "Narrated";

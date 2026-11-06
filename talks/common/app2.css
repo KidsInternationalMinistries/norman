@@ -263,3 +263,5 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .slide.vidph .vpi{font-size:9cqw;opacity:.8}
 .slide.vidph .vpt{font-size:4.5cqw;font-weight:700;padding:0 6%}
 .slide.vidph .vps{font-size:3cqw;opacity:.7}
+.ttot{display:flex;justify-content:space-between;margin:14px 0 6px;padding:8px 8px 0;border-top:1px solid var(--line,rgba(127,127,127,.3));font-size:13px;font-weight:800;color:var(--ink)}
+#ui #psp{min-width:3.2em}
