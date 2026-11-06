@@ -330,19 +330,18 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .audlend{text-align:center;margin:26px 0 10px}
 #audlbig{font-size:20px;font-weight:700;padding:16px 26px;border-radius:14px;border:0;background:var(--accent);color:#fff;cursor:pointer;width:100%;max-width:420px}
 .audlend p{font-size:14px;color:var(--muted);margin:8px 0 0}
-/* poll slide (📊): question, answers with bars that grow as votes come in; as big as the slide allows */
-.slide.pollsl{display:flex;flex-direction:column;justify-content:space-between;padding:4.5cqw 5cqw 3.5cqw;box-sizing:border-box;gap:2.5cqw;text-align:left}
-.slide.pollsl .pq{color:#E9B949;font:700 6cqw/1.12 Cambria,Georgia,"Times New Roman",serif;text-align:left}
-.slide.pollsl .pans{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;gap:1.4cqw}
-.slide.pollsl .pa{display:grid;grid-template-columns:minmax(0,40%) 1fr 7cqw;align-items:center;gap:2cqw}
-.slide.pollsl .pl{font:600 4.4cqw/1.1 Calibri,system-ui,sans-serif;color:#fff;text-align:left}
-.slide.pollsl .pb{height:5cqw;background:rgba(255,255,255,.12);border-radius:.8cqw;overflow:hidden}
-.slide.pollsl .pb i{display:block;height:100%;background:#E9B949;border-radius:.8cqw;transition:width .6s ease}
-.slide.pollsl .pn{font:700 4.4cqw/1 Calibri,system-ui,sans-serif;color:#fff;text-align:right}
+/* poll slide (📊): question, answers with bars that grow as votes come in. Everything is sized in em from --pz,
+   which pollFit() raises until the words fill the slide (so short polls get huge words, long ones still fit). */
+.slide.pollsl .pw{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:.9em;padding:3cqw 4cqw 2.4cqw;box-sizing:border-box;font-size:calc(var(--pz, 1) * 1cqw);text-align:left;overflow:hidden}
+.slide.pollsl .pq{color:#E9B949;font:700 7em/1.08 Cambria,Georgia,"Times New Roman",serif}
+.slide.pollsl .pans{display:grid;grid-template-columns:auto minmax(4em,1fr) auto;align-items:center;gap:.45em .5em;font-size:5em}
+.slide.pollsl .pa{display:contents}
+.slide.pollsl .pl{font:600 1em/1.08 Calibri,system-ui,sans-serif;color:#fff;max-width:13em}
+.slide.pollsl .pb{height:1.05em;background:rgba(255,255,255,.12);border-radius:.18em;overflow:hidden}
+.slide.pollsl .pb i{display:block;height:100%;background:#E9B949;border-radius:.18em;transition:width .6s ease}
+.slide.pollsl .pn{font:700 1em/1 Calibri,system-ui,sans-serif;color:#fff;text-align:right;min-width:1.4em}
 .slide.pollsl .pa.mine .pl{color:#E9B949}.slide.pollsl .pa.mine .pl::after{content:" ✓"}
-.slide.pollsl .pf{font:400 2.6cqw/1.2 Calibri,system-ui,sans-serif;color:rgba(255,255,255,.7);text-align:left}
-.slide.pollsl[data-n="6"] .pl,.slide.pollsl[data-n="6"] .pn{font-size:3.6cqw}.slide.pollsl[data-n="6"] .pb{height:4cqw}
-.slide.pollsl[data-n="2"] .pl,.slide.pollsl[data-n="2"] .pn,.slide.pollsl[data-n="3"] .pl,.slide.pollsl[data-n="3"] .pn{font-size:5cqw}.slide.pollsl[data-n="2"] .pb,.slide.pollsl[data-n="3"] .pb{height:6cqw}
+.slide.pollsl .pf{font:400 2.3em/1.2 Calibri,system-ui,sans-serif;color:rgba(255,255,255,.7)}
 .aupoll{margin:0 0 14px}
 .aupoll .pvq{font-weight:700;font-size:20px;margin:0 0 10px}
 .pvb{display:block;width:100%;text-align:left;font-size:18px;padding:14px 16px;margin:8px 0;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}

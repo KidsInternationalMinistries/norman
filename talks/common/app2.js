@@ -81,8 +81,15 @@ const pollAns = (s, lang, phone) => { const en = lines(s.bullets).slice(0, 6), t
 const pollQ = (s, lang, phone) => { const t = pTr(s, lang) || {}; return (phone && (t.phoneQ || s.phoneQ)) || t.slideTitle || s.slideTitle || "" };
 const pollShown = s => s.reveal !== "next" || REVEAL.has(pollKey(s));
 function pollInner(s, o){ o = o || {}; const A = pollAns(s, o.lang), c = POLLS[pollKey(s)] || {}, n = A.map((x, i) => +c[i] || 0), tot = n.reduce((a, b) => a + b, 0), max = Math.max(1, ...n), show = !o.hide && pollShown(s);
-  return `<div class="pq">${E(pollQ(s, o.lang) || "Your question")}</div><div class="pans">${A.map((x, i) => `<div class="pa${o.mine === i ? " mine" : ""}"><div class="pl">${E(x)}</div><div class="pb"><i style="width:${show ? n[i] / max * 100 : 0}%"></i></div><div class="pn">${show ? n[i] : ""}</div></div>`).join("") || '<div class="pa"><div class="pl">Add answers, one per line</div></div>'}</div>
-    <div class="pf">${tot} vote${tot === 1 ? "" : "s"}${show ? "" : s.reveal === "next" && !o.hide ? " · the results come up next" : ""}${o.foot ? " · " + E(o.foot) : " · vote on your phone"}</div>` }
+  return `<div class="pw"><div class="pq">${E(pollQ(s, o.lang) || "Your question")}</div><div class="pans">${A.map((x, i) => `<div class="pa${o.mine === i ? " mine" : ""}"><div class="pl">${E(x)}</div><div class="pb"><i style="width:${show ? n[i] / max * 100 : 0}%"></i></div><div class="pn">${show ? n[i] : ""}</div></div>`).join("") || '<div class="pa"><div class="pl">Add answers, one per line</div></div>'}</div>
+    <div class="pf">${tot} vote${tot === 1 ? "" : "s"}${show ? "" : s.reveal === "next" && !o.hide ? " · the results come up next" : ""}${o.foot ? " · " + E(o.foot) : " · vote on your phone"}</div></div>` }
+// Make a poll's words as big as the slide allows: try sizes (--pz) and keep the largest where nothing spills out.
+function pollFit(el){ const w = el.querySelector(".pw"); if (!w || !w.clientHeight) return; const fits = () => w.scrollHeight <= w.clientHeight + 1 && w.scrollWidth <= w.clientWidth + 1 && [...w.querySelectorAll(".pq, .pl")].every(x => x.scrollWidth <= x.clientWidth + 1);
+  let lo = .4, hi = 3; for (let n = 0; n < 9; n++) { const m = (lo + hi) / 2; w.style.setProperty("--pz", m); if (fits()) lo = m; else hi = m } w.style.setProperty("--pz", lo) }
+const pollRO = typeof ResizeObserver !== "undefined" ? new ResizeObserver(es => es.forEach(e => pollFit(e.target))) : null;
+const pollSeen = new WeakSet();
+const pollScan = () => document.querySelectorAll(".slide.pollsl").forEach(el => { if (!pollSeen.has(el)) { pollSeen.add(el); if (pollRO) pollRO.observe(el) } pollFit(el) });
+if (typeof MutationObserver !== "undefined") new MutationObserver(ms => { if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.matches(".slide.pollsl, .pw") || n.querySelector(".slide.pollsl"))))) pollScan() }).observe(document.documentElement, {childList: true, subtree: true});
 function pollSlide(s, o){ return `<div class="slide pollsl" data-n="${pollAns(s).length}" data-poll="${E(pollKey(s))}">${pollInner(s, o)}</div>` }
 // redraw every poll on the page (the counts or the reveal changed)
 function pollsDraw(d){ document.querySelectorAll(".slide.pollsl[data-poll]").forEach(el => { if (el.closest(".aupoll, #aus")) return; const s = (d.slides || []).find(x => x.type === "poll" && pollKey(x) === el.dataset.poll); if (s) el.innerHTML = pollInner(s) }) }
