@@ -3,7 +3,7 @@
 //   POST /<topic>          publish one message (the body, at most 4 KB)
 //   GET  /<topic>/sse      Server-Sent Events: every new message as data: {"event":"message","message":"..."}
 //   GET  /<topic>/json     the last message as one JSON line (what a page reads when it opens)
-//   GET  /<topic>/count    how many phones (id a-…) and screens (id s-…) asked in the last 15 s (they ask every 5 s with ?id=)
+//   GET  /<topic>/count    how many phones (id a-…) and screens (id s-…) have a stream open with ?id=, or asked in the last 15 s with ?id=
 //   POST /<topic>/vote     one phone's vote on a poll {poll, a, voter} (once per voter); GET /<topic>/vote: {epoch, polls: every poll's totals}; POST {clear: true} starts all polls fresh (event: pollreset)
 //                          the totals also go out on the stream as  event: poll  data: {poll, c}
 //   POST /<topic>/review   store one translation review from review.html (at most 100 KB); GET /<topic>/review lists them
@@ -26,7 +26,8 @@ export class Room {
   async fetch(req){
     const url = new URL(req.url), kind = url.pathname.split("/")[2] || "", who = (url.searchParams.get("id") || "").slice(0, 40);
     if (who) { this.seen = this.seen || new Map(); this.seen.set(who, Date.now()) }
-    if (kind === "count") { const now = Date.now(), c = {audience: 0, screens: 0}; for (const [k, t] of this.seen || []) { if (now - t > 15000) { this.seen.delete(k); continue } if (k[0] === "a") c.audience++; else if (k[0] === "s") c.screens++ }
+    if (kind === "count") { const now = Date.now(), c = {audience: 0, screens: 0}, ids = new Set(this.ids ? this.ids.values() : []); for (const [k, t] of this.seen || []) { if (now - t > 15000) { this.seen.delete(k); continue } ids.add(k) }
+      for (const k of ids) { if (k[0] === "a") c.audience++; else if (k[0] === "s") c.screens++ }
       return Response.json(c, {headers: {...CORS, "Cache-Control": "no-store"}}) }
     if (this.last === null) this.last = (await this.state.storage.get("last")) || "";
     if (req.method === "POST" && !kind) {
@@ -59,8 +60,8 @@ export class Room {
     }
     if (kind === "json") return new Response(this.last ? this.last + "\n" : "", {headers: {...CORS, "Content-Type": "application/x-ndjson", "Cache-Control": "no-store"}});
     if (kind === "sse") {
-      const {readable, writable} = new TransformStream(), w = writable.getWriter(); this.subs.add(w);
-      w.write(new TextEncoder().encode(": hello\n\nevent: ping\ndata: 1\n\n")).catch(() => this.subs.delete(w));
+      const {readable, writable} = new TransformStream(), w = writable.getWriter(); this.subs.add(w); this.ids = this.ids || new Map(); if (who) this.ids.set(w, who);      // an open stream with ?id= counts as connected
+      w.write(new TextEncoder().encode(": hello\n\nevent: ping\ndata: 1\n\n")).catch(() => this.drop(w));
       if (!this.beat) this.beat = setInterval(() => { if (!this.subs.size) { clearInterval(this.beat); this.beat = null; return } this.send("event: ping\ndata: 1\n\n") }, 25000);      // a heartbeat phones can see, so they know they are still connected
       return new Response(readable, {headers: {...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-store"}});
     }
@@ -71,5 +72,6 @@ export class Room {
   pollOut(poll, c){ this.pend = this.pend || {}; this.pend[poll] = c; if (this.pollT) return;
     this.pollT = setTimeout(() => { const p = this.pend; this.pend = {}; this.pollT = null; for (const k in p) this.send("event: poll\ndata: " + JSON.stringify({poll: k, c: p[k]}) + "\n\n") }, 500) }
 
-  send(text){ const b = new TextEncoder().encode(text); for (const w of this.subs) w.write(b).catch(() => this.subs.delete(w)) }
+  send(text){ const b = new TextEncoder().encode(text); for (const w of this.subs) w.write(b).catch(() => this.drop(w)) }
+  drop(w){ this.subs.delete(w); if (this.ids) this.ids.delete(w) }
 }
