@@ -1069,8 +1069,12 @@
   },
   "ppt1g:3": {
    "html": "<ul><li>2 Corinthians 4:7 – “We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.”</li></ul>",
-   "tr": {},
-   "src": {}
+   "tr": {
+    "Tagalog": "<ul><li>2 Corinto 4:7 – “Taglay natin ang mahalagang kayamanang ito sa marurupok na sisidlang putik upang ipakita na ang lubos na dakilang kapangyarihang ito ay mula sa Diyos at hindi sa atin.”</li></ul>"
+   },
+   "src": {
+    "Tagalog": "<ul><li>2 Corinthians 4:7 – “We have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.”</li></ul>"
+   }
   },
   "ppt1g:4": {
    "html": "<ul><li>Romans 5:3–4 – Suffering produces perseverance; perseverance produces character—real character is forged in hard days, not easy ones.</li><li>Character, calling, conviction are not self-built; His power forms them in us right in the middle of our weakness.</li></ul>",
@@ -1133,7 +1137,7 @@
    "src": {}
   },
   "65g0y": {
-   "html": "<ul><li>NOTHINGI almost gave a whole talk on the conference’s original topic: NOTHING… and then just sat down.</li><li>That joke at a graduation left the MC panicking about how to thank me for ‘that wonderful talk about nothing.’</li><li>But “nothing” actually connects deeply with character, calling, and conviction</li></ul>",
+   "html": "<ul><li>NOTHINGBut “nothing” actually connects deeply with character, calling, and conviction</li></ul>",
    "tr": {},
    "src": {}
   },
