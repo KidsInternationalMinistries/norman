@@ -95,7 +95,7 @@ async function slides(){
 
 // ---------- shared drawing ----------
 // The outline: every outline tag, indented by level; cur = the node of the step you're on.
-function treeHTML(P, S, k, big){ const cur = S[k] && S[k].node; let h = "";
+function treeHTML(P, S, k, big, pick){ const cur = pick || (S[k] && S[k].node); let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
     const w = n.lvl <= 2 ? P.t.slice(n.end, n.last).replace(TAG, " ").split(/\s+/).filter(Boolean).length : 0, sec = Math.max(10, Math.round(w / 140 * 6) * 10), tm = !w ? "" : sec < 60 ? sec + "s" : Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
     h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}" data-n="${n.j}" title="${w ? "About " + tm + " at 140 words a minute" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
@@ -398,9 +398,10 @@ async function edit(){
   addEventListener("resize", () => hl(true));
   // ---- talking points for the outline tag you're in ----
   let tpKey = null, tpT = null; const keyOf = n => n ? (n.id || "@" + n.at) : "";
-  function tpNode(){ const st = S[k]; return st && st.node || null }
+  let tpPick = null;      // an outline tag picked in the outline on the left: its talking points show, even if Next lands inside a point under it
+  function tpNode(){ if (tpPick) { const n = P.nodes.find(x => keyOf(x) === tpPick); if (n) return n } const st = S[k]; return st && st.node || null }
   function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; if (!force && (keyOf(n) === tpKey || document.activeElement === e)) return; tpKey = keyOf(n);
-    $("#tpt").textContent = n ? "Talking points · " + n.full + " " + n.text : "Talking points (step into a point first)"; e.contentEditable = n ? "true" : "false";
+    $("#tpt").textContent = n ? "Talking points · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text : "Talking points (step into a point first)"; e.contentEditable = n ? "true" : "false";
     e.innerHTML = n && n.id && d.notes && d.notes[n.id] ? cleanHTML(d.notes[n.id]) : "" }
   function saveTP(){ clearTimeout(tpT); const e = $("#tpe"); if (!e) return; let n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const h = cleanHTML(e.innerHTML), has = !!noteText(h);
     if ((n.id && (d.notes || {})[n.id] || "") === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
@@ -410,7 +411,7 @@ async function edit(){
   document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
   document.addEventListener("keydown", e => { if (e.target.id !== "tpe" || e.key !== "Tab") return; e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent") });
   document.addEventListener("mousedown", e => { const b = e.target.closest(".tpb [data-c]"); if (!b) return; e.preventDefault(); const t = $("#tpe"); if (document.activeElement !== t) t.focus(); document.execCommand(b.dataset.c); clearTimeout(tpT); tpT = setTimeout(saveTP, 400) });
-  $("#tpai").onclick = async () => { const n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const seg = d.text.slice(n.end, n.last); if (words(seg) < 15) { K().toast("There's not enough text in this part yet."); return }
+  $("#tpai").onclick = async () => { const n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own (only what's under it), so there's nothing to draft from.`); return }
     const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the talking points that are there now?")) return; const stop = busy("Drafting the talking points…");
     try { const j = await K().chat(`You turn part of a talk into the speaker's talking points: memory triggers he glances at on a screen while he speaks from memory. Each line is a short catch phrase of 1 to 4 words (never more than 5), like a heading, never a sentence: no full clauses, no explanation, no quotes from the text. Name the story, image or idea so it triggers his memory ("MC's Face", "CCS Talk"), in Title Case, in the order he says them. Usually 3 to 7 lines. Indent a line (level 2) under the one before when it is clearly a part of it. Only mark bold the one line that matters most, if any.
 Example. Text about: his friend Art first set the conference topic as "Nothing", he once gave a talk about nothing at a CCS graduation and walked off stage, the MC's terrified face, how "nothing" relates to Character, Calling and Conviction, and what Jesus meant by "apart from me you can do nothing".
@@ -424,13 +425,13 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
   function side(){ drawTP(); const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
-  function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist(); hl(true) }
-  function step(i, quiet, keep){ if (LS.on && !keep) stopListen(); peek = null; k = Math.max(0, Math.min(S.length - 1, i)); redraw(); hl(quiet) }
+  function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k, false, tpPick ? tpNode() : null); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist(); hl(true) }
+  function step(i, quiet, keep, picked){ if (LS.on && !keep) stopListen(); if (!picked) { if (tpPick) saveTP(); tpPick = null } peek = null; k = Math.max(0, Math.min(S.length - 1, i)); redraw(); hl(quiet) }
   const stepTo = i => step(i, false, true);
   $("#en").onclick = () => { if (peek) { peek = null; side(); return } step(k + 1) }; $("#eb").onclick = () => { if (peek) { peek = null; side(); return } step(k - 1) };
   document.addEventListener("keydown", e => { if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable='true'],dialog")) return; if (["PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); $("#en").click() } else if (["PageUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); $("#eb").click() } });
   document.addEventListener("click", e => { const tg = e.target;
-    const tn = tg.closest("#tree [data-n]"); if (tn) { const i = firstAt(S, P.nodes[+tn.dataset.n]); if (i >= 0) step(i); return }
+    const tn = tg.closest("#tree [data-n]"); if (tn) { const nn = P.nodes[+tn.dataset.n], i = firstAt(S, nn); saveTP(); tpPick = keyOf(nn); if (i >= 0) step(i, false, false, true); else drawTP(true); return }
     const nd = tg.closest("#ftext .vchip.nd"); if (nd) { if (dragged) return; saveText(); const v = nd.dataset.ref.match(/^#([1-4])\s*([\s\S]*)$/), ni = [...box().querySelectorAll(".vchip.nd")].indexOf(nd);
       const nn = P.nodes[ni]; nodeEdit({lvl: +v[1], text: nn ? nn.text : (v[2] || ""), node: nn}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text + (nn && nn.id ? "|" + nn.id : ""); d.text = richText(box()); changed(s); drawText() }, true); return }
     const sc = tg.closest("#ftext .vchip.sl"); if (sc) { if (dragged || sc.classList.contains("stop")) return; const nm = sc.dataset.ref; peek = peek === nm ? null : nm; side(); return }
