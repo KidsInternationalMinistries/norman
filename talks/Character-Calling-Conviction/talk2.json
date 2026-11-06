@@ -147,7 +147,16 @@
    "type": "verse",
    "ref": "Luke 22:61–62",
    "text": "The Lord turned and looked straight at Peter. Then Peter remembered the word the Lord had spoken to him: \"Before the rooster crows today, you will disown me three times.\" And he went outside and wept bitterly.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Lucas 22:61–62",
+     "text": "At lumingon ang Panginoon at tinitigan si Pedro. At naalaala ni Pedro ang salita ng Panginoon, kung paanong sinabi niya sa kaniya, \"Bago tumilaok ang manok sa araw na ito, ay ikakaila mo akong makaitlo.\" At siya'y lumabas, at nanangis na mainam."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Luke 22:61–62\",\"text\":\"The Lord turned and looked straight at Peter. Then Peter remembered the word the Lord had spoken to him: \\\"Before the rooster crows today, you will disown me three times.\\\" And he went outside and wept bitterly.\"}"
+   }
   },
   {
    "name": "John 20:19",
