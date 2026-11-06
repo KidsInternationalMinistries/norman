@@ -402,7 +402,9 @@
    "slideTitle": "",
    "slide": "The mess is where the power lives.",
    "layout": "left",
-   "image": "slides/bg/p6b.jpg"
+   "image": "slides/ai-v2-mw4haf12.jpg",
+   "prevImage": "slides/bg/p6b.jpg",
+   "imagePrompt": "Edit the provided image by pulling the camera farther back into a wide 16:9 view of the nativity stable. Keep the baby’s tiny hand gently gripping the woman’s finger as the emotional focal point on the right side, softly lit by warm, golden lantern and lamplight. Reveal more of the rough, messy stable: uneven wooden beams, rough stone walls, scattered straw, a simple wooden feeding trough, a worn blanket, buckets and tools, with a cow and a donkey in soft focus behind them. Let the right side feel rich and detailed, yet humble and poor. Make the left 45% of the frame noticeably darker, calmer and more open, with only subtle shadows, straw and wall texture, so white and gold slide text will read clearly. Overall mood: reverent, hopeful, beauty and power shining quietly in the middle of the mess."
   },
   {
    "name": "1 Corinthians 1:18, 25",
