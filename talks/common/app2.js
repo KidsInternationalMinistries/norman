@@ -445,7 +445,8 @@ async function edit(){
   async function makePDFs(){ saveTP(); const hash = pdfHash(), path = "pdf/audience.pdf";
     const b64 = await talkPDF(d, S, (n, m) => setSave(`Making the audience PDF ${n}/${m}…`)); setSave("Saving the audience PDF…");
     let sha = (d.pdf || {}).sha || null, out;
-    try { out = await GH.put(PATH + "/" + path, b64, sha, "Audience PDF") } catch (e) { if (e.status !== 409 && e.status !== 422) throw e; sha = null; try { sha = (await GH.get(PATH + "/" + path)).sha } catch (_) {} out = await GH.put(PATH + "/" + path, b64, sha, "Audience PDF") }
+    for (let t = 0; ; t++) { try { out = await GH.put(PATH + "/" + path, b64, sha, "Audience PDF"); break } catch (e) { if ((e.status !== 409 && e.status !== 422) || t >= 3) throw e; await new Promise(r => setTimeout(r, 1500 * (t + 1)));
+        if (e.status === 422 || t > 0) { sha = null; try { sha = (await GH.get(PATH + "/" + path)).sha } catch (_) {} } setSave("Saving the audience PDF (trying again)…") } }
     d.pdf = {file: path, at: Date.now(), sha: out}; delete d.pdfs; d.pdfHash = hash; dirty = true; flush() }
   document.querySelectorAll('a[href="present2.html"]').forEach(a => a.addEventListener("click", async e => { if (!hasAU() || d.pdfHash === pdfHash()) return; e.preventDefault();
     if (a.dataset.busy) return; if (!confirm("The slides or audience notes changed since the audience PDF was made. Make a new one now? It takes about a minute.\n\nCancel goes to Stage without it.")) { location.href = a.href; return }
