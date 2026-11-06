@@ -581,7 +581,16 @@
    "type": "verse",
    "ref": "Hebrews 11:1",
    "text": "Now faith is confidence in what we hope for and assurance about what we do not see.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Hebreo 11:1",
+     "text": "Ang pananampalataya ay ang katiyakan ng mga bagay na hinihintay, ang katunayan ng mga bagay na hindi nakikita."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Hebrews 11:1\",\"text\":\"Now faith is confidence in what we hope for and assurance about what we do not see.\"}"
+   }
   },
   {
    "name": "Slide 2",
