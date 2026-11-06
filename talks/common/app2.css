@@ -275,3 +275,10 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .tn.l1:hover{background:color-mix(in srgb,var(--accent) 32%,transparent)}
 .tn.l1.cur{background:var(--cue);color:var(--cue-ink)}
 #lbar select{border:0;border-radius:999px;padding:4px 8px;font:700 13px system-ui;background:var(--bg);color:var(--ink)}
+/* talking points: the line for the Next press you're on (Stage), and the count note in Edit */
+.tpn li.tpnow{color:var(--ink);font-weight:800}
+.tpn li.tpnow::marker{color:var(--accent)}
+.tpn li.tpnow{background:color-mix(in srgb,var(--cue) 35%,transparent);border-radius:6px;padding:0 6px;margin-left:-6px}
+.tpn li.tpdone{opacity:.45}
+.tpn li.tpnext{opacity:.8}
+.tpcnt{margin:4px 0 0;font-size:12px;color:var(--muted)}
