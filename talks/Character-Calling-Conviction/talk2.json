@@ -670,7 +670,16 @@
    "slideTitle": "God doesn't see a point in time.",
    "slide": "He sees the whole journey.",
    "layout": "left",
-   "image": "slides/bg/p5e.jpg"
+   "image": "slides/bg/p5e.jpg",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Hindi iisang sandali sa panahon ang nakikita ng Diyos.",
+     "slide": "Nakikita niya ang buong paglalakbay."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"God doesn't see a point in time.\",\"slide\":\"He sees the whole journey.\"}"
+   }
   },
   {
    "name": "Philippians 1:6",
