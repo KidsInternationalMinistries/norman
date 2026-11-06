@@ -396,7 +396,16 @@
    "type": "verse",
    "ref": "John 21:15",
    "text": "When they had finished eating, Jesus said to Simon Peter, \"Simon son of John, do you love me more than these?\" \"Yes, Lord,\" he said, \"you know that I love you.\" Jesus said, \"Feed my lambs.\"",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Juan 21:15",
+     "text": "Pagkatapos nilang kumain, tinanong ni Jesus si Simon Pedro, \"Simon na anak ni Juan, iniibig mo ba ako nang higit kaysa sa mga ito?\" Sumagot siya, \"Opo, Panginoon, alam po ninyong iniibig ko kayo.\" Sinabi ni Jesus sa kanya, \"Pakainin mo ang aking mga kordero.\""
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"John 21:15\",\"text\":\"When they had finished eating, Jesus said to Simon Peter, \\\"Simon son of John, do you love me more than these?\\\" \\\"Yes, Lord,\\\" he said, \\\"you know that I love you.\\\" Jesus said, \\\"Feed my lambs.\\\"\"}"
+   }
   },
   {
    "name": "Strong vs. weak",
@@ -595,7 +604,15 @@
    "slideTitle": "",
    "slide": "Ministry is messy, and there's beauty in the mess.",
    "layout": "left",
-   "image": "slides/bg/p5a.jpg"
+   "image": "slides/bg/p5a.jpg",
+   "tr": {
+    "Tagalog": {
+     "slide": "Magulo ang ministeryo, at may kagandahan sa kaguluhan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"Ministry is messy, and there's beauty in the mess.\"}"
+   }
   },
   {
    "name": "Join Him",
