@@ -234,7 +234,7 @@ async function present(){
   function pace(){ const el = $("#pst"); if (!el) return; if (pmsg) { el.textContent = pmsg; el.className = "pst slow"; return }
     if (run) { const p = ptOf(S[k]); el.className = "pst"; el.textContent = end ? "Last part timed ✓ Untick Practice when you're done" : p ? `Timing ${p.lab} · ${mmss((Date.now() - arrive) / 1000 + (acc[tkey(p)] || 0))}` : "Practice: press Next at the end of each part"; return }
     const e = TIMER.elapsed(), p = ptOf(S[k]); if (e == null || !p || end) { el.textContent = d.lastPractice ? "Practiced " + new Date(d.lastPractice.date).toLocaleDateString() + " · " + mmss(d.lastPractice.total) : ""; el.className = "pst"; return }
-    const before = pts.filter(x => x.at < p.at).reduce((a, x) => a + planSecs(P, x).s, 0), here = planSecs(P, p).s, plan = before + Math.min((Date.now() - arrive) / 1000, here), dl = e - plan;
+    const before = P.fit ? wordsIn(P, 0, p.at) / P.wpm * 60 + vidsIn(P, 0, p.at) : pts.filter(x => x.at < p.at).reduce((a, x) => a + planSecs(P, x).s, 0), here = planSecs(P, p).s, plan = before + Math.min((Date.now() - arrive) / 1000, here), dl = e - plan;
     el.className = "pst " + (Math.abs(dl) < 20 ? "even" : dl > 0 ? "slow" : "fast"); el.textContent = Math.abs(dl) < 20 ? "On pace" : dl > 0 ? mmss(dl) + " behind · speed up" : mmss(-dl) + " ahead · slow down" }
   setInterval(pace, 1000);
   // The left list: the same outline as in Edit, to jump to.
