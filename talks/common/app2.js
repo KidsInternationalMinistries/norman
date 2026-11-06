@@ -343,6 +343,29 @@ async function edit(){
     insertAtCaret(it.slide || it.cue, true) }
   document.addEventListener("keydown", e => { if (menu) return; const b = e.target.closest && e.target.closest("#ftext .rich.big"); if (!b) return;
     if (e.key === "/") setTimeout(openMenu, 0); else if (e.key === "Enter") { e.preventDefault(); document.execCommand("insertLineBreak") } });
+  // Up / Down (with or without Shift) in the text: Chrome jumps whole blocks when a line starts with a tag chip, so move one line by position instead.
+  const caretRect = (node, off) => { const ok = q => q && q.height > 0; if (node.nodeType === 1) { const c = node.childNodes[off], p = node.childNodes[off - 1]; if (c && c.nodeType === 3) return caretRect(c, 0); if (!c && p && p.nodeType === 3) return caretRect(p, p.length) } const r = document.createRange(); let q = null; if (node.nodeType === 3 && off < node.length && node.data[off] !== "\n") { r.setStart(node, off); r.setEnd(node, off + 1); const z = r.getClientRects()[0]; if (ok(z)) return {left: z.left, top: z.top, bottom: z.bottom, height: z.height} } r.setStart(node, off); r.collapse(true); q = r.getClientRects()[0];
+    if (!ok(q) && node.nodeType === 3) { if (off < node.length) { r.setStart(node, off); r.setEnd(node, off + 1); const L = r.getClientRects(); q = L[0]; if (ok(q)) q = {left: q.left, top: q.top, bottom: q.bottom, height: q.height} }
+      if (!ok(q) && off > 0) { r.setStart(node, off - 1); r.setEnd(node, off); const L = r.getClientRects(), z = L[L.length - 1]; if (ok(z) && node.data[off - 1] !== "\n") q = {left: z.right, top: z.top, bottom: z.bottom, height: z.height} } }
+    if (!ok(q)) { const el = node.nodeType === 1 ? (node.childNodes[off] || node.childNodes[off - 1]) : null; const z = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null; if (ok(z)) q = {left: el === node.childNodes[off] ? z.left : z.right, top: z.top, bottom: z.bottom, height: z.height} }
+    return ok(q) ? q : null };
+  const pointAt = (x, y) => { const r = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null; if (!r) return null; let n = r.startContainer, o = r.startOffset;
+    const ch = (n.nodeType === 1 ? n : n.parentElement).closest(".vchip"); if (ch) { const cr = ch.getBoundingClientRect(), par = ch.parentNode, i = [...par.childNodes].indexOf(ch); n = par; o = x > cr.left + cr.width / 2 ? i + 1 : i } return [n, o] };
+  document.addEventListener("keydown", e => { if (menu || (e.key !== "ArrowUp" && e.key !== "ArrowDown") || e.altKey || e.ctrlKey || e.metaKey) return; const b = box(); if (!b || !b.contains(e.target) && e.target !== b) return;
+    const sl = getSelection(); if (!sl.rangeCount || !b.contains(sl.focusNode)) return; const q = caretRect(sl.focusNode, sl.focusOffset); if (!q) return;
+    const lh = parseFloat(getComputedStyle(b).lineHeight) || 30, pane = $("#m"), pr = pane.getBoundingClientRect(), up = e.key === "ArrowUp";
+    let y = up ? q.top - lh * .5 : q.bottom + lh * .5; const x = sl.isCollapsed || keepX == null ? (keepX = keepX == null ? q.left : keepX) : keepX, bx = Math.max(b.getBoundingClientRect().left + 2, x);
+    // the toolbar at the top of the pane covers the text under it, so scroll a few lines when the next line is near the edge or hidden
+    const scroll = n => { const s0 = pane.scrollTop; pane.scrollTop += n; y -= pane.scrollTop - s0; return pane.scrollTop !== s0 };
+    const hidden = yy => { const el = document.elementFromPoint(bx, yy); return yy < pr.top + 10 || yy > pr.bottom - 10 || !el || !b.contains(el) && el !== b };
+    if (hidden(up ? y - lh : y + lh)) scroll(up ? -lh * 4 : lh * 4);
+    let t = null; for (let tries = 0; tries < 3 && !t; tries++) { for (let dy = 0; dy < lh * 3 && !t; dy += 6) { const yy = up ? y - dy : y + dy; if (hidden(yy)) break; const p = pointAt(bx, yy); if (p && b.contains(p[0]) && !(p[0] === sl.focusNode && p[1] === sl.focusOffset)) t = p } if (!t && !scroll(up ? -lh * 4 : lh * 4)) break }
+    e.preventDefault(); if (!t) return; if (e.shiftKey) sl.extend(t[0], t[1]); else sl.collapse(t[0], t[1]) });
+  let keepX = null; document.addEventListener("keydown", e => { if (e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "Shift") keepX = null }, true); document.addEventListener("mousedown", () => { keepX = null }, true);
+  // Clicking or moving in the text: the outline on the left and the slide follow the spot you're at.
+  let followT = null; const follow = () => { clearTimeout(followT); followT = setTimeout(() => { const b = box(), sl = getSelection(); if (!b || LS.on || !sl.rangeCount || !b.contains(sl.focusNode)) return; let pos; try { pos = offsetOf(sl.focusNode, sl.focusOffset) } catch (e) { return }
+      let j = -1; for (let i = 0; i < S.length; i++) { const st = S[i], a = st.a != null ? st.a : st.pos; if (a <= pos) j = i; else break } if (j < 0 || j === k) return; if (tpPick) saveTP(); tpPick = null; peek = null; k = j; redraw() }, 250) };
+  document.addEventListener("mouseup", e => { if (e.target.closest && e.target.closest("#ftext .rich.big")) follow() }); document.addEventListener("keyup", e => { if (e.target.closest && e.target.closest("#ftext .rich.big") && /^(Arrow|Page|Home|End)/.test(e.key)) follow() });
   document.addEventListener("mousedown", e => { if (menu && !menu.contains(e.target)) closeMenu() });
   // ---- outline tag pop-up ----
   function nodeEdit(cur, done, canDel){ const dl = $("#ndlg");
