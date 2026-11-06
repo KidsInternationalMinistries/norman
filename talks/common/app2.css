@@ -323,3 +323,7 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .offb:hover{border-color:var(--accent)}
 .offb b:first-child{display:block;font-size:22px;margin-bottom:6px}
 .offb span{color:var(--muted);line-height:1.5}
+/* the PDF with the talk (⤓ Backup in Edit) */
+.fullpdf .fph{font-size:15px;font-weight:700;color:#444;margin:4px 6px 6px}
+.fullpdf .fpt{font-size:16px;line-height:1.55;color:#222}
+.fullpdf .fpt p{margin:0 0 10px}

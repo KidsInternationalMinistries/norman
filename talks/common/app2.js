@@ -1003,9 +1003,12 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   $("#bkup").onclick = () => { saveTP(); const k0 = K(), dl = k0.dlg("bkdlg", `<div class="ed"><div class="pgh"><b>Backup for the talk</b><button type="button" class="btn small" data-x>Close</button></div>
       <p><button type="button" class="btn pri" id="bkoff">⤓ Offline copy (.html)</button></p><p class="note">One file with everything inside. Double-click it on any computer and pick <b>Stage</b> (you) or <b>Slides only</b> (the media team, who press → for each slide). It works with no internet. Make a new one after you change the talk.</p>
       <p><button type="button" class="btn" id="bkppt">⤓ PowerPoint (.pptx)</button></p><p class="note">One slide each time the slide changes, with videos inside. The notes under each slide say when to change it. The words are pictures, so change them here, not in PowerPoint.</p>
+      <p><button type="button" class="btn" id="bkpdf">⤓ PDF with the talk</button></p><p class="note">For you or your team, not the audience: each slide, then its audience notes in English, then ${E((d.languages || []).join(", ") || "each language")}, then the words of the talk.</p>
       <p class="aimsg" id="bkm"></p></div>`); k0.show(dl); dl.querySelector("[data-x]").onclick = () => dl.close();
-    const run = async (b, f) => { if (b.disabled) return; dl.querySelectorAll("#bkoff, #bkppt").forEach(x => x.disabled = true); const m = $("#bkm");
-      try { await f(m) } catch (err) { m.textContent = "It didn't work: " + (err.message || err) } finally { dl.querySelectorAll("#bkoff, #bkppt").forEach(x => x.disabled = false) } };
+    const run = async (b, f) => { if (b.disabled) return; dl.querySelectorAll("#bkoff, #bkppt, #bkpdf").forEach(x => x.disabled = true); const m = $("#bkm");
+      try { await f(m) } catch (err) { m.textContent = "It didn't work: " + (err.message || err) } finally { dl.querySelectorAll("#bkoff, #bkppt, #bkpdf").forEach(x => x.disabled = false) } };
+    $("#bkpdf").onclick = e => run(e.target, async m => { m.textContent = "Making the PDF…"; const b = await talkPDFFull(d, (i, n) => { m.textContent = `Making slide ${i} of ${n}…` });
+      saveBlob(b, fileName(d) + "-with-talk.pdf"); m.textContent = `Downloaded ✓ (${(b.size / 1048576).toFixed(1)} MB)` });
     $("#bkoff").onclick = e => run(e.target, async m => { m.textContent = "Getting everything together…"; const r = await offlineHTML(d, (i, n) => { m.textContent = `Packing pictures and videos ${i} of ${n}…` });
       saveBlob(r.blob, fileName(d) + "-offline.html"); m.textContent = `Downloaded ✓ (${(r.blob.size / 1048576).toFixed(1)} MB)` + (r.miss.length ? `. These couldn't be packed and need the internet: ${r.miss.join(", ")}` : "") });
     $("#bkppt").onclick = e => run(e.target, async m => { m.textContent = "Making the PowerPoint…"; const r = await talkPPTX(d, (i, n) => { m.textContent = `Making slide ${i} of ${n}…` });
@@ -1043,6 +1046,30 @@ async function talkPDF(d, S, prog, langs){ await loadLib("https://cdnjs.cloudfla
         await place(top + `<div class="aun">${L.length > 1 ? `<div class="aulg">${E(lg || "English")}</div>` : ""}${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div>`, 4); top = "" }
       if (top) await place(top, 4); y += 16 }
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
+// The PDF for the speaker or the team: one page part per slide, then the audience notes in English, a line, each translation, a line, and the words of the talk said while that slide is up.
+async function talkPDFFull(d, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [], items = [];
+  for (let i = 0; i < S.length; i++) if (i === 0 || SH[i] !== SH[i - 1]) items.push(i);
+  const box = document.createElement("div"); box.className = "aupdf fullpdf"; document.body.appendChild(box);
+  try { const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4", compress: true}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28; let y = M;
+    const place = async (html, gap) => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
+      const c = await window.html2canvas(box, {scale: 1.5, backgroundColor: "#ffffff", useCORS: true}), w = W - 2 * M, h = c.height * w / c.width, img = c.toDataURL("image/jpeg", 0.72);
+      if (y + h > H - M && y > M) { pdf.addPage(); y = M }
+      pdf.addImage(img, "JPEG", M, y, w, h); let off = H - M - y;
+      if (off >= h) { y += h + (gap || 0); return }
+      let start = off; while (start < h) { pdf.addPage(); pdf.addImage(img, "JPEG", M, M - start, w, h); y = M + (h - start); start += H - 2 * M } y += gap || 0 };
+    await place(`<h1>${E(d.title)}</h1><p>Slides, audience notes${L.length ? " (English, " + L.map(E).join(", ") + ")" : ""} and the words of the talk</p>`, 10);
+    for (let n = 0; n < items.length; n++) { const i = items[n], end = n + 1 < items.length ? items[n + 1] : S.length, sl = SH[i]; if (prog) prog(n + 1, items.length);
+      const notes = lg => { const seen = new Set(), out = []; for (let k = i; k < end; k++) { let h = auNoteAt(d, S, k, lg); if (lg && h === auNoteAt(d, S, k, "")) h = ""; if (noteText(h) && !seen.has(h)) { seen.add(h); out.push(cleanHTML(h)) } } return out.join("") };
+      const parts = [], en = notes(""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
+      L.forEach(lg => { const sw = slideTrHTML(sl, lg), h = notes(lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
+      const words = []; for (let k = i; k < end; k++) if (S[k].a != null) words.push(P.t.slice(S[k].a, S[k].b).replace(TAG, "").trim());
+      const talk = words.filter(Boolean).join("\n\n"); if (talk) parts.push(`<div class="aulg">The talk</div><div class="fpt">${E(talk).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>").replace(/^/, "<p>") + "</p>"}</div>`);
+      const st = S[i], where = st && st.node ? `${E(st.node.full)} ${E(st.node.text)}` : "Start";
+      await place(`<div class="fph">${where}${sl ? ` · ${E(sl.name)}` : ""}</div><div class="aus">${sl && sl.type === "video" ? `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(sl.name || "Video")}</div></div>` : slideHTML(sl, d)}</div>`, 4);
+      for (let q = 0; q < parts.length; q++) await place(`<div class="aun">${q ? '<hr class="auhr">' : ""}${parts[q]}</div>`, 2);
+      y += 18 }
+    return pdf.output("blob") } finally { box.remove() } }
 // slides2.html?play: the narrated version. The slides show while the saved AI voice reads, and the voice moves the slides on.
 async function play(){
   document.body.innerHTML = `<div id="s"></div><div id="ui"><button id="pb" type="button" title="Back">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next">⏭</button><button id="psp" type="button" title="Speed">1×</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
