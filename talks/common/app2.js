@@ -355,7 +355,7 @@ async function edit(){
     const fld = (f, lb, ta, ph) => ta ? `<label>${lb}<textarea class="auto" ${A(f)} placeholder="${E(ph || "")}">${E(o[f])}</textarea></label>` : `<label>${lb}<input ${A(f)} value="${E(o[f])}" placeholder="${E(ph || "")}"></label>`;
     let h = `<div class="ed"><div class="pgh"><b>${E(TYPES[o.type] || "Slide")}</b>${isNew ? '<span class="note">New slide</span><button type="button" class="btn small" id="scancel">Cancel</button><button type="button" class="btn small pri" id="ssave">Save</button>' : '<button type="button" class="btn small pri" id="sdone">Done</button>'}</div>
       <div class="row"><label style="flex:1 1 220px">Name (its tag in the text)<input id="sname" value="${E(o.name)}"></label><label style="flex:0 1 200px">Kind<select ${A("type")}>${Object.entries(TYPES).filter(([t]) => t !== "qr" || o.type === "qr").map(([t, n]) => `<option value="${t}"${t === (o.type || "image") ? " selected" : ""}>${E(n)}</option>`).join("")}</select></label></div>
-      <div class="prev" id="prev">${slideHTML(o, d)}</div>` + slideAIRow(o);
+      <div class="prev" id="prev">${slideHTML(o, d)}</div><div class="txbar row" id="txbar"></div>` + slideAIRow(o);
     const ty = o.type || "image";
     if (ty === "verse") h += `<div class="row"><label style="flex:1 1 220px">Reference (or some words from the verse)<input data-f="ref" value="${E(o.ref)}" placeholder="John 15:5, or words you remember"></label><label style="flex:0 1 140px">Version<input data-f="version" value="${E(o.version)}" placeholder="ESV, NIV, NLT…"></label></div>` + fld("text", "Text (**bold**, __underline__)", true) + (o.aiText ? `<p class="note">✨ This text came from the AI. Check it against your Bible, then edit it if needed.</p>` : "");
     else if (ty === "quote") h += fld("quote", "Quote", true) + fld("by", "Who said it");
@@ -368,8 +368,33 @@ async function edit(){
     h += `<label class="chk"><input type="checkbox" ${A("keep")}${o.keep ? " checked" : ""}> Keep it up until another slide comes (even after its point ends)</label>
       ${isNew ? "" : `<div class="row"><span class="note" style="flex:1">Used ${usesOf(o.name)}× in the text.</span><button type="button" class="btn small danger" id="sdel">Delete this slide</button></div>`}</div>`;
     dl.innerHTML = h; dl.dataset.si = i; dl.querySelectorAll("textarea.auto").forEach(t => { t.style.height = t.scrollHeight + 4 + "px" });
-    const pv = () => { $("#prev").innerHTML = slideHTML(o, d) };
+    // Lines on the slide (top line, title, subtitle): click one to pick it, drag it to move it, drag its side handles to make the box wider or narrower (the words grow or shrink with it).
+    let selK = null; const LNM = {eb: "Top line", tt: "Title", sb: "Subtitle"}, isSet = v => !(v === "" || v == null || isNaN(+v)), q1 = v => Math.round(v * 10) / 10;
+    const meas = k => { const el = $(`#prev [data-k="${k}"]`); if (!el) return null; const sl = el.closest(".slide").getBoundingClientRect(), r = el.getBoundingClientRect(), bx = el.classList.contains("tx1") ? r : el.parentElement.getBoundingClientRect();
+      return {X: q1((bx.left - sl.left) / sl.width * 100), Y: q1((r.top + r.height / 2 - sl.top) / sl.height * 100), W: q1(bx.width / sl.width * 100)} };
+    const mat = k => { const m = meas(k), add = {}; if (m) ["X", "Y", "W"].forEach(a => { if (!isSet(o[k + a])) add[k + a] = m[a] }); return add };
+    const mark = () => { const pr = $("#prev"); if (!pr) return; let has = false;
+      pr.querySelectorAll(".slide [data-k]").forEach(el => { const on = el.dataset.k === selK; el.classList.toggle("ksel", on); if (on) { has = true; if (el.classList.contains("tx1")) el.insertAdjacentHTML("beforeend", '<i class="kh l" data-h="l"></i><i class="kh r" data-h="r"></i>') } });
+      const bar = $("#txbar"); if (!bar) return; if (!has) { bar.innerHTML = `<span class="note">${pr.querySelector(".slide [data-k]") ? "Click a line of words on the slide to move it, resize it or line it up." : ""}</span>`; return }
+      const al = o[selK + "Align"] || ""; bar.innerHTML = `<b>${LNM[selK] || "Words"}</b><span class="seg">${["left", "center", "right"].map(a => `<button type="button" class="btn small${al === a ? " on" : ""}" data-al="${a}" title="Line up ${a}">${{left: "⯇ Left", center: "Center", right: "Right ⯈"}[a]}</button>`).join("")}</span><button type="button" class="btn small" data-sz="-1" title="Smaller">A−</button><button type="button" class="btn small" data-sz="1" title="Bigger">A+</button><button type="button" class="btn small" data-kreset="1" title="Put it back where it was">Reset</button>` };
+    const pv = () => { $("#prev").innerHTML = slideHTML(o, d); mark() };
     const sq = $("#sqr"); if (sq) sq.onchange = () => { const s = snapshot(); if (sq.checked) o.qr = {x: 74, y: 50, w: 22}; else delete o.qr; commit(s); pv() };
+    mark();
+    $("#txbar").onclick = e => { const b = e.target.closest("button"); if (!b || !selK) return; const s0 = snapshot(), k = selK;
+      if (b.dataset.al) o[k + "Align"] = o[k + "Align"] === b.dataset.al ? "" : b.dataset.al;
+      else if (b.dataset.sz) o[k + "Size"] = Math.max(30, Math.min(300, Math.round((isSet(o[k + "Size"]) ? +o[k + "Size"] : 100) * (b.dataset.sz > 0 ? 1.1 : 1 / 1.1))));
+      else if (b.dataset.kreset) ["X", "Y", "W", "Size", "Align"].forEach(a => delete o[k + a]);
+      commit(s0); pv() };
+    $("#prev").addEventListener("pointerdown", e => { if (e.target.closest(".qro")) return; let el = e.target.closest(".slide [data-k]"); if (!el) { if (selK) { selK = null; mark() } return } e.preventDefault();
+      const k = el.dataset.k, s0 = snapshot(), add = mat(k); selK = k; if (Object.keys(add).length) Object.assign(o, add); pv(); el = $(`#prev [data-k="${k}"]`); if (!el) return;
+      const h = e.target.dataset && e.target.dataset.h, box = el.closest(".slide").getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY, X0 = +o[k + "X"], Y0 = +o[k + "Y"], W0 = +o[k + "W"], S0 = isSet(o[k + "Size"]) ? +o[k + "Size"] : 100, fs0 = parseFloat(getComputedStyle(el).fontSize);
+      const hit = e.target.closest(".kh") ? e.target.closest(".kh").dataset.h : h; let moved = false;
+      const mv = ev => { const dx = (ev.clientX - x0) / box.width * 100, dy = (ev.clientY - y0) / box.height * 100; if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > 2) moved = true;
+        if (hit === "r" || hit === "l") { const w = Math.max(8, Math.min(100, hit === "r" ? W0 + dx : W0 - dx)), r = w / W0; o[k + "W"] = q1(w); if (hit === "l") o[k + "X"] = q1(X0 + (W0 - w)); o[k + "Size"] = Math.max(30, Math.min(300, Math.round(S0 * r)));
+          Object.assign(el.style, {width: o[k + "W"] + "%", left: o[k + "X"] + "%", fontSize: (fs0 * r) + "px"}) }
+        else { o[k + "X"] = q1(Math.max(0, Math.min(95, X0 + dx))); o[k + "Y"] = q1(Math.max(0, Math.min(100, Y0 + dy))); el.style.left = o[k + "X"] + "%"; el.style.top = o[k + "Y"] + "%" } };
+      const up = () => { removeEventListener("pointermove", mv); removeEventListener("pointerup", up); if (moved || Object.keys(add).length) commit(s0); pv() };
+      addEventListener("pointermove", mv); addEventListener("pointerup", up) });
     $("#prev").onpointerdown = e => { const q = e.target.closest(".qro"); if (!q || !o.qr) return; e.preventDefault(); const box = $("#prev .slide").getBoundingClientRect(), rs = e.target.classList.contains("qrh"), s0 = snapshot(), st = {...o.qr}, x0 = e.clientX, y0 = e.clientY;
       const mv = ev => { const dx = (ev.clientX - x0) / box.width * 100, dy = (ev.clientY - y0) / box.height * 100;
         if (rs) o.qr.w = Math.round(Math.max(8, Math.min(60, st.w + dx)) * 10) / 10; else { const hq = st.w * box.width / box.height; o.qr.x = Math.round(Math.max(0, Math.min(100 - st.w, st.x + dx)) * 10) / 10; o.qr.y = Math.round(Math.max(0, Math.min(100 - hq, st.y + dy)) * 10) / 10 }
