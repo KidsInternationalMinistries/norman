@@ -152,6 +152,7 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
   const connect = () => { try { if (es) es.close() } catch (e) {} try { es = new EventSource(relay(d) + "/sse"); es.onopen = () => { heard = Date.now(); catchUp() }; es.addEventListener("ping", () => { heard = Date.now() });
       es.onmessage = e => { heard = Date.now(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; if (!pf) { pf = true; pollsFollow(d, es) } else es.addEventListener("poll", e => { try { const m = JSON.parse(e.data); POLLS[m.poll] = m.c || {}; pollsDraw(d) } catch (_) {} }) } catch (e) {} };
   connect(); setInterval(() => { if (!es || es.readyState === 2 || Date.now() - heard > 40000) { heard = Date.now(); connect() } }, 10000);
+  setInterval(async () => { const a0 = lastAt; await catchUp(); if (lastAt !== a0) { heard = Date.now(); connect() } }, 5000);      // the stream missed a Next: reconnect it
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (!es || es.readyState === 2 || Date.now() - heard > 40000)) { heard = Date.now(); connect() } });
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const L = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (L.length) from(L[L.length - 1]) } catch (e) {}
   show() }
@@ -1180,7 +1181,7 @@ async function audience(){
     return `<div class="aupoll"><div class="pvq">${E(pollQ(s, lang, true))}</div>${pollAns(s, lang, true).map((x, j) => `<button type="button" class="pvb" data-vote="${j}">${E(x)}</button>`).join("")}<p class="note">You can vote once.</p></div>` };
   const show = () => { const i = local == null ? pres : local, ps = pollHere(i); setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : ps ? pollSlide(ps, {hide: myVote(pollKey(ps)) == null, mine: myVote(pollKey(ps)), lang, foot: myVote(pollKey(ps)) == null ? "" : "you voted"}) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = (ps ? pollUI(ps) : "") + sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "") + ((end && local == null) || i === S.length - 1 ? `<div class="audlend"><button type="button" id="audlbig">⤓ Download the notes</button><p>The slides, the notes${lang ? " in " + E(lang) : ""} and the whole talk, as a PDF.</p></div>` : "");
     $("#aulive").hidden = local == null || !on || end || !alive(); $("#aust").textContent = on && !end && !alive() ? "Connection lost · browse on your own" : on && !end ? (local != null ? "Looking back" : "Live") : end ? "The talk is over" : conn ? "Waiting for the speaker…" : "Not connected · browse on your own"; $("#aust").className = local == null && on && !end ? "on" : "" };
-  const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); REVEAL.clear(); (m.rv || []).forEach(x => REVEAL.add(x)); const fresh = !m.at || Date.now() - m.at < 3 * 3600e3; if (fresh && !on) local = null; on = fresh; conn = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
+  const from = m => { if (!m || m.v !== 2) return false; if (m.at && m.at <= lastAt) return false; lastAt = m.at || Date.now(); REVEAL.clear(); (m.rv || []).forEach(x => REVEAL.add(x)); const fresh = !m.at || Date.now() - m.at < 3 * 3600e3; if (fresh && !on) local = null; on = fresh; conn = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show(); return true };
   // Phones can't go past the speaker while they're connected. The relay sends a heartbeat every 25 s; if nothing comes for 70 s
   // (or the phone goes offline), the phone counts as not connected and can browse the whole talk.
   let heard = 0; const hear = () => { heard = Date.now() }; const alive = () => conn && navigator.onLine !== false && Date.now() - heard < 70000;
@@ -1203,7 +1204,7 @@ async function audience(){
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   // Phones put to sleep (screen locked, app in the background) lose the live stream and often don't get it back by themselves.
   // So: reconnect when the page is seen again, when the internet comes back, or when no heartbeat came for 40 s, and catch up on the last Next.
-  const catchUp = async () => { try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {} };
+  const catchUp = async () => { try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) return from(Q[Q.length - 1]) } catch (e) {} return false };
   let es = null, first = true; const afterPoll = () => { const i = local == null ? pres : local; if (pollHere(i)) show() };
   const connect = () => { try { if (es) es.close() } catch (e) {} try { es = new EventSource(relay(d) + "/sse"); const me = es;
       es.onopen = () => { if (me !== es) return; conn = true; hear(); show(); if (!first) catchUp(); first = false }; es.onerror = () => { if (me !== es) return; conn = false; show() };
@@ -1214,6 +1215,8 @@ async function audience(){
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fix(false) });
   addEventListener("pageshow", () => fix(false)); addEventListener("online", () => fix(true)); addEventListener("focus", () => fix(false));
   setInterval(() => { if (document.visibilityState !== "hidden" && (Date.now() - heard > 40000 || (es && es.readyState === 2))) fix(true) }, 10000);
+  // Safety net: every 5 s ask the relay for the last Next. If it's newer than what the stream brought, the stream is stuck, so reconnect it.
+  setInterval(async () => { if (document.visibilityState === "hidden") return; if (await catchUp()) { lastFix = Date.now(); connect() } }, 5000);
   await catchUp();
   show() }
 // =====================================================================
