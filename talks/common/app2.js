@@ -914,7 +914,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     if (from == null && caretPos && caretPos.node.isConnected) { try { from = offsetOf(caretPos.node, caretPos.off) } catch (e) {} }
     let i0 = k; if (from != null) { const j = S.findIndex(st => st.a != null && from < st.b); if (j >= 0) { i0 = j; if (from < S[j].a) from = null } } const k0 = K(); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel); LS.on = true; LS.paused = false; const run = ++LS.run;
     const ctxOf = (i, dir) => { const L = []; for (let q = i + dir; q >= 0 && q < S.length && L.join(" ").length < 400; q += dir) if (S[q].a != null) L[dir < 0 ? "unshift" : "push"](plain(d.text.slice(S[q].a, S[q].b))); return L.join("\n") };
-    const voice = await k0.voiceNow(), have = await voiceHave(), PREP = new Map();
+    const voice = await k0.voiceNow(), have = await voiceHave(), PREP = new Map(); let gap = false;      // a second of quiet between recorded pieces
     // get (or start getting) every piece of step i: a saved file if there is one, else ElevenLabs (then saved for next time). Whole steps only are saved.
     const prep = i => { if (PREP.has(i)) return PREP.get(i); const st = S[i]; if (!st || st.a == null) { PREP.set(i, null); return null }
       // starting in the middle of a step still uses the whole step's pieces (saved or cached), and skips ahead to the sentence you're in
@@ -931,7 +931,8 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
         for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { if (left > 0) continue; await wait(p.pause * 1000); continue } if (!jobs[q]) continue;
           if (left >= p.say.length) { left -= p.say.length; continue } const frac = left > 0 ? left / p.say.length : 0; left = 0;
           let r = null; const quick = await Promise.race([jobs[q], new Promise(ok => setTimeout(() => ok(null), 150))]); if (quick) r = quick; else { LS.wait = true; lbar(); r = await jobs[q]; LS.wait = false; lbar() }
-          if (LS.run !== run) return; await new Promise(ok => { const au = r.au || new Audio(r.url); r.au = null; LS.au = au; const seek = () => { try { au.currentTime = frac && au.duration ? frac * au.duration : 0 } catch (e) {} }; if (au.readyState >= 1) seek(); else au.addEventListener("loadedmetadata", seek, {once: true}); au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok;
+          if (LS.run !== run) return; if (gap) { await wait(1000); if (LS.run !== run) return } gap = true;
+          await new Promise(ok => { const au = r.au || new Audio(r.url); r.au = null; LS.au = au; const seek = () => { try { au.currentTime = frac && au.duration ? frac * au.duration : 0 } catch (e) {} }; if (au.readyState >= 1) seek(); else au.addEventListener("loadedmetadata", seek, {once: true}); au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok;
             let starts = r.starts; if (!starts && p.say) { const mk = () => { const T = au.duration; if (T > 0 && isFinite(T)) { starts = [...p.say].map((_, c) => c / p.say.length * T); wordLight(p, au, starts) } }; if (au.readyState >= 1) mk(); else au.addEventListener("loadedmetadata", mk, {once: true}) } else wordLight(p, au, starts);
             if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
@@ -1009,6 +1010,7 @@ async function play(){
   const pre = f => { const x = new Audio(); x.preload = "auto"; x.src = f };
   const wait = (ms, r) => new Promise(ok => { let left = ms; const t = setInterval(() => { if (r !== run) { clearInterval(t); ok() } else if (!paused && (left -= 100 * rate) <= 0) { clearInterval(t); ok() } }, 100) });
   const say = f => new Promise(ok => { let alt = false; wake = ok; au.onended = () => ok(); au.onerror = () => { if (alt) return ok(); alt = true; au.src = RAW + PATH + "/" + f; au.playbackRate = rate; if (!paused) au.play().catch(() => {}) }; au.src = f; au.playbackRate = rate; if (!paused) au.play().catch(() => {}) });
+  let gap = false;      // a second of quiet between two recorded pieces
   async function step(k){ const r = ++run; au.pause(); if (wake) { wake(); wake = null } if (k < 0) k = 0;
     if (k >= L.length) { setSlide($("#s"), `<div class="slide blank"><div class="txt">The end<br><button type="button" id="again" class="btn">▶ Play again</button></div></div>`); st.lastChild.textContent = "The end"; const g = $("#again"); if (g) g.onclick = () => step(0); return }
     i = k; const x = L[k]; setSlide($("#s"), slideHTML(lib(x.slide), d)); st.lastChild.textContent = x.label || "Narrated";
@@ -1018,7 +1020,7 @@ async function play(){
     if (sl && sl.type === "video" && sl !== was) { const w = $("#s .slide.vid"), lim = ((+sl.secs || vidSecs(sl) || 600) + 5) * 1000;
       if (w) await new Promise(ok => { let done = false; const fin = () => { if (!done) { done = true; clearInterval(tt); ok() } }; w.addEventListener("vidend", fin, {once: true}); let t0 = 0; const tt = setInterval(() => { if (r !== run || !w.isConnected) return fin(); if (!paused && (t0 += 250) >= lim) fin() }, 250) }); if (r !== run) return }
     if (!items.some(y => y.say) && !items.some(y => y.pause)) await wait(3000, r);
-    for (let q = 0; q < items.length && r === run; q++) { const it = items[q]; if (it.pause) await wait(it.pause * 1000, r); else if (it.say) { const nf = items.slice(q + 1).find(y => y.say); if (nf) pre(nf.say); await say(it.say) } }
+    for (let q = 0; q < items.length && r === run; q++) { const it = items[q]; if (it.pause) await wait(it.pause * 1000, r); else if (it.say) { const nf = items.slice(q + 1).find(y => y.say); if (nf) pre(nf.say); if (gap) await wait(1000, r); if (r !== run) break; await say(it.say); gap = true } }
     if (r === run) step(k + 1) }
   const toggle = () => { paused = !paused; $("#pg").textContent = paused ? "▶" : "❚❚"; if (paused) au.pause(); else if (au.src && !au.ended) au.play().catch(() => {}); document.querySelectorAll("#s video").forEach(v => { if (paused) v.pause(); else if (!v.ended) v.play().catch(() => {}) }) };
   $("#pgo").onclick = () => { $("#pstart").remove(); step(0) };
