@@ -595,7 +595,16 @@
    "type": "verse",
    "ref": "Romans 5:3–4",
    "text": "Not only so, but we also glory in our sufferings, because we know that suffering produces perseverance; perseverance, character; and character, hope.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Roma 5:3–4",
+     "text": "At hindi lamang iyan, kundi tayo'y nangagagalak naman sa ating mga kapighatian: nalalaman na ang kapighatian ay gumagawa ng pagtitiis; At ang pagtitiis, ng pagpapatunay; at ang pagpapatunay, ng pagasa:"
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Romans 5:3–4\",\"text\":\"Not only so, but we also glory in our sufferings, because we know that suffering produces perseverance; perseverance, character; and character, hope.\"}"
+   }
   },
   {
    "name": "Not tidy",
@@ -621,7 +630,15 @@
    "slideTitle": "",
    "slide": "I find God's voice in the doing, not just the waiting.",
    "layout": "left",
-   "image": "slides/bg/p5c.jpg"
+   "image": "slides/bg/p5c.jpg",
+   "tr": {
+    "Tagalog": {
+     "slide": "Natatagpuan ko ang tinig ng Diyos sa paggawa, hindi lang sa paghihintay."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"I find God's voice in the doing, not just the waiting.\"}"
+   }
   },
   {
    "name": "John 5:17, 19",
