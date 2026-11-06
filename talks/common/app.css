@@ -433,3 +433,6 @@ ul.kp.bl li.l2 .kn{min-width:2.4em}
 .bud .vtags button.stop{border-color:var(--muted);color:var(--muted)}.bud .vtags button.stop.on{background:var(--muted);color:#fff}
 .bud .vtags button.main{border-style:dashed}
 .vmenu .bulo{font-weight:700}
+/* a video shown as a still picture (anywhere but the slides screens, the slide editor and Stage's current slide) */
+.slide.vid.still .yt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slide.vid.still::after{content:"";position:absolute;left:50%;top:50%;width:18cqw;height:18cqw;max-width:110px;max-height:110px;min-width:28px;min-height:28px;transform:translate(-50%,-50%);border-radius:50%;background:rgba(0,0,0,.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6.5v11l9-5.5z' fill='white'/%3E%3C/svg%3E") center/60% no-repeat;box-shadow:0 0 0 3px rgba(255,255,255,.85);pointer-events:none;z-index:3}

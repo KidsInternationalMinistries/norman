@@ -122,17 +122,24 @@ function videoHTML(v){ const nx = v.autoNext !== false ? ' data-next="1"' : "", 
 function soundButton(on){ if (document.getElementById("snd")) return; const b = document.createElement("button"); b.id = "snd"; b.type = "button"; b.textContent = "🔊 Click for sound";
   b.onclick = () => { b.remove(); document.querySelectorAll("video").forEach(x => { x.muted = false }); YTP.forEach(p => { try { p.unMute() } catch (e) {} }); if (on) on() }; document.body.appendChild(b) }
 // On a slides screen the first click or key anywhere turns the sound on (browsers start videos muted until someone touches the page).
-if (MODE === "monitor" || MODE === "slides2") { const on = () => { document.querySelectorAll("video").forEach(x => { if (!x.closest(".slide.vid")) return; x.muted = false }); YTP.forEach(p => { try { p.unMute(); p.setVolume(100) } catch (e) {} }); const b = document.getElementById("snd"); if (b) b.remove() };
+if (MODE === "monitor" || MODE === "slides2") { const on = () => { document.querySelectorAll("video").forEach(x => { if (!x.closest(".slide.vid") || x.closest(".still")) return; x.muted = false }); YTP.forEach(p => { try { p.unMute(); p.setVolume(100) } catch (e) {} }); const b = document.getElementById("snd"); if (b) b.remove() };
   ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, on, true)) }
 const vidEnded = el => { const w = el.closest && el.closest(".slide.vid"); if (w) w.dispatchEvent(new Event("vidend")) };
-function startVideo(vd){ if (vd.dataset.go) return; vd.dataset.go = 1; const inDlg = !!vd.closest("dialog"), mon = MODE === "monitor" || MODE === "slides2" || inDlg;
+// Where a video plays: with sound on the slides screens and in the slide editor; muted in Stage's current slide (so Stage sees where it is and moves on when it ends);
+// everywhere else (slide lists, pickers, the Edit preview, Stage's next-slide box) it's a still picture with a play sign.
+function vidWhere(el){ const ed = !!el.closest("#prev"); if (MODE === "monitor" || MODE === "slides2" || ed) return {play: true, sound: true, ed};
+  if ((MODE === "present" || MODE === "present2") && !el.closest(".nxt, dialog, #nx")) return {play: true, sound: false}; return {play: false} }
+function startVideo(vd){ if (vd.dataset.go) return; vd.dataset.go = 1; const W = vidWhere(vd), inDlg = !!W.ed, mon = !!W.sound;
+  if (!W.play) { const w = vd.closest(".slide.vid"); if (w) w.classList.add("still"); vd.preload = "metadata"; vd.muted = true; vd.addEventListener("loadedmetadata", () => { try { vd.currentTime = Math.min(1, (vd.duration || 2) / 2) } catch (e) {} }, {once: true}); return }
   vd.muted = !mon; if (inDlg) vd.controls = true; vd.currentTime = 0; vd.addEventListener("ended", () => vidEnded(vd));
   const p = vd.play(); if (p && p.catch) p.catch(() => { vd.muted = true; vd.play().catch(() => {}); if (mon) soundButton() }) }      // the browser blocked sound until someone clicks this page
 // YouTube links play through YouTube's player (the screens need internet for these).
 const YTP = []; let ytReady = null;
 function ytAPI(){ if (!ytReady) ytReady = new Promise(ok => { if (window.YT && YT.Player) return ok(); const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { if (prev) prev(); ok() };
   const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc) }); return ytReady }
-function startYT(el){ if (el.dataset.go) return; el.dataset.go = 1; const inDlg = !!el.closest("dialog"), mon = MODE === "monitor" || MODE === "slides2" || inDlg, start = +el.dataset.start || 0, wrap = el.closest(".slide");
+function startYT(el){ if (el.dataset.go) return; el.dataset.go = 1; const W = vidWhere(el), inDlg = !!W.ed, mon = !!W.sound;
+  if (!W.play) { const w = el.closest(".slide.vid"); if (w) w.classList.add("still"); el.innerHTML = `<img src="https://i.ytimg.com/vi/${el.dataset.yt}/hqdefault.jpg" alt="">`; return }
+  const start = +el.dataset.start || 0, wrap = el.closest(".slide");
   ytAPI().then(() => { if (!el.isConnected) return; const pl = new YT.Player(el, {videoId: el.dataset.yt, width: "100%", height: "100%",
     playerVars: {autoplay: 1, controls: inDlg ? 1 : 0, rel: 0, modestbranding: 1, playsinline: 1, start, disablekb: 1, iv_load_policy: 3},
     events: {onReady: e => { if (!mon) e.target.mute(); e.target.seekTo(start, true); e.target.playVideo();
@@ -976,8 +983,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=90"><link rel="stylesheet" href="../common/countdown.css?v=90"><link rel="stylesheet" href="../common/gate.css?v=90"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=90"></script><script src="../common/countdown.js?v=90"></script><script src="../common/gate.js?v=90"></script><script src="../common/app.js?v=90"></script>${mode === "edit" ? '<script src="../common/ai.js?v=90"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=91"><link rel="stylesheet" href="../common/countdown.css?v=91"><link rel="stylesheet" href="../common/gate.css?v=91"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=91"></script><script src="../common/countdown.js?v=91"></script><script src="../common/gate.js?v=91"></script><script src="../common/app.js?v=91"></script>${mode === "edit" ? '<script src="../common/ai.js?v=91"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -986,8 +993,8 @@ const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase()
 // ---- New version (talk/2): one text with outline tags and a slide library ----
 const STUB2 = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=90"><link rel="stylesheet" href="../common/app2.css?v=90"><link rel="stylesheet" href="../common/countdown.css?v=90"><link rel="stylesheet" href="../common/gate.css?v=90"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=90"></script><script src="../common/countdown.js?v=90"></script><script src="../common/gate.js?v=90"></script><script src="../common/app.js?v=90"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=90"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=90"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=91"><link rel="stylesheet" href="../common/app2.css?v=91"><link rel="stylesheet" href="../common/countdown.css?v=91"><link rel="stylesheet" href="../common/gate.css?v=91"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=91"></script><script src="../common/countdown.js?v=91"></script><script src="../common/gate.js?v=91"></script><script src="../common/app.js?v=91"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=91"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=91"></script>' : ""}</body></html>
 `;
 const relayTopic = () => "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
 const newTalk2 = title => ({format: "talk/2", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", relayTopic: relayTopic(),
