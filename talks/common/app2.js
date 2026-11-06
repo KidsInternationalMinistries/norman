@@ -806,12 +806,12 @@ async function audience(){
   if (!localStorage.getItem("au-lang")) { const nav = (navigator.language || "").toLowerCase(), names = {tl: "Tagalog", fil: "Tagalog", ceb: "Cebuano", es: "Spanish", ko: "Korean", zh: "Chinese", ja: "Japanese", fr: "French", de: "German", pt: "Portuguese", id: "Indonesian", vi: "Vietnamese", th: "Thai"}; const g = names[nav.split("-")[0]]; if (g && L.includes(g)) lang = g }
   if (lang && !L.includes(lang)) lang = "";
   $("#aul").innerHTML = `<option value="">English</option>` + L.map(x => `<option${x === lang ? " selected" : ""}>${E(x)}</option>`).join(""); $("#aul").hidden = !L.length;
-  let pres = 0, local = null, end = false, lastAt = 0, on = false;
+  let pres = 0, local = null, end = false, lastAt = 0, on = false, conn = true;
   const noteAt = i => auNoteAt(d, S, i, lang);
   const show = () => { const i = local == null ? pres : local; setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "");
-    $("#aulive").hidden = local == null; $("#aust").textContent = local != null ? "Looking back" : on ? "Live" : "Waiting for the speaker…"; $("#aust").className = local == null && on ? "on" : "" };
+    $("#aulive").hidden = local == null || !on || end; $("#aust").textContent = on && !end ? (local != null ? "Looking back" : "Live") : end ? "The talk is over" : conn ? "Waiting for the speaker…" : "Not connected · browse on your own"; $("#aust").className = local == null && on && !end ? "on" : "" };
   const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
-  const stepL = dd => { let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < pres && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(pres, i)); local = i >= pres ? null : i; show() };
+  const stepL = dd => { const live = on && !end, max = live ? pres : S.length - 1; let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < max && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(max, i)); local = live && i >= pres ? null : i; show() };
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
   $("#audl").onclick = async e => { const f = d.pdf, a = $("#audl"); if (!f) return; e.preventDefault(); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent; a.textContent = "Downloading…";
     try { let r = await fetch(f.file + "?t=" + (f.at || ""), {cache: "no-store"}).catch(() => null); if (!r || !r.ok) r = await fetch(RAW + PATH + "/" + f.file + "?t=" + (f.at || ""), {cache: "no-store"}); if (!r.ok) throw 0;
@@ -819,7 +819,7 @@ async function audience(){
     catch (_) { alert("The PDF isn't ready yet. Try again in a minute.") } finally { delete a.dataset.busy; a.textContent = t0 } };
   const dl = () => { const f = d.pdf, a = $("#audl"); a.hidden = !f; if (f) { a.href = f.file + "?t=" + (f.at || ""); a.setAttribute("download", (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + ".pdf") } }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
-  try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
+  try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; show() }; es.onerror = () => { conn = false; on = false; show() }; es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) { conn = false }
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
   show() }
 ({edit2: edit, present2: present, slides2: slides, audience2: audience}[MODE] || (() => {}))();
