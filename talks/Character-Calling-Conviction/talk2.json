@@ -420,7 +420,16 @@
    "type": "verse",
    "ref": "1 Corinthians 3:6–7",
    "text": "I planted the seed, Apollos watered it, but God has been making it grow. So neither the one who plants nor the one who waters is anything, but only God, who makes things grow.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "1 Corinto 3:6–7",
+     "text": "Ako ang nagtanim, si Apolos ang nagdilig; nguni't ang Dios ang nagpalago. Kaya nga ang nagtatanim ay walang anoman, ni ang nagdidilig; kundi ang Dios na nagpapalago."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"1 Corinthians 3:6–7\",\"text\":\"I planted the seed, Apollos watered it, but God has been making it grow. So neither the one who plants nor the one who waters is anything, but only God, who makes things grow.\"}"
+   }
   },
   {
    "name": "Are you broken?",
