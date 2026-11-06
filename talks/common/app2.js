@@ -865,9 +865,9 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   const wait = ms => new Promise(r => setTimeout(r, ms));
   function lbar(){ let el = $("#lbar"); if (!LS.on) { if (el) el.remove(); return } if (!el) { el = document.createElement("div"); el.id = "lbar"; document.body.appendChild(el);
       el.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.l === "stop") stopListen(); else { LS.paused = !LS.paused; if (LS.au) LS.paused ? LS.au.pause() : LS.au.play(); lbar() } } }
-    el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><select id="lrate" title="Speed">${[.75, .9, 1, 1.15, 1.3, 1.5, 1.75, 2].map(r => `<option value="${r}"${r === LS.rate ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" class="btn small" data-l="stop">■ Stop</button>`;
+    el.innerHTML = `<span>${LS.wait ? "⏳ Getting the voice for" : "🔊 Listening"} · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><select id="lrate" title="Speed">${[.75, .9, 1, 1.15, 1.3, 1.5, 1.75, 2].map(r => `<option value="${r}"${r === LS.rate ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" class="btn small" data-l="stop">■ Stop</button>`;
     el.querySelector("#lrate").onchange = e => { LS.rate = +e.target.value || 1; try { localStorage.setItem("listen-rate", LS.rate) } catch (x) {} if (LS.au) LS.au.playbackRate = LS.rate } }
-  function stopListen(){ try { CSS.highlights && CSS.highlights.delete("kpword") } catch (e) {} LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
+  function stopListen(){ try { CSS.highlights && CSS.highlights.delete("kpword") } catch (e) {} LS.on = false; LS.run++; LS.paused = false; LS.wait = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
   let caretPos = null;      // the last spot of the cursor in the text (Listen starts there)
   document.addEventListener("selectionchange", () => { const b = box(), sl = getSelection(); if (!b || !sl.rangeCount || !b.contains(sl.anchorNode) || LS.on) return; caretPos = {node: sl.getRangeAt(0).startContainer, off: sl.getRangeAt(0).startOffset} });
   // The narrated version: every step read in the AI voice and saved (voice/*.mp3 + narration2.json); slides2.html?play plays it for anyone with the link.
@@ -918,16 +918,21 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     const voice = await k0.voiceNow(), have = await voiceHave(), PREP = new Map();
     // get (or start getting) every piece of step i: a saved file if there is one, else ElevenLabs (then saved for next time). Whole steps only are saved.
     const prep = i => { if (PREP.has(i)) return PREP.get(i); const st = S[i]; if (!st || st.a == null) { PREP.set(i, null); return null }
-      const part = i === i0 && from != null, parts = partsOf(st, part ? from : null), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
+      // starting in the middle of a step still uses the whole step's pieces (saved or cached), and skips ahead to the sentence you're in
+      const parts = partsOf(st, null), part = false; let skip = 0; if (i === i0 && from != null) { const len = L => L.reduce((a, x) => a + (x.say ? x.say.length : 0), 0); skip = Math.max(0, len(parts) - len(partsOf(st, from))) }
+      const prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
       const jobs = parts.map((p, q) => !p.say ? null : (async () => { const f = await pieceFile(k0, voice, p);
         if (!part && have.has(f)) { const r = await savedPiece(f); if (r) return r }
         const r = p.v3 ? await k0.ttsV3(p.say) : await k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)});
         if (!part && !have.has(f)) { have.add(f); (r.b64 ? Promise.resolve(r.b64) : k0.blobB64(r.blob)).then(b => upload(f, b)).catch(() => {}) } return r })());
-      jobs.forEach(j => j && j.catch(() => {})); const v = {parts, jobs}; PREP.set(i, v); return v };
+      jobs.forEach(j => j && j.catch(() => {})); const v = {parts, jobs, skip}; PREP.set(i, v); return v };
     try { for (let i = i0; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { prep(i + 1); await wait(1800); continue }
-        const {parts, jobs} = prep(i); prep(i + 1);      // the next step is read while this one plays, so there's no gap
-        for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue } if (!jobs[q]) continue;
-          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = r.au || new Audio(r.url); r.au = null; LS.au = au; au.currentTime = 0; au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok;
+        const {parts, jobs, skip} = prep(i); prep(i + 1);      // the next step is read while this one plays, so there's no gap
+        let left = skip;
+        for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { if (left > 0) continue; await wait(p.pause * 1000); continue } if (!jobs[q]) continue;
+          if (left >= p.say.length) { left -= p.say.length; continue } const frac = left > 0 ? left / p.say.length : 0; left = 0;
+          let r = null; const quick = await Promise.race([jobs[q], new Promise(ok => setTimeout(() => ok(null), 150))]); if (quick) r = quick; else { LS.wait = true; lbar(); r = await jobs[q]; LS.wait = false; lbar() }
+          if (LS.run !== run) return; await new Promise(ok => { const au = r.au || new Audio(r.url); r.au = null; LS.au = au; const seek = () => { try { au.currentTime = frac && au.duration ? frac * au.duration : 0 } catch (e) {} }; if (au.readyState >= 1) seek(); else au.addEventListener("loadedmetadata", seek, {once: true}); au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok;
             let starts = r.starts; if (!starts && p.say) { const mk = () => { const T = au.duration; if (T > 0 && isFinite(T)) { starts = [...p.say].map((_, c) => c / p.say.length * T); wordLight(p, au, starts) } }; if (au.readyState >= 1) mk(); else au.addEventListener("loadedmetadata", mk, {once: true}) } else wordLight(p, au, starts);
             if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
