@@ -236,3 +236,4 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .trrow[hidden]{display:none}
 .trwarn{margin:4px 0 0;font-size:12px}
 #tpbox.none .trrow{display:none}
+.aupdf .aulg{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a6d1f;margin-bottom:4px}

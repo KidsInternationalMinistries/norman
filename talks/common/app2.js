@@ -442,11 +442,11 @@ async function edit(){
   // Audience PDFs: made when Norman goes to Stage and something the audience sees changed since the last ones.
   const pdfHash = () => { const t = JSON.stringify([d.title, d.text, d.slides, d.audNotes || {}, d.languages || []]); let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 ^ t.charCodeAt(i)) >>> 0; return h.toString(36) };
   const hasAU = () => Object.values(d.audNotes || {}).some(a => noteText(a.html));
-  async function makePDFs(){ saveTP(); const L = ["", ...(d.languages || [])], out = {}, hash = pdfHash();
-    for (const lg of L) { const nm = (lg || "English").replace(/[^\w\-]+/g, ""), path = "pdf/" + nm + ".pdf";
-      const b64 = await talkPDF(d, S, lg, (n, m) => setSave(`Making the audience PDF (${lg || "English"}) ${n}/${m}…`)); setSave(`Saving the audience PDF (${lg || "English"})…`);
-      let sha = null; try { sha = (await GH.get(PATH + "/" + path)).sha } catch (_) {} await GH.put(PATH + "/" + path, b64, sha, "Audience PDF (" + (lg || "English") + ")"); out[lg] = {file: path, at: Date.now()} }
-    d.pdfs = out; d.pdfHash = hash; dirty = true; flush() }
+  async function makePDFs(){ saveTP(); const hash = pdfHash(), path = "pdf/audience.pdf";
+    const b64 = await talkPDF(d, S, (n, m) => setSave(`Making the audience PDF ${n}/${m}…`)); setSave("Saving the audience PDF…");
+    let sha = (d.pdf || {}).sha || null, out;
+    try { out = await GH.put(PATH + "/" + path, b64, sha, "Audience PDF") } catch (e) { if (e.status !== 409 && e.status !== 422) throw e; sha = null; try { sha = (await GH.get(PATH + "/" + path)).sha } catch (_) {} out = await GH.put(PATH + "/" + path, b64, sha, "Audience PDF") }
+    d.pdf = {file: path, at: Date.now(), sha: out}; delete d.pdfs; d.pdfHash = hash; dirty = true; flush() }
   document.querySelectorAll('a[href="present2.html"]').forEach(a => a.addEventListener("click", async e => { if (!hasAU() || d.pdfHash === pdfHash()) return; e.preventDefault();
     if (a.dataset.busy) return; if (!confirm("The slides or audience notes changed since the audience PDF was made. Make a new one now? It takes about a minute.\n\nCancel goes to Stage without it.")) { location.href = a.href; return }
     a.dataset.busy = "1"; try { await makePDFs(); while (dirty || saving) await new Promise(r => setTimeout(r, 200)); location.href = a.href } catch (err) { delete a.dataset.busy; setSave("The PDF wasn't made (" + (err.detail || err.message) + ").", true) } }));
@@ -772,17 +772,25 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
 function auNoteAt(d, S, i, lang){ const st = S[i]; for (let p = st && st.node; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" }
 const loadLib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
 // One PDF of the whole talk for the audience: each slide, its words in the language, then the notes. Made in Edit and saved with the talk.
-async function talkPDF(d, S, lang, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-  const SH = S.map(x => x.slide), items = []; let prev = null;
-  for (let i = 0; i < S.length; i++) { const key = auNoteAt(d, S, i, lang) + "|" + (SH[i] && SH[i].name); if (key !== prev) { prev = key; items.push(i) } }
+async function talkPDF(d, S, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const SH = S.map(x => x.slide), L = ["", ...(d.languages || [])], items = []; let prev = null;
+  for (let i = 0; i < S.length; i++) { const key = L.map(lg => auNoteAt(d, S, i, lg)).join("|") + "|" + (SH[i] && SH[i].name); if (key !== prev) { prev = key; items.push(i) } }
+  const bare = i => L.every(lg => !noteText(auNoteAt(d, S, i, lg)));
+  for (let n = items.length - 2; n >= 0; n--) if (bare(items[n]) && SH[items[n]] === SH[items[n + 1]]) items.splice(n, 1);
   const box = document.createElement("div"); box.className = "aupdf"; document.body.appendChild(box);
-  try { const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4"}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28; let y = M;
-    const put = async html => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
-      const c = await window.html2canvas(box, {scale: 2, backgroundColor: "#ffffff", useCORS: true}); const w = W - 2 * M, h = c.height * w / c.width;
-      if (y + h > H - M && y > M) { pdf.addPage(); y = M } pdf.addImage(c.toDataURL("image/jpeg", 0.85), "JPEG", M, y, w, Math.min(h, H - 2 * M)); y += h + 14 };
-    await put(`<h1>${E(d.title)}</h1>${lang ? `<p>${E(lang)}</p>` : ""}`);
-    for (let n = 0; n < items.length; n++) { const i = items[n]; if (prog) prog(n + 1, items.length); const sw = lang ? slideTrHTML(SH[i], lang) : "", h = auNoteAt(d, S, i, lang);
-      await put(`<div class="aupg"><div class="aus">${SH[i] && SH[i].type === "video" ? "" : slideHTML(SH[i], d)}</div><div class="aun">${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div></div>`) }
+  try { const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4", compress: true}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28; let y = M;
+    const place = async (html, gap) => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
+      const c = await window.html2canvas(box, {scale: 1.5, backgroundColor: "#ffffff", useCORS: true}), w = W - 2 * M, h = c.height * w / c.width, img = c.toDataURL("image/jpeg", 0.72);
+      if (y + h > H - M && y > M) { pdf.addPage(); y = M }
+      pdf.addImage(img, "JPEG", M, y, w, h); let off = H - M - y;
+      if (off >= h) { y += h + (gap || 0); return }
+      let start = off; while (start < h) { pdf.addPage(); pdf.addImage(img, "JPEG", M, M - start, w, h); y = M + (h - start); start += H - 2 * M } y += gap || 0 };
+    await place(`<h1>${E(d.title)}</h1>${L.length > 1 ? `<p>${L.map(lg => E(lg || "English")).join(" · ")}</p>` : ""}`, 10);
+    for (let n = 0; n < items.length; n++) { const i = items[n]; if (prog) prog(n + 1, items.length);
+      let top = `<div class="aus">${SH[i] && SH[i].type === "video" ? "" : slideHTML(SH[i], d)}</div>`;
+      for (const lg of L) { const sw = lg ? slideTrHTML(SH[i], lg) : "", h = auNoteAt(d, S, i, lg); if (!sw && !noteText(h)) continue;
+        await place(top + `<div class="aun">${L.length > 1 ? `<div class="aulg">${E(lg || "English")}</div>` : ""}${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div>`, 4); top = "" }
+      if (top) await place(top, 4); y += 16 }
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 async function audience(){
   document.body.innerHTML = `<div class="au"><div class="auh"><b id="aut">Loading…</b><select id="aul" aria-label="Language"></select></div><div class="aus" id="aus"></div><div class="aun" id="aun"></div>
@@ -801,7 +809,7 @@ async function audience(){
   const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
   const stepL = dd => { let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < pres && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(pres, i)); local = i >= pres ? null : i; show() };
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
-  const dl = () => { const f = (d.pdfs || {})[lang || ""], a = $("#audl"); a.hidden = !f; if (f) { a.href = f.file + "?t=" + (f.at || ""); a.setAttribute("download", (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + "-" + f.file.split("/").pop()) } }; dl();
+  const dl = () => { const f = d.pdf, a = $("#audl"); a.hidden = !f; if (f) { a.href = f.file + "?t=" + (f.at || ""); a.setAttribute("download", (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + ".pdf") } }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
