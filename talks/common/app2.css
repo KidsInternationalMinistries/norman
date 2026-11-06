@@ -265,3 +265,12 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .slide.vidph .vps{font-size:3cqw;opacity:.7}
 .ttot{display:flex;justify-content:space-between;margin:14px 0 6px;padding:8px 8px 0;border-top:1px solid var(--line,rgba(127,127,127,.3));font-size:13px;font-weight:800;color:var(--ink)}
 #ui #psp{min-width:3.2em}
+/* outline: numbers line up on the left, the words are indented by level; sections stand out */
+.tn.l2,.tn.l3,.tn.l4{padding-left:8px}
+.tn.l2>span:not(.tm){margin-left:8px}
+.tn.l3>span:not(.tm){margin-left:26px}
+.tn.l4>span:not(.tm){margin-left:40px}
+.tn.l1{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--ink);padding-top:6px;padding-bottom:6px;margin-top:16px}
+.tn.l1 i{color:var(--ink)}
+.tn.l1:hover{background:color-mix(in srgb,var(--accent) 32%,transparent)}
+.tn.l1.cur{background:var(--cue);color:var(--cue-ink)}
