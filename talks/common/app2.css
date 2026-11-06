@@ -291,3 +291,28 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .tfit.ok{background:color-mix(in srgb,#2e8b57 18%,transparent)}
 .tfit.long{background:color-mix(in srgb,#d64545 22%,transparent)}
 .tfit.short{background:color-mix(in srgb,#E9B949 24%,transparent)}
+/* Review translations (review.html): English first, the translation under it on a phone, side by side on a computer */
+.rv{max-width:1100px;margin:0 auto;padding:0 0 40px}
+.rvh{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 16px;position:sticky;top:0;background:var(--bg);z-index:2;border-bottom:1px solid var(--line)}
+.rvh b{font-size:16px}
+.rvh select{font-size:16px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+#rvb{padding:0 16px}
+.rvnote{color:var(--muted);font-size:15px;line-height:1.5}
+.rvsec{font-size:17px;margin:26px 0 8px;padding-top:12px;border-top:2px solid var(--line)}
+.rvi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.rvlab{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
+.rvg{display:grid;grid-template-columns:1fr;gap:8px;margin:6px 0}
+@media (min-width:760px){.rvg{grid-template-columns:1fr 1fr;gap:16px}}
+.rvtag{font-size:12px;color:var(--muted);margin-bottom:3px}
+.rvtx{font-size:17px;line-height:1.5;opacity:.9}
+.rvtx ul,.rved ul,.rvtx ol,.rved ol{padding-left:1.2em;margin:4px 0}
+.rved,.rvta{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:17px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:2.6em}
+.rvta{resize:vertical}
+.rved:focus,.rvta:focus{outline:2px solid var(--accent);outline-offset:0}
+.rved.chg,.rvta.chg{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.rvsend{background:var(--bg);border-top:1px solid var(--line);padding:12px 0;margin-top:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.rvsend label{flex:1 1 220px;display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:3px}
+.rvsend input{font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+#rvgo{font-size:17px;padding:10px 18px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+#rvgo:disabled{opacity:.7}
+@media (min-width:760px){.rvsend{position:sticky;bottom:0}}

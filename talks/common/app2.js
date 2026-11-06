@@ -284,7 +284,7 @@ async function present(){
 async function edit(){
   if (!token()) { tokenSetup(() => edit()); return }
   document.body.innerHTML = `<p class="status">Loading the latest version from GitHub&hellip;</p>`;
-  let d, SHA; try { const g = await load(true); d = g.d; SHA = g.sha } catch (e) {
+  let rvIn = []; let d, SHA; try { const g = await load(true); d = g.d; SHA = g.sha } catch (e) {
     if (e.status === 401 || e.status === 403) { try { localStorage.removeItem("gh-token") } catch (_) {} tokenSetup(() => edit()); return }
     document.body.innerHTML = `<p class="status">Couldn't load this talk's new version from GitHub (${E(e.message)}).</p>`; return }
   d.slides = d.slides || []; document.title = d.title + " · Edit"; T.preload(d.slides, d);
@@ -555,7 +555,23 @@ async function edit(){
   function drawAU(n){ const bar = $("#aubar"); if (!bar) return; bar.hidden = tpMode !== "au"; if (bar.hidden) { trShow(n); return } const L = d.languages || [];
     const st = lg => !n || !n.id || !noteText(((d.audNotes || {})[ak(n)] || {}).html) ? "" : trBusy.has(ak(n) + "|" + lg) ? " …" : stale(ak(n), lg) ? " ○" : (((d.audNotes || {})[ak(n)] || {}).ed || {})[lg] ? " ✎" : " ✓";
     bar.innerHTML = `<div class="row"><span class="note">Show:</span><button type="button" class="lgb${auLang ? "" : " on"}" data-lg="">Original</button>${L.map(lg => `<button type="button" class="lgb${auLang === lg ? " on" : ""}" data-lg="${E(lg)}" title="${{"✓": "Translated", "○": "The original changed: needs translating", "✎": "Translated and changed by hand", "…": "Translating…"}[st(lg).trim()] || ""}">${E(lg)}${st(lg)}</button>`).join("")}</div>
-      <div class="row"><span class="note">Languages:</span>${L.map(lg => `<span class="lgc">${E(lg)}<i data-rmlg="${E(lg)}" title="Remove this language">×</i></span>`).join("") || '<span class="note">none yet</span>'}<button type="button" class="btn small" id="addlg">+ Add a language</button>${L.length ? `<button type="button" class="btn small aib" id="trall" title="Drafts a translation of every audience note and slide that is new or changed, into every language, keeping what was already translated">✨ Draft all translations</button>` : ""}</div>${L.length ? '<p class="note trwarn">AI translations can have mistakes. Have someone who speaks the language check them before you use them.</p>' : ""}`; trShow(n) }
+      <div class="row"><span class="note">Languages:</span>${L.map(lg => `<span class="lgc">${E(lg)}<i data-rmlg="${E(lg)}" title="Remove this language">×</i></span>`).join("") || '<span class="note">none yet</span>'}<button type="button" class="btn small" id="addlg">+ Add a language</button>${L.length ? `<button type="button" class="btn small aib" id="trall" title="Drafts a translation of every audience note and slide that is new or changed, into every language, keeping what was already translated">✨ Draft all translations</button>` : ""}</div>${L.length ? `<div class="row"><button type="button" class="btn small" id="rvlink" title="Copies a public link where someone who speaks the language can check and fix the translations. No sign-in needed.">🔗 Copy the Review translations link${L.length > 1 ? " (" + E(auLang || L[0]) + ")" : ""}</button>${rvIn.length ? `<button type="button" class="btn small pri" id="rvsee">📝 ${rvIn.length} translation review${rvIn.length > 1 ? "s" : ""} to look at</button>` : ""}</div><p class="note trwarn">AI translations can have mistakes. Have someone who speaks the language check them before you use them.</p>` : ""}`; trShow(n) }
+  // Translation reviews sent from review.html wait on the relay until Norman accepts them here.
+  async function rvFetch(){ if (!(d.languages || []).length || !d.relayTopic) return; try { const r = await fetch(relay(d) + "/review", {cache: "no-store"}); if (!r.ok) return; const all = await r.json(); const done = new Set(d.reviewsDone || []);
+      rvIn = (Array.isArray(all) ? all : []).map(x => { try { return typeof x === "string" ? JSON.parse(x) : x } catch (e) { return null } }).filter(x => x && x.id && x.lang && !done.has(x.id)); drawAU(tpNode());
+      if (rvIn.length) K().toast(`📝 ${rvIn.length} translation review${rvIn.length > 1 ? "s" : ""} came in. See Audience notes.`) } catch (e) {} }
+  setTimeout(rvFetch, 1500);
+  function rvOpen(){ if (!rvIn.length) return; saveTP(); const ch = [], ids = rvIn.map(x => x.id);
+    rvIn.slice().sort((a, b) => a.at - b.at).forEach(rv => { const lg = rv.lang, by = `${rv.who || "Someone"} · ${lg}`;
+      Object.entries(rv.notes || {}).forEach(([k, h]) => { const a = (d.audNotes || {})[k]; if (!a) return; const before = (a.tr || {})[lg] || ""; if (cleanHTML(h) === cleanHTML(before)) return;
+        ch.push({label: by + " · audience note", before: noteText(before.replace(/<\/(li|p|div)>|<br>/g, "\n$&")), after: noteText(String(h).replace(/<\/(li|p|div)>|<br>/g, "\n$&")), pre: noteText(a.html).slice(0, 300), apply: () => { a.tr = a.tr || {}; a.src = a.src || {}; a.ed = a.ed || {}; a.tr[lg] = cleanHTML(h); a.ed[lg] = true; if (!a.src[lg]) a.src[lg] = a.html } }) });
+      Object.entries(rv.slides || {}).forEach(([nm, o]) => { const sl = (d.slides || []).find(x => x.name === nm); if (!sl || !o) return;
+        Object.entries(o).forEach(([f, v]) => { const before = ((sl.tr || {})[lg] || {})[f] || ""; if (String(v).trim() === String(before).trim()) return;
+          ch.push({label: by + " · slide " + nm, before: String(before), after: String(v), pre: String(sl[f] || ""), apply: () => { sl.tr = sl.tr || {}; sl.trSrc = sl.trSrc || {}; sl.tr[lg] = {...(sl.tr[lg] || {}), [f]: String(v)}; if (!sl.trSrc[lg]) sl.trSrc[lg] = slSrc(sl) } }) }) }) });
+    const finish = () => { d.reviewsDone = [...new Set([...(d.reviewsDone || []), ...ids])].slice(-200); rvIn = []; drawAU(tpNode()) };
+    if (!ch.length) { const s0 = snapshot(); finish(); changed(s0); K().toast("Those reviews have no changes from what you have now ✓"); return }
+    review("Translation review", ch, acc => { const s0 = snapshot(); acc.forEach(c => c.apply()); finish(); changed(s0); drawTP(true) });
+    const dl = $("#ai2rev"); if (dl) dl.addEventListener("close", () => { if (rvIn.length && !ch.some(c => c.ok)) { if (confirm("Mark these reviews as looked at, so they don't come back?")) { const s0 = snapshot(); finish(); changed(s0) } } }, {once: true}) }
   // Audience PDFs: made when Norman goes to Stage and something the audience sees changed since the last ones.
   const pdfHash = () => { const t = JSON.stringify([d.title, d.text, d.slides, d.audNotes || {}, d.languages || []]); let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 ^ t.charCodeAt(i)) >>> 0; return h.toString(36) };
   const hasAU = () => Object.values(d.audNotes || {}).some(a => noteText(a.html));
@@ -596,6 +612,9 @@ async function edit(){
       if ((d.languages || []).some(x => x.toLowerCase() === nm.toLowerCase())) return; const s = snapshot(); d.languages = [...(d.languages || []), nm]; changed(s); drawAU(tpNode()); K().toast(nm + " added. Press ✨ Translate all that changed when the notes are ready."); return }
     if (t.closest("#trall")) { if (!(d.languages || []).length) { K().toast("Add a language first."); return } (async () => { const n = await translateSlides(); if (n) K().toast(`Slide words translated (${n}) ✓`); await translateNotes(Object.keys(d.audNotes || {}), null, false, !!n) })(); return }
     if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } (async () => { const L = auLang ? [auLang] : null; await translateSlides(L, nodeSlides(n)); await translateNotes([ak(n)], L, false, true); trShow(tpNode()) })(); return }
+    if (t.closest("#rvlink")) { const lg = auLang || (d.languages || [])[0], u = new URL("review.html?lang=" + encodeURIComponent(lg), location.href).href;
+      (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => K().toast("Link copied ✓ Send it to the person checking the " + lg + ": " + u), () => prompt("Copy this link and send it:", u)); return }
+    if (t.closest("#rvsee")) { rvOpen(); return }
     if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
   document.addEventListener("input", e => { if (e.target.id === "psq") plist() });
   document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(() => { saveTP(); trShow(tpNode()) }, 700) } });
@@ -1087,5 +1106,66 @@ async function audience(){
   try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; hear(); show() }; es.onerror = () => { conn = false; show() }; es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) { conn = false }
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
   show() }
-({edit2: edit, present2: present, slides2: slides, audience2: audience}[MODE] || (() => {}))();
+// =====================================================================
+// REVIEW TRANSLATIONS: a public page (no sign-in) where a speaker of the language checks and fixes the translations.
+// The English shows first, the translation under it (side by side on a computer) to edit. "Send" posts the changes to the
+// talk's relay; Norman sees them in Edit (Audience notes) and accepts them there.
+// =====================================================================
+// Everything the audience sees, in the order of the talk: slide words and audience notes, each once.
+function trItems(d, S){ const out = [], seenS = new Set(), seenK = new Set();
+  S.forEach((st, i) => { const sl = st.slide, n0 = st.node;
+    if (sl && sl.name && !seenS.has(sl.name) && slSrc(sl)) { seenS.add(sl.name); out.push({k: "s", sl, n: n0}) }
+    let key = "";
+    if (n0 && n0.id && auPer(d, n0.id)) key = nk(n0.id, Math.max(0, ownSteps(S, n0).indexOf(i)));
+    else for (let p = n0; p; p = p.parent) if (p.id && noteText(((d.audNotes || {})[p.id] || {}).html)) { key = p.id; break }
+    const a = key && (d.audNotes || {})[key]; if (a && noteText(a.html) && !seenK.has(key)) { seenK.add(key); out.push({k: "n", key, a, n: n0}) } });
+  return out }
+const SLF = {eyebrow: "Small line above", slideTitle: "Title", slide: "Words", bullets: "Bullets (one per line)", quote: "Quote", by: "Who said it", ref: "Verse reference", text: "Verse"};
+async function reviewPage(){
+  document.body.innerHTML = `<div class="rv"><div class="rvh"><b id="rvt">Loading…</b><select id="rvl" aria-label="Language"></select></div><div id="rvb"></div></div>`;
+  let d; try { d = (await load(false)).d } catch (e) { $("#rvt").textContent = "Couldn't load the talk."; return }
+  const L = d.languages || [], q = new URLSearchParams(location.search); let lang = q.get("lang") || L[0] || "";
+  if (!L.length) { $("#rvt").textContent = d.title; $("#rvb").innerHTML = `<p class="rvnote">This talk has no translations yet.</p>`; return }
+  if (!L.includes(lang)) lang = L[0]; document.title = "Review " + lang + " · " + d.title;
+  $("#rvl").innerHTML = L.map(x => `<option${x === lang ? " selected" : ""}>${E(x)}</option>`).join(""); $("#rvl").hidden = L.length < 2;
+  $("#rvl").onchange = e => { const u = new URL(location.href); u.searchParams.set("lang", e.target.value); location.href = u };
+  const P = parse(d), S = build(P), items = trItems(d, S), DK = "rv-" + FOLDER + "-" + lang;
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem(DK) || "{}") } catch (e) {}
+  const where = n => n ? `${E(n.full || "")} ${E(n.text || "")}`.trim() : "";
+  let last = "";
+  const rows = items.map((it, x) => { const w = where(it.n), hd = w && w !== last ? `<h3 class="rvsec">${w}</h3>` : ""; last = w || last;
+    if (it.k === "n") { const tr = (it.a.tr || {})[lang] || "", cur = saved["n|" + it.key] != null ? saved["n|" + it.key] : tr;
+      return hd + `<div class="rvi"><div class="rvlab">Audience note</div><div class="rvg"><div class="rven"><div class="rvtag">English</div><div class="rvtx">${cleanHTML(it.a.html)}</div></div>
+        <div class="rvtr"><div class="rvtag">${E(lang)}${tr ? "" : " · not translated yet"}</div><div class="rved" contenteditable="true" data-n="${E(it.key)}">${cleanHTML(cur)}</div></div></div></div>` }
+    const en = JSON.parse(slSrc(it.sl)), tr = (it.sl.tr || {})[lang] || {}, ok = (it.sl.trSrc || {})[lang] === slSrc(it.sl);
+    return hd + `<div class="rvi"><div class="rvlab">Slide · ${E(it.sl.name)}${ok ? "" : " · the English changed since it was translated"}</div>` + Object.keys(en).map(f => { const id = "s|" + it.sl.name + "|" + f, cur = saved[id] != null ? saved[id] : tr[f] || "";
+      return `<div class="rvg"><div class="rven"><div class="rvtag">${SLF[f] || f} · English</div><div class="rvtx">${E(en[f]).replace(/\n/g, "<br>")}</div></div>
+        <div class="rvtr"><div class="rvtag">${E(lang)}</div><textarea class="rvta" rows="${Math.min(8, Math.max(1, String(cur).split("\n").length + (String(cur).length > 60 ? 1 : 0)))}" data-s="${E(it.sl.name)}" data-f="${f}">${E(cur)}</textarea></div></div>` }).join("") + `</div>` }).join("");
+  let who = ""; try { who = localStorage.getItem("rv-who") || "" } catch (e) {}
+  $("#rvt").textContent = "Review the " + lang + " · " + d.title;
+  $("#rvb").innerHTML = `<p class="rvnote">Thank you for checking the ${E(lang)}! The English is shown first and the ${E(lang)} under it (beside it on a computer). Fix anything that doesn't read well, then press <b>Send my changes</b> at the bottom. Norman will look at them and put them in. Your work is kept on this device until you send it.</p>
+    ${items.length ? rows : `<p class="rvnote">There is nothing to review yet.</p>`}
+    <div class="rvsend"><label>Your name <input id="rvwho" value="${E(who)}" placeholder="So Norman knows who made the changes" autocomplete="name"></label><span id="rvcnt" class="rvnote"></span><button type="button" id="rvgo">Send my changes</button></div>`;
+  const orig = el => el.dataset.n != null ? cleanHTML(((d.audNotes[el.dataset.n] || {}).tr || {})[lang] || "") : (((d.slides.find(x => x.name === el.dataset.s) || {}).tr || {})[lang] || {})[el.dataset.f] || "";
+  const val = el => el.dataset.n != null ? cleanHTML(el.innerHTML) : el.value.trim();
+  const keyOf = el => el.dataset.n != null ? "n|" + el.dataset.n : "s|" + el.dataset.s + "|" + el.dataset.f;
+  const fields = () => [...document.querySelectorAll(".rved, .rvta")];
+  const diff = () => fields().filter(el => val(el) !== (el.dataset.n != null ? orig(el) : String(orig(el)).trim()));
+  const count = () => { const n = diff().length; $("#rvcnt").textContent = n ? `${n} change${n > 1 ? "s" : ""} to send` : "No changes yet"; fields().forEach(el => el.classList.toggle("chg", diff().includes(el))) };
+  let sT; document.addEventListener("input", e => { const el = e.target; if (el.id === "rvwho") { try { localStorage.setItem("rv-who", el.value) } catch (_) {} return }
+    if (el.matches && el.matches(".rvta")) { el.rows = Math.min(8, Math.max(el.rows, el.value.split("\n").length)) }
+    clearTimeout(sT); sT = setTimeout(() => { const o = {}; diff().forEach(f => o[keyOf(f)] = val(f)); try { localStorage.setItem(DK, JSON.stringify(o)) } catch (_) {} count() }, 300) });
+  document.addEventListener("paste", e => { if (!e.target.closest || !e.target.closest(".rved")) return; e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain")) });
+  count();
+  $("#rvgo").onclick = async () => { const ch = diff(), b = $("#rvgo"); if (!ch.length) { alert("You haven't changed anything yet."); return }
+    const name = $("#rvwho").value.trim(); if (!name) { $("#rvwho").focus(); alert("Please write your name first."); return }
+    const body = {v: 1, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), who: name.slice(0, 80), lang, at: Date.now(), notes: {}, slides: {}};
+    ch.forEach(el => { if (el.dataset.n != null) body.notes[el.dataset.n] = val(el); else (body.slides[el.dataset.s] = body.slides[el.dataset.s] || {})[el.dataset.f] = val(el) });
+    b.disabled = true; b.textContent = "Sending…";
+    try { const r = await fetch(relay(d) + "/review", {method: "POST", body: JSON.stringify(body)}); if (!r.ok) throw new Error(r.status);
+      try { localStorage.removeItem(DK) } catch (_) {}
+      fields().forEach(el => { if (el.dataset.n != null) { const a = d.audNotes[el.dataset.n]; a.tr = a.tr || {}; a.tr[lang] = val(el) } else { const sl = d.slides.find(x => x.name === el.dataset.s); sl.tr = sl.tr || {}; sl.tr[lang] = sl.tr[lang] || {}; sl.tr[lang][el.dataset.f] = val(el) } });
+      count(); b.textContent = "Sent ✓ Thank you!"; setTimeout(() => { b.disabled = false; b.textContent = "Send my changes" }, 4000) }
+    catch (e) { b.disabled = false; b.textContent = "Send my changes"; alert("It didn't send. Check the internet connection and try again. Your changes are still here.") } } }
+({edit2: edit, present2: present, slides2: slides, audience2: audience, review2: reviewPage}[MODE] || (() => {}))();
 })();

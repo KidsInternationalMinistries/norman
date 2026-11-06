@@ -3,6 +3,7 @@
 //   POST /<topic>          publish one message (the body, at most 4 KB)
 //   GET  /<topic>/sse      Server-Sent Events: every new message as data: {"event":"message","message":"..."}
 //   GET  /<topic>/json     the last message as one JSON line (what a page reads when it opens)
+//   POST /<topic>/review   store one translation review from review.html (at most 100 KB); GET /<topic>/review lists them
 // Each topic is one Durable Object, so all the phones of one talk share one place in memory.
 
 const CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "*"};
@@ -10,7 +11,7 @@ const CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods"
 export default {
   async fetch(req, env){
     if (req.method === "OPTIONS") return new Response(null, {headers: CORS});
-    const m = new URL(req.url).pathname.match(/^\/([A-Za-z0-9_-]{1,64})(\/(sse|json))?\/?$/);
+    const m = new URL(req.url).pathname.match(/^\/([A-Za-z0-9_-]{1,64})(\/(sse|json|review))?\/?$/);
     if (!m) return new Response("Talk relay", {headers: CORS});
     return env.ROOM.get(env.ROOM.idFromName(m[1])).fetch(req);
   }
@@ -27,6 +28,14 @@ export class Room {
       this.last = JSON.stringify(msg); await this.state.storage.put("last", this.last);
       this.send("data: " + this.last + "\n\n");
       return Response.json({ok: true, followers: this.subs.size}, {headers: CORS});
+    }
+    if (kind === "review") {          // translation reviews wait here until the speaker accepts them in Edit (each is its own key: values are limited to 128 KB)
+      if (req.method === "POST") { const body = (await req.text()).slice(0, 100000); try { JSON.parse(body) } catch (e) { return new Response("Not JSON", {status: 400, headers: CORS}) }
+        await this.state.storage.put("rv:" + Date.now().toString(36).padStart(10, "0") + Math.random().toString(36).slice(2, 6), body);
+        const all = await this.state.storage.list({prefix: "rv:"}); const keys = [...all.keys()]; if (keys.length > 100) await this.state.storage.delete(keys.slice(0, keys.length - 100));
+        return Response.json({ok: true}, {headers: CORS}) }
+      const all = await this.state.storage.list({prefix: "rv:"});
+      return new Response("[" + [...all.values()].join(",") + "]", {headers: {...CORS, "Content-Type": "application/json", "Cache-Control": "no-store"}});
     }
     if (kind === "json") return new Response(this.last ? this.last + "\n" : "", {headers: {...CORS, "Content-Type": "application/x-ndjson", "Cache-Control": "no-store"}});
     if (kind === "sse") {
