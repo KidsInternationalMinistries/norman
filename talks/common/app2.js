@@ -656,11 +656,11 @@ Return JSON {"presses": [{"press": 1, "lines": [{"text": "...", "level": 1, "bol
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen(); $("#narr").onclick = () => narrate();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
-    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Talk length (minutes; also the countdown)")}<label>Your normal speaking speed (words a minute)<input data-k="wpm" type="number" min="60" max="300" step="5" value="${E(d.wpm || 140)}"></label></div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice<select id="dvoice"><option value="${E(d.voice || "")}">${E(d.voice ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI keys and voice)")}</option></select></label><p class="note" id="dvm"></p><label>Expressive voice feel<select data-k="v3Feel"><option value=""${d.v3Feel === "natural" ? "" : " selected"}>Steady (keeps your voice the same all the way through)</option><option value="natural"${d.v3Feel === "natural" ? " selected" : ""}>Lively (more feeling, but the voice can drift)</option></select></label><label>Voice style for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
+    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Talk length (minutes; also the countdown)")}<label>Your normal speaking speed (words a minute)<input data-k="wpm" type="number" min="60" max="300" step="5" value="${E(d.wpm || 140)}"></label></div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice<select id="dvoice"><option value="${E(d.voice || "")}">${E(d.voice ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI keys and voice)")}</option></select></label><p class="note" id="dvm"></p><label>Expressive voice feel<select data-k="v3Feel"><option value=""${d.v3Feel === "natural" ? "" : " selected"}>Steady (keeps your voice the same all the way through)</option><option value="natural"${d.v3Feel === "natural" ? " selected" : ""}>Lively (more feeling, but the voice can drift)</option></select></label><label>Voice style for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" || d.voiceModel === "v4" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive v3 (reads feeling from the text)</option><option value="v4"${d.voiceModel === "v4" ? " selected" : ""}>Expressive v4 (newest: feeling from the text, and it carries the voice from one piece to the next)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
     $("#aikeys").onclick = () => { try { K().settings() } catch (e) { aiFail(e) } };
     (async () => { try { const k0 = K(), key = await k0.need("eleven"), why = await k0.voicePick($("#dvoice"), key, d.voice || "", d.voiceName || "", "Default voice (from ✨ AI keys and voice)"); $("#dvm").textContent = why || "" } catch (e) {} })();
-    dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); const vs = $("#dvoice"); if (vs && vs.value !== "__id") { d.voice = vs.value; d.voiceName = vs.value && vs.selectedOptions[0] ? vs.selectedOptions[0].textContent.replace(/ \(yours\)$/, "") : "" } try { K().setVoice(d.voice || ""); K().setV3(d.v3Feel) } catch (e) {} dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
+    dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); const vs = $("#dvoice"); if (vs && vs.value !== "__id") { d.voice = vs.value; d.voiceName = vs.value && vs.selectedOptions[0] ? vs.selectedOptions[0].textContent.replace(/ \(yours\)$/, "") : "" } try { K().setVoice(d.voice || ""); K().setV3(d.v3Feel, d.voiceModel) } catch (e) {} dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } };
   // ---- ✨ Outline from the text ----
   $("#aiol").onclick = () => outlineAI().catch(e => alert((e && e.message) || "Something went wrong"));
@@ -691,7 +691,7 @@ Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.s
   // The building blocks (keys, OpenAI, ElevenLabs, ESV) come from ai.js as TALKAI.kit.
   // =====================================================================
   const K = () => { const k = window.TALKAI && TALKAI.kit; if (!k) throw new Error("The AI tools didn't load. Reload the page."); return k };
-  try { K().setVoice(d.voice || ""); K().setV3(d.v3Feel) } catch (e) {}
+  try { K().setVoice(d.voice || ""); K().setV3(d.v3Feel, d.voiceModel) } catch (e) {}
   // A video file's length is read once and saved on the slide, so the talk length check counts it (YouTube lengths are typed in the slide).
   (d.slides || []).forEach(sl => { if (!sl || sl.type !== "video" || +sl.secs) return; const u = (sl.url || "").trim() || sl.video || ""; if (!u || /youtu\.?be/.test(u)) return;
     const v = document.createElement("video"); v.preload = "metadata"; v.muted = true; v.onloadedmetadata = () => { const t = Math.round(v.duration); if (t > 0 && isFinite(t) && !+sl.secs) { VDUR[u] = t; const s0 = snapshot(); sl.secs = t; changed(s0) } v.removeAttribute("src"); v.load() }; v.src = u });
@@ -825,7 +825,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     if (F > 0) { let q = F; while (q > 0 && !/[.!?…\n]/.test(t[q - 1])) q--; F = q }      // from the start of the sentence the cursor is in
     const pairEnd = x => { const y = x.pair != null ? P.toks[x.pair] : null; return y ? y.at - A : -1 };
     const cueToks = P.toks.filter(x => x.k === "cue" && x.at >= A && x.at < st.b);
-    if (d.voiceModel === "v3") { let x = "", p = 0; for (const c of cueToks) { if (c.at - A >= F) x += t.slice(Math.max(p, F), c.at - A) + (c.close ? " " : " " + (V3TAG[c.cue.cue] || "") + " "); p = c.end - A } x += t.slice(Math.max(p, F));
+    if (d.voiceModel === "v3" || d.voiceModel === "v4") { let x = "", p = 0; for (const c of cueToks) { if (c.at - A >= F) x += t.slice(Math.max(p, F), c.at - A) + (c.close ? " " : " " + (V3TAG[c.cue.cue] || "") + " "); p = c.end - A } x += t.slice(Math.max(p, F));
       x = x.replace(RE_TAG, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
       const out = []; while (x.length > 2800) { let cut = x.lastIndexOf(". ", 2800); if (cut < 800) cut = 2800; out.push({say: x.slice(0, cut + 1).trim(), v3: true}); x = x.slice(cut + 1) } if (x.trim()) out.push({say: x.trim(), v3: true}); return out }
     const out = [], N = {speed: "", tone: ""};
@@ -879,7 +879,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     $("#nc").onclick = () => { $("#nu").select(); try { navigator.clipboard.writeText(share()) } catch (e) { document.execCommand("copy") } k0.toast("Link copied") };
     GH.get(PATH + "/narration2.json").then(g => { const n = JSON.parse(g.text); $("#nm").textContent = "Last made " + new Date(n.made).toLocaleString() + ". Make it again after you change the talk."; $("#nl").hidden = false }).catch(() => {});
     $("#ngo").onclick = async () => { const b = $("#ngo"), m = $("#nm"); b.disabled = true; saveText();
-      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel); const voice = await k0.voiceNow(), model = voiceModel(), saved = await voiceHave();
+      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel, d.voiceModel); const voice = await k0.voiceNow(), model = voiceModel(), saved = await voiceHave();
         let old = {}, osha = null; try { const g = await GH.get(PATH + "/narration2.json"); old = JSON.parse(g.text); osha = g.sha } catch (e) {}
         const have = new Set(saved); (old.steps || []).forEach(x => (x.items || []).forEach(y => y.say && have.add(y.say)));
         const steps = [], jobs = [];
@@ -891,7 +891,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
               if (!have.has(file) && !jobs.some(j => j.file === file)) jobs.push({file, p, prev: parts.slice(0, q).map(x => x.say || "").join(" ").slice(-500), next: parts.slice(q + 1).map(x => x.say || "").join(" ").slice(0, 300)}) } }
           steps.push({slide: st.slide ? st.slide.name : null, label: st.node ? st.node.full + " " + st.node.text : "", items}) }
         for (let q = 0; q < jobs.length; q++) { const j = jobs[q]; m.textContent = `Reading part ${q + 1} of ${jobs.length}…`;
-          const a = j.p.v3 ? await k0.ttsV3(j.p.say) : await k0.tts(j.p.say, j.p.vs, {prev: j.prev, next: j.next}), data = a.b64 || await k0.blobB64(a.blob);
+          const a = j.p.v3 ? await k0.ttsV3(j.p.say, {prev: j.prev, next: j.next}) : await k0.tts(j.p.say, j.p.vs, {prev: j.prev, next: j.next}), data = a.b64 || await k0.blobB64(a.blob);
           try { await GH.put(PATH + "/" + j.file, data, null, "Narration voice") } catch (e) { if (e.status !== 422) throw e } saved.add(j.file) }
         m.textContent = "Saving…"; const N = {format: "narration/2", voice, model, made: new Date().toISOString(), steps};
         for (let a = 0; a < 3; a++) { try { await GH.put(PATH + "/narration2.json", b64e(JSON.stringify(N, null, 1) + "\n"), osha, "Narrated version"); break } catch (e) { if (a === 2 || (e.status !== 409 && e.status !== 422)) throw e; try { osha = (await GH.get(PATH + "/narration2.json")).sha } catch (_) { osha = null } } }
@@ -899,7 +899,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
       catch (e) { m.textContent = ""; aiFail(e) } b.disabled = false } }
   // Saved voice pieces: every piece read for Listen or the narrated version is kept in the talk's voice/ folder, named by a hash of
   // the voice, the voice style and the words, so the same words in the same voice are never read (and paid for) twice. Change the voice and everything is read fresh.
-  const voiceModel = () => d.voiceModel === "v3" ? (d.v3Feel === "natural" ? "v3" : "v3s") : "v2";
+  const voiceModel = () => d.voiceModel === "v4" ? (d.v3Feel === "natural" ? "v4" : "v4s") : d.voiceModel === "v3" ? (d.v3Feel === "natural" ? "v3" : "v3s") : "v2";
   const pieceFile = async (k0, voice, p) => "voice/" + (await k0.sha(voice + "|" + voiceModel() + "|" + JSON.stringify(p.vs || {}) + "|" + p.say)).slice(0, 16) + ".mp3";
   let VOICES_HAVE = null;      // the files in voice/ (loaded when Listen or the narrated version starts)
   async function voiceHave(){ try { const r = await fetch(`https://api.github.com/repos/${C.owner}/${C.repo}/contents/${PATH}/voice?ref=${C.branch}&t=${Date.now()}`, {headers: token() ? {Authorization: "Bearer " + token()} : {}, cache: "no-store"});
@@ -912,7 +912,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     while (upQ.length) { const j = upQ.shift(); try { await GH.put(PATH + "/" + j.file, j.data, null, "Voice for Listen") } catch (e) {} if (VOICES_HAVE) VOICES_HAVE.add(j.file) } upBusy = false }
   async function listen(from){ if (LS.on) { stopListen(); return } saveText();
     if (from == null && caretPos && caretPos.node.isConnected) { try { from = offsetOf(caretPos.node, caretPos.off) } catch (e) {} }
-    let i0 = k; if (from != null) { const j = S.findIndex(st => st.a != null && from < st.b); if (j >= 0) { i0 = j; if (from < S[j].a) from = null } } const k0 = K(); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel); LS.on = true; LS.paused = false; const run = ++LS.run;
+    let i0 = k; if (from != null) { const j = S.findIndex(st => st.a != null && from < st.b); if (j >= 0) { i0 = j; if (from < S[j].a) from = null } } const k0 = K(); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel, d.voiceModel); LS.on = true; LS.paused = false; const run = ++LS.run;
     const ctxOf = (i, dir) => { const L = []; for (let q = i + dir; q >= 0 && q < S.length && L.join(" ").length < 400; q += dir) if (S[q].a != null) L[dir < 0 ? "unshift" : "push"](plain(d.text.slice(S[q].a, S[q].b))); return L.join("\n") };
     const voice = await k0.voiceNow(), have = await voiceHave(), PREP = new Map(); let gap = false;      // a second of quiet between recorded pieces
     // get (or start getting) every piece of step i: a saved file if there is one, else ElevenLabs (then saved for next time). Whole steps only are saved.
@@ -922,7 +922,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
       const prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
       const jobs = parts.map((p, q) => !p.say ? null : (async () => { const f = await pieceFile(k0, voice, p);
         if (!part && have.has(f)) { const r = await savedPiece(f); if (r) return r }
-        const r = p.v3 ? await k0.ttsV3(p.say) : await k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)});
+        const r = p.v3 ? await k0.ttsV3(p.say, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : await k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)});
         if (!part && !have.has(f)) { have.add(f); (r.b64 ? Promise.resolve(r.b64) : k0.blobB64(r.blob)).then(b => upload(f, b)).catch(() => {}) } return r })());
       jobs.forEach(j => j && j.catch(() => {})); const v = {parts, jobs, skip}; PREP.set(i, v); return v };
     try { for (let i = i0; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { prep(i + 1); await wait(1800); continue }
