@@ -548,7 +548,15 @@
    "slideTitle": "",
    "slide": "If I can do it myself, it isn't faith.",
    "layout": "left",
-   "image": "slides/bg/p4f.jpg"
+   "image": "slides/bg/p4f.jpg",
+   "tr": {
+    "Tagalog": {
+     "slide": "Kung kaya kong gawin mag-isa, hindi iyon pananampalataya."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"If I can do it myself, it isn't faith.\"}"
+   }
   },
   {
    "name": "Hebrews 11:1",
