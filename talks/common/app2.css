@@ -237,3 +237,8 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .trwarn{margin:4px 0 0;font-size:12px}
 #tpbox.none .trrow{display:none}
 .aupdf .aulg{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a6d1f;margin-bottom:4px}
+.slide .qro{position:absolute;aspect-ratio:1;background:#fff;border-radius:4%;padding:1%;box-sizing:border-box;z-index:3;line-height:0}
+.slide .qro svg{width:100%;height:100%;display:block}
+.slide .qro .qrh{display:none}
+#prev .slide .qro{cursor:move;touch-action:none;outline:2px dashed rgba(232,185,74,.8);outline-offset:2px}
+#prev .slide .qro .qrh{display:block;position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:50%;background:#e8b94a;border:2px solid #fff;cursor:nwse-resize}
