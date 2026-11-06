@@ -282,3 +282,6 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .tpn li.tpdone{opacity:.45}
 .tpn li.tpnext{opacity:.8}
 .tpcnt{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.tpn.tpone > ul > li:not(.tpnow),.tpn.tpone > ol > li:not(.tpnow){display:none}
+.tpn.tpone > ul,.tpn.tpone > ol{list-style:none;padding-left:0}
+.tpn.tpone li.tpnow{background:none;margin-left:0;padding:0}

@@ -154,7 +154,7 @@ function slideTrHTML(s, lang){ const src = slSrc(s), t = s && s.tr && s.tr[lang]
 const ownSteps = (S, n) => S.map((st, i) => st.node === n ? i : -1).filter(i => i >= 0);
 const tpLines = box => { const L = box && box.querySelector(":scope > ul, :scope > ol"); return L ? [...L.children].filter(x => x.tagName === "LI") : [] };
 function tpMark(box, S, n, k){ const lis = tpLines(box), st = ownSteps(S, n), at = st.indexOf(k);
-  if (!lis.length || lis.length !== st.length || at < 0) return; lis.forEach((li, j) => li.classList.add(j < at ? "tpdone" : j === at ? "tpnow" : "tpnext")) }
+  if (!lis.length || lis.length !== st.length || at < 0) return; box.classList.add("tpone"); lis.forEach((li, j) => li.classList.add(j < at ? "tpdone" : j === at ? "tpnow" : "tpnext")) }
 function noteFor(d, n){ for (let p = n; p; p = p.parent) { const h = p.id && d.notes && d.notes[p.id]; if (h && noteText(h)) return {n: p, h} } return null }
 // The light box behind the words being read: from the top of the first line to the bottom of the last, across the text column.
 function hlBox(host, col, r){ let el = host.querySelector(":scope > .hlb"); const L = r ? [...r.getClientRects()].filter(x => x.width > 1 && x.height > 1) : [];
@@ -607,8 +607,11 @@ Return JSON {"presses": [{"press": 1, "text": "...", "bold": false, "subs": []}]
       d.text = t; tpKey = null; changed(s0); drawText(); drawTP(true); k0.toast(`Drafted ${out.size} parts` + (bad ? `; ${bad} failed, so press ✨ Draft all again for those` : "")) }
     catch (err) { aiFail(err) } finally { dl.close() } };
   // Under the talking points: how many Next presses this part has and how many top lines, when they don't match (then Stage can't light up the line you're on).
-  function tpCount(){ const c = $("#tpcnt"), n = tpMode === "tp" ? tpNode() : null; if (!c) return; const st = n ? ownSteps(S, n).length : 0, ln = n ? tpLines($("#tpe")).length : 0;
-    c.hidden = !(n && ln && st && ln !== st); c.textContent = `${st} Next press${st === 1 ? "" : "es"} here, ${ln} line${ln === 1 ? "" : "s"}: with one line per press, Stage lights up the line you're on.` }
+  // In Edit the line for the Next press you're on is marked too (Stage shows only that line).
+  function tpCount(){ const c = $("#tpcnt"), n = tpMode === "tp" ? tpNode() : null; if (!c) return; const sts = n ? ownSteps(S, n) : [], st = sts.length, ln = n ? tpLines($("#tpe")).length : 0, at = sts.indexOf(k);
+    let css = $("#tpnowcss"); if (!css) { css = document.createElement("style"); css.id = "tpnowcss"; document.head.appendChild(css) }
+    const one = n && ln && ln === st && st > 1 && at >= 0; css.textContent = one ? `#tpe > ul > li:nth-child(${at + 1}), #tpe > ol > li:nth-child(${at + 1}){background:color-mix(in srgb,var(--cue) 35%,transparent);border-radius:6px}` : "";
+    c.hidden = !(n && ln && st && (ln !== st || one)); c.textContent = one ? `Next press ${at + 1} of ${st}: Stage shows only the marked line.` : `${st} Next press${st === 1 ? "" : "es"} here, ${ln} line${ln === 1 ? "" : "s"}. With one line per press, Stage shows the line for the press you're on.` }
   async function auDraft(n){ if (auLang) { if (!n.id) { K().toast("Write the notes in Original first."); return } saveTP(); await translateSlides([auLang], nodeSlides(n), true); await translateNotes([n.id], [auLang], true, true); trShow(tpNode()); return } const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own, so there's nothing to draft from.`); return }
     const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the audience notes that are there now?")) return; const stop = busy("Drafting the audience notes…");
     try { const j = await K().chat(`You write the notes people in the audience see on their phones while a Christian ministry leader speaks. For this part of the talk: 2 to 5 short lines: the main idea in plain words, any Bible verse he reads (reference and its key words), and if it fits one question to think about. Friendly and clear, no jargon, no retelling of the whole story. Return JSON {"lines": [{"text": "...", "bold": false}]}.`, `${brief()}\n\nThis part: ${n.full} ${n.text}\n\n${plain(seg)}`, {effort: "low"});
