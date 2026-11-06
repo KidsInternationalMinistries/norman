@@ -994,7 +994,7 @@ async function talkPDF(d, S, prog){ await loadLib("https://cdnjs.cloudflare.com/
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 // slides2.html?play: the narrated version. The slides show while the saved AI voice reads, and the voice moves the slides on.
 async function play(){
-  document.body.innerHTML = `<div id="s"></div><div class="playcap" id="pcap"></div><div id="ui"><button id="pb" type="button" title="Back">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next">⏭</button><button id="psp" type="button" title="Speed">1×</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
+  document.body.innerHTML = `<div id="s"></div><div id="ui"><button id="pb" type="button" title="Back">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next">⏭</button><button id="psp" type="button" title="Speed">1×</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#pmsg").textContent = "Couldn't load this talk."; return }
   document.title = d.title + " · narrated"; const lib = n => n ? (d.slides || []).find(x => x.name === n) || null : null;
   let N = null; for (const u of ["narration2.json", RAW + PATH + "/narration2.json"]) { try { const r = await fetch(u + "?t=" + Date.now(), {cache: "no-store"}); if (r.ok) { N = await r.json(); break } } catch (e) {} }
@@ -1010,13 +1010,17 @@ async function play(){
   const wait = (ms, r) => new Promise(ok => { let left = ms; const t = setInterval(() => { if (r !== run) { clearInterval(t); ok() } else if (!paused && (left -= 100 * rate) <= 0) { clearInterval(t); ok() } }, 100) });
   const say = f => new Promise(ok => { let alt = false; wake = ok; au.onended = () => ok(); au.onerror = () => { if (alt) return ok(); alt = true; au.src = RAW + PATH + "/" + f; au.playbackRate = rate; if (!paused) au.play().catch(() => {}) }; au.src = f; au.playbackRate = rate; if (!paused) au.play().catch(() => {}) });
   async function step(k){ const r = ++run; au.pause(); if (wake) { wake(); wake = null } if (k < 0) k = 0;
-    if (k >= L.length) { setSlide($("#s"), `<div class="slide blank"><div class="txt">The end<br><button type="button" id="again" class="btn">▶ Play again</button></div></div>`); st.lastChild.textContent = "The end"; $("#pcap").textContent = ""; const g = $("#again"); if (g) g.onclick = () => step(0); return }
+    if (k >= L.length) { setSlide($("#s"), `<div class="slide blank"><div class="txt">The end<br><button type="button" id="again" class="btn">▶ Play again</button></div></div>`); st.lastChild.textContent = "The end"; const g = $("#again"); if (g) g.onclick = () => step(0); return }
     i = k; const x = L[k]; setSlide($("#s"), slideHTML(lib(x.slide), d)); st.lastChild.textContent = x.label || "Narrated";
     const items = x.items || [], nx = L[k + 1] && (L[k + 1].items || []).find(y => y.say); items.filter(y => y.say).slice(0, 2).forEach(y => pre(y.say)); if (nx) pre(nx.say);
+    // a video that comes up here plays to its end first; the reading waits for it
+    const sl = lib(x.slide), was = k > 0 ? lib(L[k - 1].slide) : null;
+    if (sl && sl.type === "video" && sl !== was) { const w = $("#s .slide.vid"), lim = ((+sl.secs || vidSecs(sl) || 600) + 5) * 1000;
+      if (w) await new Promise(ok => { let done = false; const fin = () => { if (!done) { done = true; clearInterval(tt); ok() } }; w.addEventListener("vidend", fin, {once: true}); let t0 = 0; const tt = setInterval(() => { if (r !== run || !w.isConnected) return fin(); if (!paused && (t0 += 250) >= lim) fin() }, 250) }); if (r !== run) return }
     if (!items.some(y => y.say) && !items.some(y => y.pause)) await wait(3000, r);
-    for (let q = 0; q < items.length && r === run; q++) { const it = items[q]; if (it.pause) await wait(it.pause * 1000, r); else if (it.say) { $("#pcap").textContent = it.text || ""; const nf = items.slice(q + 1).find(y => y.say); if (nf) pre(nf.say); await say(it.say) } }
+    for (let q = 0; q < items.length && r === run; q++) { const it = items[q]; if (it.pause) await wait(it.pause * 1000, r); else if (it.say) { const nf = items.slice(q + 1).find(y => y.say); if (nf) pre(nf.say); await say(it.say) } }
     if (r === run) step(k + 1) }
-  const toggle = () => { paused = !paused; $("#pg").textContent = paused ? "▶" : "❚❚"; if (paused) au.pause(); else if (au.src && !au.ended) au.play().catch(() => {}) };
+  const toggle = () => { paused = !paused; $("#pg").textContent = paused ? "▶" : "❚❚"; if (paused) au.pause(); else if (au.src && !au.ended) au.play().catch(() => {}); document.querySelectorAll("#s video").forEach(v => { if (paused) v.pause(); else if (!v.ended) v.play().catch(() => {}) }) };
   $("#pgo").onclick = () => { $("#pstart").remove(); step(0) };
   $("#pn").onclick = () => step(i + 1); $("#pb").onclick = () => step(i - 1); $("#pg").onclick = toggle;
   const full = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen() } catch (e) {} }; $("#f").onclick = full;
