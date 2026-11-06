@@ -131,7 +131,16 @@
    "type": "verse",
    "ref": "Mark 14:50",
    "text": "Then everyone deserted him and fled.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Marcos 14:50",
+     "text": "At iniwan siya nilang lahat, at nagsitakas."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Mark 14:50\",\"text\":\"Then everyone deserted him and fled.\"}"
+   }
   },
   {
    "name": "Luke 22:61–62",
