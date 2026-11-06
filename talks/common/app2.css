@@ -251,3 +251,7 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .txbar .seg{display:inline-flex;gap:2px}
 .txbar .btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #prev .slide [data-k].ksel{z-index:4}
+.bar .pchk{display:flex;gap:6px;align-items:center;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.bar .pst{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.bar .pst.slow{color:#d9534f;font-weight:700}.bar .pst.fast{color:#d98a1f;font-weight:700}.bar .pst.even{color:#2e8b57;font-weight:700}
+.tn.prc .tm{color:#2e8b57;font-weight:700}

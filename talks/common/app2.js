@@ -39,7 +39,7 @@ function parse(d){ const t = d.text || "", toks = [], nodes = [], cnt = [0, 0, 0
   toks.forEach((x, i) => { if (x.k !== "cue" || x.close) return; for (let q = i + 1; q < toks.length; q++) { const y = toks[q]; if (y.k === "cue" && y.cue === x.cue) { if (y.close && y.pairOf == null) { x.pair = q; y.pairOf = i } break } } });
   nodes.forEach((n, i) => { n.stop = i + 1 < nodes.length ? nodes[i + 1].at : t.length;      // its own words end at the next tag of any level
     let k = i + 1; while (k < nodes.length && nodes[k].lvl > n.lvl) k++; n.last = k < nodes.length ? nodes[k].at : t.length });   // its whole branch ends at the next one at its level or higher
-  return {toks, nodes, t} }
+  return {toks, nodes, t, times: d.times || {}} }
 // The Next steps: one per stretch of words between tags, each with the slide on screen (see the rule at the top).
 // A step: {node, a, b (the words, from a to b in the text; null for a slide with no words), pos, slide, pre, nxt (the tags around it, as indexes in P.toks)}.
 function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = null, last = null, pos = 0, pre = -1;
@@ -102,10 +102,17 @@ async function slides(){
 // ---------- shared drawing ----------
 // The outline: every outline tag, indented by level; cur = the node of the step you're on.
 const nil = (P, n) => !!n && !P.t.slice(n.end, n.last).replace(TAG, " ").trim() && !n.slides.some(x => x.slide && !x.slide.stop);
+// Time keys and planned seconds: a point's practice time (d.times), else its words at 140 a minute; a section adds up its points.
+const tkey = n => n.id || n.lvl + "|" + n.text;
+const mmss = x => { x = Math.max(0, Math.round(x)); return x < 60 ? x + "s" : Math.floor(x / 60) + ":" + String(x % 60).padStart(2, "0") };
+const wordsIn = (P, a, b) => P.t.slice(a, b).replace(TAG, " ").split(/\s+/).filter(Boolean).length;
+function planSecs(P, n){ if (n.lvl >= 2) { const t = P.times[tkey(n)]; if (t != null && +t >= 5 && n.lvl === 2) return {s: +t, pr: true}; const w = wordsIn(P, n.end, n.last); return {s: w ? Math.max(10, Math.round(w / 140 * 6) * 10) : 0, pr: false} }
+  const kids = P.nodes.filter(x => x.parent === n && x.lvl === 2); let s = 0, pr = false, a = n.end;
+  for (const c of kids) { s += wordsIn(P, a, c.at) / 140 * 60; const q = planSecs(P, c); s += q.s; pr = pr || q.pr; a = c.last } s += wordsIn(P, a, n.last) / 140 * 60; return {s: s ? Math.max(10, Math.round(s / 10) * 10) : 0, pr} }
 function treeHTML(P, S, k, big, pick){ const cur = pick || (S[k] && S[k].node); let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
-    const w = n.lvl <= 2 ? P.t.slice(n.end, n.last).replace(TAG, " ").split(/\s+/).filter(Boolean).length : 0, sec = Math.max(10, Math.round(w / 140 * 6) * 10), tm = !w ? "" : sec < 60 ? sec + "s" : Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
-    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}${nil(P, n) ? " nil" : ""}" data-n="${n.j}" title="${w ? "About " + tm + " at 140 words a minute" : nil(P, n) ? "No words here yet" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
+    const q = n.lvl <= 2 ? planSecs(P, n) : {s: 0}, w = q.s, tm = w ? mmss(w) : "";
+    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}${nil(P, n) ? " nil" : ""}${q.pr ? " prc" : ""}" data-n="${n.j}" title="${w ? (q.pr ? "Practiced: " + tm : "About " + tm + " at 140 words a minute") : nil(P, n) ? "No words here yet" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
   return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a section, point or sub point, or use ✨ Outline.</p>` }
 // The text with every tag drawn: nodes as numbered chips (a section as a header with its words), slides as named chips, cues as small hints.
 // inEdit: chips are editable tags. S: wrap each stretch of words in a span (Stage). blocks: wrap each node's part in an indented block.
@@ -184,10 +191,27 @@ async function present(){
       <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
         <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><span class="zm" data-z="n"><button type="button" data-d="-1" title="Smaller talking points">A−</button><button type="button" data-d="1" title="Bigger talking points">A+</button></span></div><div class="tabbody"><div class="olbox" id="ol"></div></div></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
-      <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
+      <label class="pchk" title="Practice: press Next when you finish each part; the time on each point is saved and shows in the outline"><input type="checkbox" id="prc"> Practice</label><span class="pst" id="pst"></span><button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   $("#sc").innerHTML = textHTML(d, P, false, S, true);
-  const TIMER = CountTimer($("#ct"), "pres2-timer-" + FOLDER); TIMER.setMinutes(timerMinutes(d, []));
+  const pts = P.nodes.filter(n => n.lvl === 2), total = () => P.nodes.filter(n => n.lvl === 1).reduce((a, n) => a + planSecs(P, n).s, 0) || pts.reduce((a, n) => a + planSecs(P, n).s, 0);
+  const TIMER = CountTimer($("#ct"), "pres2-timer-" + FOLDER); TIMER.setMinutes(timerMinutes(d, []) || Math.round(total() / 60));
+  // Practice: each Next adds the time since you came to that step to its point; the point's time is saved in talk2.json (d.times) and shows in the outline.
+  const ptOf = st => { let p = st && st.node; while (p && p.lvl > 2) p = p.parent; return p && p.lvl === 2 ? p : null };
+  let run = false, arrive = Date.now(), acc = {}, queue = {}, saveT = null, psaving = false, pmsg = "";
+  try { run = localStorage.getItem("pres2-prc-" + FOLDER) === "1" } catch (e) {}
+  const record = () => { if (!run || end) return; const p = ptOf(S[k]); const t = (Date.now() - arrive) / 1000; if (!p || t < 1 || t > 3600) return; const key = tkey(p); acc[key] = (acc[key] || 0) + t; queue[key] = Math.round(acc[key]); P.times[key] = queue[key]; clearTimeout(saveT); saveT = setTimeout(savePractice, 1500) };
+  async function savePractice(){ if (psaving) { saveT = setTimeout(savePractice, 1000); return } const q = queue; queue = {}; if (!Object.keys(q).length) return; psaving = true;
+    try { if (!token()) { pmsg = "Practice times aren't saved on this computer (no GitHub sign-in)."; return }
+      for (let a = 0; a < 3; a++) { const g = await GH.get(FILE), dd = JSON.parse(g.text); dd.times = {...(dd.times || {}), ...q}; dd.lastPractice = {date: new Date().toISOString(), total: Math.round(total())};
+        try { await GH.put(FILE, b64e(JSON.stringify(dd, null, 1) + "\n"), g.sha, "Practice times for " + (d.title || FOLDER)); d.times = dd.times; d.lastPractice = dd.lastPractice; pmsg = ""; return } catch (e) { if (e.status !== 409 && e.status !== 422) throw e } } }
+    catch (e) { Object.assign(queue, q); pmsg = "Practice times not saved yet (" + (e.detail || e.message) + ")"; saveT = setTimeout(savePractice, 5000) } finally { psaving = false; pace() } }
+  function pace(){ const el = $("#pst"); if (!el) return; if (pmsg) { el.textContent = pmsg; el.className = "pst slow"; return }
+    if (run) { const p = ptOf(S[k]); el.className = "pst"; el.textContent = end ? "Last part timed ✓ Untick Practice when you're done" : p ? `Timing ${p.lab} · ${mmss((Date.now() - arrive) / 1000 + (acc[tkey(p)] || 0))}` : "Practice: press Next at the end of each part"; return }
+    const e = TIMER.elapsed(), p = ptOf(S[k]); if (e == null || !p || end) { el.textContent = d.lastPractice ? "Practiced " + new Date(d.lastPractice.date).toLocaleDateString() + " · " + mmss(d.lastPractice.total) : ""; el.className = "pst"; return }
+    const before = pts.filter(x => x.at < p.at).reduce((a, x) => a + planSecs(P, x).s, 0), here = planSecs(P, p).s, plan = before + Math.min((Date.now() - arrive) / 1000, here), dl = e - plan;
+    el.className = "pst " + (Math.abs(dl) < 20 ? "even" : dl > 0 ? "slow" : "fast"); el.textContent = Math.abs(dl) < 20 ? "On pace" : dl > 0 ? mmss(dl) + " behind · speed up" : mmss(-dl) + " ahead · slow down" }
+  setInterval(pace, 1000);
   // The left list: the same outline as in Edit, to jump to.
   const branch = n => { let p = n; while (p && p.lvl > 2) p = p.parent; return p };     // the point (or section) you're in
   function draw(){ const st = S[k], n = st && st.node, b = n ? branch(n) : null;
@@ -211,10 +235,11 @@ async function present(){
     if (bc) try { bc.postMessage(m) } catch (e) {} const se = $("#sync");
     try { const r = await fetch(relay(d), {method: "POST", body: JSON.stringify(m)}); se.className = r.ok ? "ok" : "bad"; se.lastChild.textContent = r.ok ? "Monitors following" : "Sync failed" } catch (e) { se.className = "bad"; se.lastChild.textContent = "Offline: only the slides window follows" } }
   const locked = () => !!$("#gate");
-  function go(i){ if (locked()) return; peek = null; end = false; k = Math.max(0, Math.min(S.length - 1, i)); draw(); push(); TIMER.at(k === 0) }
-  function next(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (k < S.length - 1) go(k + 1); else if (!end) { end = true; draw(); push() } }
+  function go(i, rec){ if (locked()) return; if (rec) record(); const p0 = ptOf(S[k]); peek = null; end = false; k = Math.max(0, Math.min(S.length - 1, i)); if (!rec || ptOf(S[k]) !== p0 || true) arrive = Date.now(); draw(); push(); TIMER.at(k === 0); pace() }
+  function next(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (k < S.length - 1) go(k + 1, true); else if (!end) { record(); end = true; arrive = Date.now(); draw(); push(); pace() } }
   function back(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (end) { end = false; draw(); push(); return } if (k > 0) go(k - 1) }
   $("#n").onclick = next; $("#b").onclick = back;
+  $("#prc").checked = run; $("#prc").onchange = e => { run = e.target.checked; acc = {}; arrive = Date.now(); try { localStorage.setItem("pres2-prc-" + FOLDER, run ? "1" : "0") } catch (_) {} if (!run) { clearTimeout(saveT); savePractice() } pace() };
   addEventListener("resize", () => draw());
   // A− / A+ for the text and the talking points, kept on this computer
   let Z = {t: 1, n: 1}; try { Z = {...Z, ...JSON.parse(localStorage.getItem("v2-zoom") || "{}")} } catch (e) {}
