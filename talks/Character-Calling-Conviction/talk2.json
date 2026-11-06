@@ -654,7 +654,16 @@
    "type": "verse",
    "ref": "John 5:17, 19",
    "text": "In his defense Jesus said to them, \"My Father is always at his work to this very day, and I too am working.\" ... Jesus gave them this answer: \"Very truly I tell you, the Son can do nothing by himself; he can do only what he sees his Father doing, because whatever the Father does the Son also does.\"",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Juan 5:17, 19",
+     "text": "Subalit sinabi sa kanila ni Jesus, “Ang aking Ama'y patuloy na gumagawa hanggang ngayon, at ako man ay gumagawa rin.” ... Sinabi sa kanila ni Jesus, “Sinasabi ko sa inyo: hindi makakagawa ang Anak sa kanyang sarili lamang; ginagawa niya lamang ang nakikita niyang ginagawa ng Ama, sapagkat anumang ginagawa ng Ama ay gayon din ang ginagawa ng Anak.”"
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"John 5:17, 19\",\"text\":\"In his defense Jesus said to them, \\\"My Father is always at his work to this very day, and I too am working.\\\" ... Jesus gave them this answer: \\\"Very truly I tell you, the Son can do nothing by himself; he can do only what he sees his Father doing, because whatever the Father does the Son also does.\\\"\"}"
+   }
   },
   {
    "name": "John 1:14",
