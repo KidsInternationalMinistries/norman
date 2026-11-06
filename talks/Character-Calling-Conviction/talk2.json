@@ -420,7 +420,15 @@
    "slideTitle": "",
    "slide": "Are you broken?",
    "layout": "left",
-   "image": "slides/bg/p3f.jpg"
+   "image": "slides/bg/p3f.jpg",
+   "tr": {
+    "Tagalog": {
+     "slide": "Wasak ka ba?"
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"Are you broken?\"}"
+   }
   },
   {
    "name": "Refrain (3.g)",
