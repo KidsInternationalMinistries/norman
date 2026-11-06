@@ -172,3 +172,12 @@ body[data-mode="edit2"],body[data-mode="present2"]{overflow:hidden}
 .v2x .gut.h{height:10px}
 .v2x .gut.h::after{width:44px;height:4px}
 .v2x .gut:hover::after,.v2x .gut.on::after{background:#fff;opacity:1}
+/* Stage zoom */
+.v2s .script{font-size:calc(20px * var(--tz,1))}
+.v2s .tabbody .tpn{font-size:calc(26px * var(--nz,1))}
+.v2s .side .olh{font-size:calc(24px * var(--nz,1))}
+.v2s ul.ol{font-size:calc(22px * var(--nz,1))}
+.zm{display:inline-flex;gap:4px;margin-left:auto}
+.zm button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:2px 8px;font:700 13px/1.4 system-ui,sans-serif;cursor:pointer}
+.zm button:hover{border-color:var(--accent)}
+.v2s #m .tt{display:flex;align-items:center}

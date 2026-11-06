@@ -166,10 +166,10 @@ async function present(){
   const P = parse(d), S = build(P), SH = S.map(x => x.slide);
   let k = 0, peek = null, end = false, showText = true; try { const v = +localStorage.getItem("pres2-" + FOLDER); if (v >= 0 && v < S.length) k = v; showText = localStorage.getItem("pres2-text") !== "0" } catch (e) {}
   document.body.innerHTML = topBar(d, "present") + `<div class="lay v2x v2s" id="lay"><nav class="cues tree" id="nav"></nav><div class="gut" data-g="c1" title="Drag to resize; double-click to reset"></div><main class="pane" id="m">
-      <div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><div class="script" id="sc"></div></div></main>
+      <div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label><span class="zm" data-z="t"><button type="button" data-d="-1" title="Smaller text">A−</button><button type="button" data-d="1" title="Bigger text">A+</button></span></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><div class="script" id="sc"></div></div></main>
       <div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
       <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
-        <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button></div><div class="tabbody"><div class="olbox" id="ol"></div></div></div></aside></div>
+        <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><span class="zm" data-z="n"><button type="button" data-d="-1" title="Smaller talking points">A−</button><button type="button" data-d="1" title="Bigger talking points">A+</button></span></div><div class="tabbody"><div class="olbox" id="ol"></div></div></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
@@ -203,6 +203,10 @@ async function present(){
   function back(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (end) { end = false; draw(); push(); return } if (k > 0) go(k - 1) }
   $("#n").onclick = next; $("#b").onclick = back;
   addEventListener("resize", () => draw());
+  // A− / A+ for the text and the talking points, kept on this computer
+  let Z = {t: 1, n: 1}; try { Z = {...Z, ...JSON.parse(localStorage.getItem("v2-zoom") || "{}")} } catch (e) {}
+  const zoom = () => { const L = $("#lay"); L.style.setProperty("--tz", Z.t); L.style.setProperty("--nz", Z.n) }; zoom();
+  document.addEventListener("click", e => { const b = e.target.closest(".zm [data-d]"); if (!b) return; const w = b.parentElement.dataset.z; Z[w] = Math.max(.6, Math.min(2.6, Math.round((Z[w] + .1 * +b.dataset.d) * 10) / 10)); zoom(); try { localStorage.setItem("v2-zoom", JSON.stringify(Z)) } catch (_) {} draw() });
   $("#stx").onchange = e => { showText = e.target.checked; $("#ft").hidden = !showText; try { localStorage.setItem("pres2-text", showText ? "1" : "0") } catch (_) {} draw() };
   document.body.addEventListener("click", e => { const pk = e.target.closest("[data-pk]"); if (pk) { const nm = pk.dataset.pk; if (nm === "Stop") return; peek = peek === nm ? null : nm; draw(); push(); return }
     const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = firstAt(S, P.nodes[j]); if (i >= 0) go(i) } });
