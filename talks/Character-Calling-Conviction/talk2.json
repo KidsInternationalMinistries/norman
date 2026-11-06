@@ -460,6 +460,6 @@
   "2|Closing and hand-off": 1
  },
  "notes": {
-  "7ub3p": "This is a test<div>abc</div><div>dfg</div>"
+  "7ub3p": "This is a test<div>abc</div><div><ol><li>dfg</li></ol></div>"
  }
 }
