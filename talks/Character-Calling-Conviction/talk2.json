@@ -539,7 +539,16 @@
    "type": "verse",
    "ref": "Colossians 1:29",
    "text": "To this end I strenuously contend with all the energy Christ so powerfully works in me.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Colosas 1:29",
+     "text": "Na siya rin naman ang aking pinagtatrabahuhan, na ako'y nagpapagal ayon sa kaniyang paggawa, na siya'y sa akin gumagawa na may kapangyarihan."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Colossians 1:29\",\"text\":\"To this end I strenuously contend with all the energy Christ so powerfully works in me.\"}"
+   }
   },
   {
    "name": "Faith",
