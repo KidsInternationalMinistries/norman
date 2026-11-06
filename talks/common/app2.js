@@ -147,7 +147,12 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
   let hideT; const ui = $("#ui"), wake = () => { ui.classList.remove("hide"); clearTimeout(hideT); hideT = setTimeout(() => ui.classList.add("hide"), 3000) };
   document.addEventListener("mousemove", wake); document.addEventListener("touchstart", wake); wake();
   if (bc) bc.onmessage = e => from(e.data); addEventListener("message", e => { if (e.source === window.opener) from(e.data) });
-  try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; pollsFollow(d, es) } catch (e) {}
+  // the live stream, reconnected if it closes or goes quiet (a heartbeat comes every 25 s), catching up on the last Next
+  let es = null, heard = Date.now(), pf = false; const catchUp = async () => { try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const L = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (L.length) from(L[L.length - 1]) } catch (e) {} };
+  const connect = () => { try { if (es) es.close() } catch (e) {} try { es = new EventSource(relay(d) + "/sse"); es.onopen = () => { heard = Date.now(); catchUp() }; es.addEventListener("ping", () => { heard = Date.now() });
+      es.onmessage = e => { heard = Date.now(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; if (!pf) { pf = true; pollsFollow(d, es) } else es.addEventListener("poll", e => { try { const m = JSON.parse(e.data); POLLS[m.poll] = m.c || {}; pollsDraw(d) } catch (_) {} }) } catch (e) {} };
+  connect(); setInterval(() => { if (!es || es.readyState === 2 || Date.now() - heard > 40000) { heard = Date.now(); connect() } }, 10000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (!es || es.readyState === 2 || Date.now() - heard > 40000)) { heard = Date.now(); connect() } });
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const L = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (L.length) from(L[L.length - 1]) } catch (e) {}
   show() }
 
@@ -1196,8 +1201,20 @@ async function audience(){
     catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0; const g = $("#audlbig"); if (g) g.textContent = "⤓ Download the notes" } };
   const dl = () => { $("#audl").hidden = !S.some((x, k) => noteText(auNoteAt(d, S, k, "")) || (x.slide && x.slide.type !== "video")) }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
-  try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; hear(); show() }; es.onerror = () => { conn = false; show() }; es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; pollsFollow(d, es, () => { const i = local == null ? pres : local; if (pollHere(i)) show() }) } catch (e) { conn = false }
-  try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
+  // Phones put to sleep (screen locked, app in the background) lose the live stream and often don't get it back by themselves.
+  // So: reconnect when the page is seen again, when the internet comes back, or when no heartbeat came for 40 s, and catch up on the last Next.
+  const catchUp = async () => { try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {} };
+  let es = null, first = true; const afterPoll = () => { const i = local == null ? pres : local; if (pollHere(i)) show() };
+  const connect = () => { try { if (es) es.close() } catch (e) {} try { es = new EventSource(relay(d) + "/sse"); const me = es;
+      es.onopen = () => { if (me !== es) return; conn = true; hear(); show(); if (!first) catchUp(); first = false }; es.onerror = () => { if (me !== es) return; conn = false; show() };
+      es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} };
+      pollsFollow(d, es, afterPoll) } catch (e) { conn = false } };
+  connect(); let lastFix = 0;
+  const fix = force => { if (Date.now() - lastFix < 3000) return; if (force || !es || es.readyState === 2 || Date.now() - heard > 40000) { lastFix = Date.now(); connect() } else catchUp() };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fix(false) });
+  addEventListener("pageshow", () => fix(false)); addEventListener("online", () => fix(true)); addEventListener("focus", () => fix(false));
+  setInterval(() => { if (document.visibilityState !== "hidden" && (Date.now() - heard > 40000 || (es && es.readyState === 2))) fix(true) }, 10000);
+  await catchUp();
   show() }
 // =====================================================================
 // BACKUP: the offline copy (works with no internet: Stage + Slides window, or Slides only with the arrow keys)
