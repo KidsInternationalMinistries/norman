@@ -43,7 +43,16 @@
    "type": "verse",
    "ref": "John 15:1",
    "text": "Apart from me you can do NOTHING.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Juan 15:5",
+     "text": "Sapagkat hiwalay sa akin ay wala kayong magagawa."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"John 15:1\",\"text\":\"Apart from me you can do NOTHING.\"}"
+   }
   },
   {
    "name": "John 15:?",
