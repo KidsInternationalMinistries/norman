@@ -810,7 +810,16 @@
    "type": "verse",
    "ref": "Ephesians 2:10",
    "text": "For we are God's handiwork, created in Christ Jesus to do good works, which God prepared in advance for us to do.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Efeso 2:10",
+     "text": "Sapagkat tayo'y gawa niya, nilalang kay Cristo Jesus para sa mabubuting gawa, na inihanda ng Diyos nang una upang ating lakaran."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Ephesians 2:10\",\"text\":\"For we are God's handiwork, created in Christ Jesus to do good works, which God prepared in advance for us to do.\"}"
+   }
   },
   {
    "name": "Closing and hand-off",
@@ -871,7 +880,16 @@
    "image": "",
    "bullets": "",
    "text": "You can't live the Christian Life, you never could live the Christian Life...And if you are trying to live the Christian Life you have already failed. There is only one person who has lived the Christian Life, and that is Christ.  The Christian Life is a supernatural life that must be lived by a supernatural person... And you're not it.”\n",
-   "ref": "Tony Evans - Pastor in US"
+   "ref": "Tony Evans - Pastor in US",
+   "tr": {
+    "Tagalog": {
+     "ref": "Tony Evans - Pastor sa US",
+     "text": "Hindi mo kayang ipamuhay ang Buhay Kristiyano, hindi mo kailanman kayang ipamuhay ang Buhay Kristiyano... At kung sinusubukan mong ipamuhay ang Buhay Kristiyano, bigo ka na. Iisa lang ang nakapamuhay ng Buhay Kristiyano, at iyon ay si Cristo. Ang Buhay Kristiyano ay isang sobrenatural na buhay na dapat ipamuhay ng isang sobrenatural na tao... at hindi ikaw iyon.”"
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Tony Evans - Pastor in US\",\"text\":\"You can't live the Christian Life, you never could live the Christian Life...And if you are trying to live the Christian Life you have already failed. There is only one person who has lived the Christian Life, and that is Christ.  The Christian Life is a supernatural life that must be lived by a supernatural person... And you're not it.”\"}"
+   }
   }
  ],
  "times": {
