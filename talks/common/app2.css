@@ -214,3 +214,12 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .aubtm #aulive{background:var(--accent);color:#fff;border-color:var(--accent);font-size:15px}
 #aust{font-size:13px;color:var(--muted);min-width:110px;text-align:center}
 #aust.on{color:#2e8b57;font-weight:700}
+.lay.v2x .side.side2>.sbot{flex:1 1 0;flex-shrink:1;min-height:0;overflow:hidden}
+.lay.v2x .side.side2 .tabbody{overflow:auto;min-height:0}
+.lay.v2x .plist{align-content:start}
+.aust{margin:0 0 4px}
+.aust .austt{font-weight:700;font-size:21px;line-height:1.35}
+.aust .austs{opacity:.8;margin-top:4px}
+.aust ul{margin:6px 0 0}
+.auhr{border:0;border-top:1px solid currentColor;opacity:.3;margin:14px 0}
+.aust .austt,.aust .austs{white-space:pre-line}
