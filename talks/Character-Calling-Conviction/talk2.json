@@ -380,7 +380,16 @@
    "type": "verse",
    "ref": "Mark 14:29–31",
    "text": "Peter declared, \"Even if all fall away, I will not.\" \"Truly I tell you,\" Jesus answered, \"today, yes, tonight, before the rooster crows twice you yourself will disown me three times.\" But Peter insisted emphatically, \"Even if I have to die with you, I will never disown you.\" And all the others said the same.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Marcos 14:29–31",
+     "text": "Datapuwa't sinabi ni Pedro sa kaniya, Kahit na ang lahat ay mangatisod, gayon ma'y hindi ako. At sinabi sa kaniya ni Jesus, Katotohanang sinasabi ko sa iyo, Na ikaw ngayon, sa gabi ring ito, bago tumilaok ang manok na makalawa, ay ipagkakaila mo ako ng makaitlo. Datapuwa't lalong pinagsigasigan niya, Kung magkagayo'y ako'y mamamatay na kasama mo, sa anomang paraan ay hindi kita ipagkakaila. At gayon din ang sinabi ng lahat."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Mark 14:29–31\",\"text\":\"Peter declared, \\\"Even if all fall away, I will not.\\\" \\\"Truly I tell you,\\\" Jesus answered, \\\"today, yes, tonight, before the rooster crows twice you yourself will disown me three times.\\\" But Peter insisted emphatically, \\\"Even if I have to die with you, I will never disown you.\\\" And all the others said the same.\"}"
+   }
   },
   {
    "name": "John 21:15",
