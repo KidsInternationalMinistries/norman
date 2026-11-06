@@ -438,8 +438,8 @@ async function edit(){
         const prev = noteText((a.tr || {})[lg]) ? a.tr[lg] : "", was = (a.src || {})[lg] || "";
         try { const sys = `Translate notes for an audience into ${lg}. Keep every HTML tag exactly as it is and translate only the words. Use the Bible book names and wording usual in ${lg}. Natural, simple and warm, not word for word. Return JSON {"html": "..."}.`;
           const j = prev ? await K().chat(sys + `\nThere is already a ${lg} translation, and a local speaker may have improved it by hand. Update it to match the NEW original: keep the wording, word choices and style of the existing translation wherever they still fit, change only what the changes to the original need, and translate any new parts in the same style.`,
-              `ORIGINAL BEFORE (what the existing translation was made from):\n${was || "(unknown)"}\n\nEXISTING ${lg.toUpperCase()} TRANSLATION (keep its changes):\n${prev}\n\nNEW ORIGINAL (translate this):\n${src}`, {effort: "medium"})
-            : await K().chat(sys, src, {effort: "low"});
+              `ORIGINAL BEFORE (what the existing translation was made from):\n${was || "(unknown)"}\n\nEXISTING ${lg.toUpperCase()} TRANSLATION (keep its changes):\n${prev}\n\nNEW ORIGINAL (translate this):\n${src}`, {effort: "high"})
+            : await K().chat(sys, src, {effort: "high"});
           if (j.html && a.html === src) { const s = snapshot(); a.tr = a.tr || {}; a.src = a.src || {}; a.tr[lg] = cleanHTML(String(j.html)); a.src[lg] = src; if (a.ed) delete a.ed[lg]; changed(s) } } catch (e) { err = e } finally { trBusy.delete(id + "|" + lg) } } }));
     if (err) aiFail(err); const n = tpNode(); drawAU(n); if (auLang && n && ids.includes(n.id) && document.activeElement !== $("#tpe")) $("#tpe").innerHTML = cleanHTML(getNote(n)) }
   document.addEventListener("click", e => { const t = e.target; if (!t.closest || !t.closest("#aubar")) return;
