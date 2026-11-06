@@ -215,7 +215,16 @@
    "ttSize": 108,
    "sbX": 1.7,
    "sbY": 53.4,
-   "sbW": 56
+   "sbW": 56,
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Tumanggap ng kapangyarihan ang mga alagad\nat nagdala ito ng bilangguan, alitan, at kahinaan.",
+     "slide": "Huwag mong asahang magmukhang iba ito."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"The disciples received power\\nand it brought prison, conflict and weakness.\",\"slide\":\"Don't expect it to look any different.\"}"
+   }
   },
   {
    "name": "Acts 5:40–41",
