@@ -432,8 +432,10 @@ async function edit(){
   // ---- languages and translations of the audience notes ----
   const trBusy = new Set();
   const stale = (id, L) => { const a = (d.audNotes || {})[id]; return !!(a && noteText(a.html) && (a.src || {})[L] !== a.html) };
+  const nodeSlides = n => n ? [...new Set(n.slides.map(x => x.slide).filter(Boolean))] : [];
+  const slStale = (sl, lg) => { const src = slSrc(sl); return !!src && (sl.trSrc || {})[lg] !== src };
   function trShow(n){ const r = $("#trrow"); if (!r) return; const a = n && n.id && (d.audNotes || {})[n.id], L = auLang ? [auLang] : (d.languages || []);
-    const need = tpMode === "au" && a && noteText(a.html) ? L.filter(lg => stale(n.id, lg) && !trBusy.has(n.id + "|" + lg)) : [];
+    const need = tpMode === "au" && n && n.id ? L.filter(lg => !trBusy.has(n.id + "|" + lg) && ((a && noteText(a.html) && stale(n.id, lg)) || nodeSlides(n).some(sl => slStale(sl, lg)))) : [];
     r.hidden = !need.length; if (need.length) $("#trone").textContent = "✨ Translate into " + need.join(", ") }
   function drawAU(n){ const bar = $("#aubar"); if (!bar) return; bar.hidden = tpMode !== "au"; if (bar.hidden) { trShow(n); return } const L = d.languages || [];
     const st = lg => !n || !n.id || !noteText(((d.audNotes || {})[n.id] || {}).html) ? "" : trBusy.has(n.id + "|" + lg) ? " …" : stale(n.id, lg) ? " ○" : (((d.audNotes || {})[n.id] || {}).ed || {})[lg] ? " ✎" : " ✓";
@@ -451,8 +453,8 @@ async function edit(){
   document.querySelectorAll('a[href="present2.html"]').forEach(a => a.addEventListener("click", async e => { if (!hasAU() || d.pdfHash === pdfHash()) return; e.preventDefault();
     if (a.dataset.busy) return; if (!confirm("The slides or audience notes changed since the audience PDF was made. Make a new one now? It takes about a minute.\n\nCancel goes to Stage without it.")) { location.href = a.href; return }
     a.dataset.busy = "1"; try { await makePDFs(); while (dirty || saving) await new Promise(r => setTimeout(r, 200)); location.href = a.href } catch (err) { delete a.dataset.busy; setSave("The PDF wasn't made (" + (err.detail || err.message) + ").", true) } }));
-  async function translateSlides(langs){ const L = langs || d.languages || []; const jobs = [];
-    (d.slides || []).forEach(sl => { const src = slSrc(sl); if (src) L.forEach(lg => { if ((sl.trSrc || {})[lg] !== src) jobs.push([sl, lg, src]) }) });
+  async function translateSlides(langs, only){ const L = langs || d.languages || []; const jobs = [];
+    (only || d.slides || []).forEach(sl => { const src = slSrc(sl); if (src) L.forEach(lg => { if ((sl.trSrc || {})[lg] !== src) jobs.push([sl, lg, src]) }) });
     if (!jobs.length) return 0; let i = 0, err = null, done = 0; K().toast(`Translating the words on ${new Set(jobs.map(j => j[0])).size} slide(s)…`);
     await Promise.all(Array.from({length: Math.min(4, jobs.length)}, async () => { while (i < jobs.length) { const [sl, lg, src] = jobs[i++];
         try { const j = await K().chat(`Translate the words on one presentation slide into ${lg} for the audience. Keep it as short as the original. Keep the same JSON keys. For a Bible verse ("ref" and "text"), use the Bible translation most used in ${lg} and the usual ${lg} book name in the reference. "bullets" stays one line per bullet, separated by \\n. A person's name stays as it is. Return only the JSON object with the same keys.`, src, {effort: "high"});
@@ -478,7 +480,7 @@ async function edit(){
     if (t.closest("#addlg")) { const lg = (prompt("Which language? (for example Tagalog, Cebuano, Spanish, Korean)") || "").replace(/[<>"]/g, "").trim(); if (!lg) return; const nm = lg[0].toUpperCase() + lg.slice(1);
       if ((d.languages || []).some(x => x.toLowerCase() === nm.toLowerCase())) return; const s = snapshot(); d.languages = [...(d.languages || []), nm]; changed(s); drawAU(tpNode()); K().toast(nm + " added. Press ✨ Translate all that changed when the notes are ready."); return }
     if (t.closest("#trall")) { if (!(d.languages || []).length) { K().toast("Add a language first."); return } (async () => { const n = await translateSlides(); if (n) K().toast(`Slide words translated (${n}) ✓`); await translateNotes(Object.keys(d.audNotes || {}), null, false, !!n) })(); return }
-    if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } translateNotes([n.id], auLang ? [auLang] : null, false); return }
+    if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } (async () => { const L = auLang ? [auLang] : null; await translateSlides(L, nodeSlides(n)); await translateNotes([n.id], L, false, true); trShow(tpNode()) })(); return }
     if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
   document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(() => { saveTP(); trShow(tpNode()) }, 700) } });
   document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
