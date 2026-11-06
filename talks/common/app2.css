@@ -327,3 +327,6 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .fullpdf .fph{font-size:15px;font-weight:700;color:#444;margin:4px 6px 6px}
 .fullpdf .fpt{font-size:16px;line-height:1.55;color:#222}
 .fullpdf .fpt p{margin:0 0 10px}
+.audlend{text-align:center;margin:26px 0 10px}
+#audlbig{font-size:20px;font-weight:700;padding:16px 26px;border-radius:14px;border:0;background:var(--accent);color:#fff;cursor:pointer;width:100%;max-width:420px}
+.audlend p{font-size:14px;color:var(--muted);margin:8px 0 0}

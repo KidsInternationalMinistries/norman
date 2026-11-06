@@ -1024,7 +1024,7 @@ const auPer = (d, id) => !!id && Object.keys(d.audNotes || {}).some(x => x.start
 function auNoteAt(d, S, i, lang){ const st = S[i], n0 = st && st.node;
   if (n0 && n0.id && auPer(d, n0.id)) { const a = (d.audNotes || {})[nk(n0.id, Math.max(0, ownSteps(S, n0).indexOf(i)))]; if (!a) return ""; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; return noteText(h) ? h : "" }
   for (let p = n0; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" }
-const loadLib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
+const LIBS = {}, loadLib = u => LIBS[u] || (LIBS[u] = new Promise((ok, no) => { const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = () => { delete LIBS[u]; no(new Error("Couldn't load " + u)) }; document.head.appendChild(x) }));
 // One PDF of the whole talk for the audience: each slide, its words in the language, then the notes. Made in Edit and saved with the talk.
 async function talkPDF(d, S, prog, langs){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
   const SH = S.map(x => x.slide), L = langs || ["", ...(d.languages || [])], items = []; let prev = null;
@@ -1047,7 +1047,8 @@ async function talkPDF(d, S, prog, langs){ await loadLib("https://cdnjs.cloudfla
       if (top) await place(top, 4); y += 16 }
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
 // The PDF for the speaker or the team: one page part per slide, then the audience notes in English, a line, each translation, a line, and the words of the talk said while that slide is up.
-async function talkPDFFull(d, prog){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+// langs: the audience's copy (just the reader's language, "" = English, and the talk in English)
+async function talkPDFFull(d, prog, langs){ await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
   const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [], items = [];
   for (let i = 0; i < S.length; i++) if (i === 0 || SH[i] !== SH[i - 1]) items.push(i);
   const box = document.createElement("div"); box.className = "aupdf fullpdf"; document.body.appendChild(box);
@@ -1058,13 +1059,14 @@ async function talkPDFFull(d, prog){ await loadLib("https://cdnjs.cloudflare.com
       pdf.addImage(img, "JPEG", M, y, w, h); let off = H - M - y;
       if (off >= h) { y += h + (gap || 0); return }
       let start = off; while (start < h) { pdf.addPage(); pdf.addImage(img, "JPEG", M, M - start, w, h); y = M + (h - start); start += H - 2 * M } y += gap || 0 };
-    await place(`<h1>${E(d.title)}</h1><p>Slides, audience notes${L.length ? " (English, " + L.map(E).join(", ") + ")" : ""} and the words of the talk</p>`, 10);
+    await place(`<h1>${E(d.title)}</h1><p>${langs ? "The slides, the notes and the whole talk" : `Slides, audience notes${L.length ? " (English, " + L.map(E).join(", ") + ")" : ""} and the words of the talk`}</p>`, 10);
     for (let n = 0; n < items.length; n++) { const i = items[n], end = n + 1 < items.length ? items[n + 1] : S.length, sl = SH[i]; if (prog) prog(n + 1, items.length);
-      const notes = lg => { const seen = new Set(), out = []; for (let k = i; k < end; k++) { let h = auNoteAt(d, S, k, lg); if (lg && h === auNoteAt(d, S, k, "")) h = ""; if (noteText(h) && !seen.has(h)) { seen.add(h); out.push(cleanHTML(h)) } } return out.join("") };
-      const parts = [], en = notes(""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
-      L.forEach(lg => { const sw = slideTrHTML(sl, lg), h = notes(lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
+      const notes = lg => { const seen = new Set(), out = []; for (let k = i; k < end; k++) { let h = auNoteAt(d, S, k, lg); if (lg && !langs && h === auNoteAt(d, S, k, "")) h = ""; if (noteText(h) && !seen.has(h)) { seen.add(h); out.push(cleanHTML(h)) } } return out.join("") };
+      const parts = [], en = langs ? "" : notes(""); if (en) parts.push(`<div class="aulg">English</div>${en}`);
+      if (langs) langs.forEach(lg => { const sw = lg ? slideTrHTML(sl, lg) : "", h = notes(lg); if (sw || h) parts.push(`<div class="aulg">Notes</div>${sw}${h}`) });
+      else L.forEach(lg => { const sw = slideTrHTML(sl, lg), h = notes(lg); if (sw || h) parts.push(`<div class="aulg">${E(lg)}</div>${sw}${h}`) });
       const words = []; for (let k = i; k < end; k++) if (S[k].a != null) words.push(P.t.slice(S[k].a, S[k].b).replace(TAG, "").trim());
-      const talk = words.filter(Boolean).join("\n\n"); if (talk) parts.push(`<div class="aulg">The talk</div><div class="fpt">${E(talk).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>").replace(/^/, "<p>") + "</p>"}</div>`);
+      const talk = words.filter(Boolean).join("\n\n"); if (talk) parts.push(`<div class="aulg">${langs && langs[0] ? "The talk (English)" : "The talk"}</div><div class="fpt">${E(talk).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>").replace(/^/, "<p>") + "</p>"}</div>`);
       const st = S[i], where = st && st.node ? `${E(st.node.full)} ${E(st.node.text)}` : "Start";
       await place(`<div class="fph">${where}${sl ? ` · ${E(sl.name)}` : ""}</div><div class="aus">${sl && sl.type === "video" ? `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(sl.name || "Video")}</div></div>` : slideHTML(sl, d)}</div>`, 4);
       for (let q = 0; q < parts.length; q++) await place(`<div class="aun">${q ? '<hr class="auhr">' : ""}${parts[q]}</div>`, 2);
@@ -1119,7 +1121,7 @@ async function audience(){
   let pres = 0, local = null, end = false, lastAt = 0, on = false, conn = true;
   const noteAt = i => auNoteAt(d, S, i, lang);
   const vidPh = s => `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(s.name || "Video")}</div><div class="vps">Playing on the main screen</div></div>`;
-  const show = () => { const i = local == null ? pres : local; setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "");
+  const show = () => { const i = local == null ? pres : local; setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "") + ((end && local == null) || i === S.length - 1 ? `<div class="audlend"><button type="button" id="audlbig">⤓ Download the notes</button><p>The slides, the notes${lang ? " in " + E(lang) : ""} and the whole talk, as a PDF.</p></div>` : "");
     $("#aulive").hidden = local == null || !on || end || !alive(); $("#aust").textContent = on && !end && !alive() ? "Connection lost · browse on your own" : on && !end ? (local != null ? "Looking back" : "Live") : end ? "The talk is over" : conn ? "Waiting for the speaker…" : "Not connected · browse on your own"; $("#aust").className = local == null && on && !end ? "on" : "" };
   const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); const fresh = !m.at || Date.now() - m.at < 3 * 3600e3; if (fresh && !on) local = null; on = fresh; conn = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
   // Phones can't go past the speaker while they're connected. The relay sends a heartbeat every 25 s; if nothing comes for 70 s
@@ -1127,14 +1129,14 @@ async function audience(){
   let heard = 0; const hear = () => { heard = Date.now() }; const alive = () => conn && navigator.onLine !== false && Date.now() - heard < 70000;
   setInterval(() => { const was = show.alive; show.alive = alive(); if (was !== show.alive) show() }, 5000);
   const stepL = dd => { const live = on && !end && alive(), max = live ? pres : S.length - 1; let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < max && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(max, i)); local = live && i >= pres ? null : i; show() };
+  document.addEventListener("click", e => { if (e.target.closest && e.target.closest("#audlbig")) $("#audl").click() });
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
   // ⤓ PDF: made right here on the phone, in the language picked, so nothing has to be uploaded beforehand.
   $("#audl").onclick = async e => { e.preventDefault(); const a = $("#audl"); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent;
-    try { const b64 = await talkPDF(d, S, (n, m) => { a.textContent = `Making ${n}/${m}…` }, [lang]); a.textContent = "Saving…";
-      const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
-      const u = URL.createObjectURL(new Blob([u8], {type: "application/pdf"})), x = document.createElement("a"); x.href = u;
+    try { const pb = await talkPDFFull(d, (n, m) => { a.textContent = `Making ${n}/${m}…`; const g = $("#audlbig"); if (g) g.textContent = `Making the notes… ${n} of ${m}` }, [lang]); a.textContent = "Saving…";
+      const u = URL.createObjectURL(pb), x = document.createElement("a"); x.href = u;
       x.download = (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + (lang ? "-" + lang : "") + ".pdf"; document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) }
-    catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0 } };
+    catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0; const g = $("#audlbig"); if (g) g.textContent = "⤓ Download the notes" } };
   const dl = () => { $("#audl").hidden = !S.some((x, k) => noteText(auNoteAt(d, S, k, "")) || (x.slide && x.slide.type !== "video")) }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; hear(); show() }; es.onerror = () => { conn = false; show() }; es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) { conn = false }
