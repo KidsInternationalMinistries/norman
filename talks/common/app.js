@@ -973,8 +973,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=82"><link rel="stylesheet" href="../common/countdown.css?v=82"><link rel="stylesheet" href="../common/gate.css?v=82"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=82"></script><script src="../common/countdown.js?v=82"></script><script src="../common/gate.js?v=82"></script><script src="../common/app.js?v=82"></script>${mode === "edit" ? '<script src="../common/ai.js?v=82"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=83"><link rel="stylesheet" href="../common/countdown.css?v=83"><link rel="stylesheet" href="../common/gate.css?v=83"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=83"></script><script src="../common/countdown.js?v=83"></script><script src="../common/gate.js?v=83"></script><script src="../common/app.js?v=83"></script>${mode === "edit" ? '<script src="../common/ai.js?v=83"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -983,8 +983,8 @@ const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase()
 // ---- New version (talk/2): one text with outline tags and a slide library ----
 const STUB2 = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=82"><link rel="stylesheet" href="../common/app2.css?v=82"><link rel="stylesheet" href="../common/countdown.css?v=82"><link rel="stylesheet" href="../common/gate.css?v=82"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=82"></script><script src="../common/countdown.js?v=82"></script><script src="../common/gate.js?v=82"></script><script src="../common/app.js?v=82"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=82"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=82"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=83"><link rel="stylesheet" href="../common/app2.css?v=83"><link rel="stylesheet" href="../common/countdown.css?v=83"><link rel="stylesheet" href="../common/gate.css?v=83"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=83"></script><script src="../common/countdown.js?v=83"></script><script src="../common/gate.js?v=83"></script><script src="../common/app.js?v=83"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=83"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=83"></script>' : ""}</body></html>
 `;
 const relayTopic = () => "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
 const newTalk2 = title => ({format: "talk/2", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", relayTopic: relayTopic(),

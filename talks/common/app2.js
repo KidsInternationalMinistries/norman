@@ -78,7 +78,7 @@ function topBar(d, active){ return `<div class="top"><h1>${E(d.title)} <span cla
 // =====================================================================
 // SLIDES (monitor): follows the presenter; arrows step through the slides here, and it snaps back when the presenter moves.
 // =====================================================================
-async function slides(){
+async function slides(){ if (new URLSearchParams(location.search).has("play")) return play();
   document.body.innerHTML = `<div id="s"></div><div id="ui"><button id="b" type="button">&larr; Back</button><span id="st"><b></b>Connecting&hellip;</span><button id="n" type="button">Next &rarr;</button><button id="f" type="button">Full screen</button></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#s").innerHTML = `<div class="txt">Couldn't load this talk.</div>`; return }
   document.title = d.title + " · slides"; T.preload(d.slides || [], d);
@@ -267,7 +267,7 @@ async function edit(){
   const hist = [];                 // earlier versions of the text and slides, for Undo
   document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2x v2e" id="lay"><nav class="cues tree" id="tree"></nav><div class="gut" data-g="c1" title="Drag to resize; double-click to reset"></div>
     <main class="pane" id="m"><div class="tools"><button type="button" class="btn small" id="det">Talk details</button><button type="button" class="btn small" id="undo" disabled title="Undo the last change">↶ Undo</button>
-      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button><button type="button" class="btn small aib" id="aisp" title="Spelling in the whole text and on every slide; you check each change">✨ Check spelling</button><button type="button" class="btn small" id="lis" title="The AI voice reads the talk from where you are; Next steps along">▶ Listen from here</button>
+      <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button><button type="button" class="btn small aib" id="aisp" title="Spelling in the whole text and on every slide; you check each change">✨ Check spelling</button><button type="button" class="btn small" id="lis" title="The AI voice reads the talk from where you are; Next steps along">▶ Listen from here</button><button type="button" class="btn small aib" id="narr" title="The whole talk read in the AI voice and saved, with a link anyone can open to watch the slides while it plays">🔊 Narrated version</button>
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main><div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
     <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
@@ -581,7 +581,7 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
     const pr = tg.closest(".pi[data-step]"); if (pr) { step(+pr.dataset.step); return }
     const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); const tpm = panel === "tp" || panel === "au"; $("#tpbox").hidden = !tpm; $("#plist").hidden = tpm; $("#sadd").hidden = tpm; if (tpm) { saveTP(); tpMode = panel; drawTP(true) } plist(); return } });
   $("#sadd").onclick = () => slideNew();
-  $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen();
+  $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen(); $("#narr").onclick = () => narrate();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
     dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}</div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
@@ -790,6 +790,34 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   function stopListen(){ try { CSS.highlights && CSS.highlights.delete("kpword") } catch (e) {} LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
   let caretPos = null;      // the last spot of the cursor in the text (Listen starts there)
   document.addEventListener("selectionchange", () => { const b = box(), sl = getSelection(); if (!b || !sl.rangeCount || !b.contains(sl.anchorNode) || LS.on) return; caretPos = {node: sl.getRangeAt(0).startContainer, off: sl.getRangeAt(0).startOffset} });
+  // The narrated version: every step read in the AI voice and saved (voice/*.mp3 + narration2.json); slides2.html?play plays it for anyone with the link.
+  const share = () => new URL("slides2.html?play", location.href.replace(/[?#].*$/, "")).href;
+  function narrate(){ const k0 = K(), dl = k0.dlg("narr2", `<div class="ed"><div class="pgh"><b>🔊 Narrated version (share link)</b><button type="button" class="btn small" data-x>Close</button></div>
+      <p class="note">This reads the whole talk in the AI voice, with your reading cues, and saves it with the talk. Anyone with the link then watches the slides while the voice reads and moves them on. Only the parts that changed since last time use ElevenLabs credits.</p>
+      <p class="aimsg" id="nm"></p><div class="row"><button type="button" class="btn pri" id="ngo">Make the narrated version</button></div>
+      <div id="nl" hidden><p class="note">Share this link (it updates about a minute after it's made):</p><div class="row"><input id="nu" readonly value="${E(share())}" style="flex:1"><button type="button" class="btn small" id="nc">Copy</button><a class="btn small" href="${E(share())}" target="_blank" rel="noopener">Open</a></div></div></div>`);
+    dl.querySelector("[data-x]").onclick = () => dl.close(); k0.show(dl);
+    $("#nc").onclick = () => { $("#nu").select(); try { navigator.clipboard.writeText(share()) } catch (e) { document.execCommand("copy") } k0.toast("Link copied") };
+    GH.get(PATH + "/narration2.json").then(g => { const n = JSON.parse(g.text); $("#nm").textContent = "Last made " + new Date(n.made).toLocaleString() + ". Make it again after you change the talk."; $("#nl").hidden = false }).catch(() => {});
+    $("#ngo").onclick = async () => { const b = $("#ngo"), m = $("#nm"); b.disabled = true; saveText();
+      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); const voice = await k0.voiceNow(), model = d.voiceModel === "v3" ? "v3" : "v2";
+        let old = {}, osha = null; try { const g = await GH.get(PATH + "/narration2.json"); old = JSON.parse(g.text); osha = g.sha } catch (e) {}
+        const have = new Set(); (old.steps || []).forEach(x => (x.items || []).forEach(y => y.say && have.add(y.say)));
+        const steps = [], jobs = [];
+        for (let i = 0; i < S.length; i++) { const st = S[i], items = [];
+          if (st.a == null) items.push({pause: 2.5});
+          else { const parts = partsOf(st, null);
+            for (let q = 0; q < parts.length; q++) { const p = parts[q]; if (p.pause) { items.push({pause: p.pause}); continue } if (!p.say) continue;
+              const file = "voice/" + (await k0.sha(voice + "|" + model + "|" + JSON.stringify(p.vs || {}) + "|" + p.say)).slice(0, 16) + ".mp3"; items.push({say: file, text: p.say});
+              if (!have.has(file) && !jobs.some(j => j.file === file)) jobs.push({file, p, prev: parts.slice(0, q).map(x => x.say || "").join(" ").slice(-500), next: parts.slice(q + 1).map(x => x.say || "").join(" ").slice(0, 300)}) } }
+          steps.push({slide: st.slide ? st.slide.name : null, label: st.node ? st.node.full + " " + st.node.text : "", items}) }
+        for (let q = 0; q < jobs.length; q++) { const j = jobs[q]; m.textContent = `Reading part ${q + 1} of ${jobs.length}…`;
+          const a = j.p.v3 ? await k0.ttsV3(j.p.say) : await k0.tts(j.p.say, j.p.vs, {prev: j.prev, next: j.next}), data = a.b64 || await k0.blobB64(a.blob);
+          try { await GH.put(PATH + "/" + j.file, data, null, "Narration voice") } catch (e) { if (e.status !== 422) throw e } }
+        m.textContent = "Saving…"; const N = {format: "narration/2", voice, model, made: new Date().toISOString(), steps};
+        for (let a = 0; a < 3; a++) { try { await GH.put(PATH + "/narration2.json", b64e(JSON.stringify(N, null, 1) + "\n"), osha, "Narrated version"); break } catch (e) { if (a === 2 || (e.status !== 409 && e.status !== 422)) throw e; try { osha = (await GH.get(PATH + "/narration2.json")).sha } catch (_) { osha = null } } }
+        m.textContent = `Done. ${jobs.length ? jobs.length + " new part" + (jobs.length > 1 ? "s" : "") + " read" : "Nothing had changed, so no new reading was needed"}.`; $("#nl").hidden = false }
+      catch (e) { m.textContent = ""; aiFail(e) } b.disabled = false } }
   async function listen(from){ if (LS.on) { stopListen(); return } saveText();
     if (from == null && caretPos && caretPos.node.isConnected) { try { from = offsetOf(caretPos.node, caretPos.off) } catch (e) {} }
     let i0 = k; if (from != null) { const j = S.findIndex(st => st.a != null && from < st.b); if (j >= 0) { i0 = j; if (from < S[j].a) from = null } } const k0 = K(); k0.setVoice(d.voice || ""); LS.on = true; LS.paused = false; const run = ++LS.run;
@@ -857,6 +885,34 @@ async function talkPDF(d, S, prog){ await loadLib("https://cdnjs.cloudflare.com/
         await place(top + `<div class="aun">${L.length > 1 ? `<div class="aulg">${E(lg || "English")}</div>` : ""}${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div>`, 4); top = "" }
       if (top) await place(top, 4); y += 16 }
     return pdf.output("datauristring").split(",")[1] } finally { box.remove() } }
+// slides2.html?play: the narrated version. The slides show while the saved AI voice reads, and the voice moves the slides on.
+async function play(){
+  document.body.innerHTML = `<div id="s"></div><div class="playcap" id="pcap"></div><div id="ui"><button id="pb" type="button" title="Back">⏮</button><button id="pg" type="button" title="Pause">❚❚</button><button id="pn" type="button" title="Next">⏭</button><span id="st"><b></b>Narrated</span><button id="f" type="button">Full screen</button></div><div id="pstart"><button type="button" id="pgo" disabled>Loading…</button><p id="pmsg"></p></div>`;
+  let d; try { d = (await load(false)).d } catch (e) { $("#pmsg").textContent = "Couldn't load this talk."; return }
+  document.title = d.title + " · narrated"; const lib = n => n ? (d.slides || []).find(x => x.name === n) || null : null;
+  let N = null; for (const u of ["narration2.json", RAW + PATH + "/narration2.json"]) { try { const r = await fetch(u + "?t=" + Date.now(), {cache: "no-store"}); if (r.ok) { N = await r.json(); break } } catch (e) {} }
+  const L = (N && N.steps) || []; setSlide($("#s"), slideHTML(lib(L[0] && L[0].slide), d));
+  if (!L.length) { $("#pgo").textContent = "Not ready yet"; $("#pmsg").textContent = "This talk doesn't have a narrated version yet."; return }
+  T.preload(L.map(x => lib(x.slide)).filter(Boolean), d);
+  $("#pgo").disabled = false; $("#pgo").textContent = "▶ Play the talk"; $("#pmsg").textContent = "Narrated with an AI voice";
+  const au = new Audio(), st = $("#st"); let run = 0, i = 0, paused = false, wake = null;
+  const pre = f => { const x = new Audio(); x.preload = "auto"; x.src = f };
+  const wait = (ms, r) => new Promise(ok => { let left = ms; const t = setInterval(() => { if (r !== run) { clearInterval(t); ok() } else if (!paused && (left -= 100) <= 0) { clearInterval(t); ok() } }, 100) });
+  const say = f => new Promise(ok => { let alt = false; wake = ok; au.onended = () => ok(); au.onerror = () => { if (alt) return ok(); alt = true; au.src = RAW + PATH + "/" + f; if (!paused) au.play().catch(() => {}) }; au.src = f; if (!paused) au.play().catch(() => {}) });
+  async function step(k){ const r = ++run; au.pause(); if (wake) { wake(); wake = null } if (k < 0) k = 0;
+    if (k >= L.length) { setSlide($("#s"), `<div class="slide blank"><div class="txt">The end<br><button type="button" id="again" class="btn">▶ Play again</button></div></div>`); st.lastChild.textContent = "The end"; $("#pcap").textContent = ""; const g = $("#again"); if (g) g.onclick = () => step(0); return }
+    i = k; const x = L[k]; setSlide($("#s"), slideHTML(lib(x.slide), d)); st.lastChild.textContent = x.label || "Narrated";
+    const items = x.items || [], nx = L[k + 1] && (L[k + 1].items || []).find(y => y.say); items.filter(y => y.say).slice(0, 2).forEach(y => pre(y.say)); if (nx) pre(nx.say);
+    if (!items.some(y => y.say) && !items.some(y => y.pause)) await wait(3000, r);
+    for (let q = 0; q < items.length && r === run; q++) { const it = items[q]; if (it.pause) await wait(it.pause * 1000, r); else if (it.say) { $("#pcap").textContent = it.text || ""; const nf = items.slice(q + 1).find(y => y.say); if (nf) pre(nf.say); await say(it.say) } }
+    if (r === run) step(k + 1) }
+  const toggle = () => { paused = !paused; $("#pg").textContent = paused ? "▶" : "❚❚"; if (paused) au.pause(); else if (au.src && !au.ended) au.play().catch(() => {}) };
+  $("#pgo").onclick = () => { $("#pstart").remove(); step(0) };
+  $("#pn").onclick = () => step(i + 1); $("#pb").onclick = () => step(i - 1); $("#pg").onclick = toggle;
+  const full = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen() } catch (e) {} }; $("#f").onclick = full;
+  document.addEventListener("keydown", e => { if ($("#pstart")) return; if (e.key === "ArrowRight" || e.key === "PageDown") step(i + 1); else if (e.key === "ArrowLeft" || e.key === "PageUp") step(i - 1); else if (e.key === " ") { e.preventDefault(); toggle() } else if (e.key === "f" || e.key === "F") full() });
+  let hideT; const ui = $("#ui"); const wk = () => { ui.classList.remove("hide"); clearTimeout(hideT); hideT = setTimeout(() => ui.classList.add("hide"), 3000) };
+  document.addEventListener("mousemove", wk); document.addEventListener("touchstart", wk); wk() }
 async function audience(){
   document.body.innerHTML = `<div class="au"><div class="auh"><b id="aut">Loading…</b><select id="aul" aria-label="Language"></select></div><div class="aus" id="aus"></div><div class="aun" id="aun"></div>
     <div class="aubtm"><button type="button" id="aub">&larr;</button><span id="aust">Connecting…</span><button type="button" id="aun2">&rarr;</button><button type="button" id="aulive" hidden>Back to live</button><a id="audl" class="audl" hidden title="Download the slides and notes as a PDF">⤓ PDF</a></div></div>`;

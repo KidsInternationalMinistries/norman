@@ -255,3 +255,5 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .bar .pst{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
 .bar .pst.slow{color:#d9534f;font-weight:700}.bar .pst.fast{color:#d98a1f;font-weight:700}.bar .pst.even{color:#2e8b57;font-weight:700}
 .tn.prc .tm{color:#2e8b57;font-weight:700}
+.playcap{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);max-width:min(900px,92vw);color:#fff;background:rgba(0,0,0,.55);padding:6px 14px;border-radius:10px;font-size:18px;line-height:1.4;text-align:center;pointer-events:none}
+.playcap:empty{display:none}

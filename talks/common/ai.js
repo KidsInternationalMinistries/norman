@@ -663,7 +663,7 @@ window.TALKAI = {html: {
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
 }, chat, image, settings, outline,
   // building blocks for the new version (app2.js)
-  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, esvStrict, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }}};
+  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, esvStrict, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }, sha, blobB64, voiceNow: async () => voiceId(await need("eleven"))}};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
   m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="narr">Make the narrated version (share link)</button><button type="button" data-a="split">Key points from the text (points that have none)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";
