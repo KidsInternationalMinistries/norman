@@ -223,3 +223,11 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .aust ul{margin:6px 0 0}
 .auhr{border:0;border-top:1px solid currentColor;opacity:.3;margin:14px 0}
 .aust .austt,.aust .austs{white-space:pre-line}
+.tn.nil{opacity:.45}
+#tpbox.none .tpb,#tpbox.none #aubar,#tpbox.none #tpai{display:none}
+.aupdf{position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#111;--ink:#111;font-family:inherit}
+.aupdf h1{font-size:30px;margin:10px 18px}
+.aupdf p{margin:0 18px 10px;color:#555}
+.aupdf .aus{padding:6px 0 0}
+.aupdf .aun{color:#111;padding:10px 6px}
+#audl{font-size:14px}

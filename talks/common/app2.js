@@ -99,10 +99,11 @@ async function slides(){
 
 // ---------- shared drawing ----------
 // The outline: every outline tag, indented by level; cur = the node of the step you're on.
+const nil = (P, n) => !!n && !P.t.slice(n.end, n.last).replace(TAG, " ").trim() && !n.slides.some(x => x.slide && !x.slide.stop);
 function treeHTML(P, S, k, big, pick){ const cur = pick || (S[k] && S[k].node); let h = "";
   for (const n of P.nodes) { const sl = n.slides.filter(x => x.slide && !x.slide.stop).length;
     const w = n.lvl <= 2 ? P.t.slice(n.end, n.last).replace(TAG, " ").split(/\s+/).filter(Boolean).length : 0, sec = Math.max(10, Math.round(w / 140 * 6) * 10), tm = !w ? "" : sec < 60 ? sec + "s" : Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
-    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}" data-n="${n.j}" title="${w ? "About " + tm + " at 140 words a minute" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
+    h += `<button type="button" class="tn l${n.lvl}${cur === n ? " cur" : ""}${nil(P, n) ? " nil" : ""}" data-n="${n.j}" title="${w ? "About " + tm + " at 140 words a minute" : nil(P, n) ? "No words here yet" : ""}"><i>${E(n.lab)}</i><span>${E(n.text || "(no words)")}</span>${tm && !big ? `<span class="tm">${tm}</span>` : ""}${sl && !big ? `<b class="sc">${sl}</b>` : ""}</button>` }
   return h || `<p class="note" style="padding:8px">No outline yet. Type / in the text to add a section, point or sub point, or use ✨ Outline.</p>` }
 // The text with every tag drawn: nodes as numbered chips (a section as a header with its words), slides as named chips, cues as small hints.
 // inEdit: chips are editable tags. S: wrap each stretch of words in a span (Stage). blocks: wrap each node's part in an indented block.
@@ -418,8 +419,9 @@ async function edit(){
   const getNote = n => !n || !n.id ? "" : tpMode === "tp" ? (d.notes || {})[n.id] || "" : (d.audNotes || {})[n.id] ? (auLang ? (d.audNotes[n.id].tr || {})[auLang] || "" : d.audNotes[n.id].html || "") : "";
   function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; if (!force && (keyOf(n) === tpKey || document.activeElement === e)) return; tpKey = keyOf(n);
     const what = tpMode === "tp" ? "Talking points" : "Audience notes" + (auLang ? " (" + auLang + ")" : "");
-    $("#tpt").textContent = n ? what + " · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text : what + " (step into a point first)"; e.contentEditable = n ? "true" : "false";
+    $("#tpt").textContent = n ? what + " · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text : what + " (step into a point first)"; const none = nil(P, n) && !noteText(getNote(n)); e.contentEditable = n && !none ? "true" : "false"; $("#tpbox").classList.toggle("none", none);
     e.dataset.ph = tpMode === "tp" ? "What you glance at while you talk: a few short lines. Bold, underline and bullets work." : auLang ? "No " + auLang + " yet. Write the notes in the original, then press ✨ Translate this. You can change the translation here by hand." : "What the audience sees on their phones for this part: the main idea, a verse, a question to think about…";
+    if (none) e.dataset.ph = n.full + " has no words yet, so it has no " + (tpMode === "tp" ? "talking points." : "audience notes.");
     e.innerHTML = cleanHTML(getNote(n)); drawAU(n) }
   function saveTP(){ clearTimeout(tpT); const e = $("#tpe"); if (!e) return; let n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const h = cleanHTML(e.innerHTML), has = !!noteText(h);
     if (getNote(n) === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
@@ -491,7 +493,7 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
   $("#en").onclick = () => { if (peek) { peek = null; side(); return } step(k + 1) }; $("#eb").onclick = () => { if (peek) { peek = null; side(); return } step(k - 1) };
   document.addEventListener("keydown", e => { if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable='true'],dialog")) return; if (["PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); $("#en").click() } else if (["PageUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); $("#eb").click() } });
   document.addEventListener("click", e => { const tg = e.target;
-    const tn = tg.closest("#tree [data-n]"); if (tn) { const nn = P.nodes[+tn.dataset.n], i = firstAt(S, nn); saveTP(); tpPick = keyOf(nn); if (i >= 0) step(i, false, false, true); else drawTP(true); return }
+    const tn = tg.closest("#tree [data-n]"); if (tn) { const nn = P.nodes[+tn.dataset.n], i = firstAt(S, nn); saveTP(); if (nil(P, nn)) { tpPick = null; if (i >= 0) step(i); return } tpPick = keyOf(nn); if (i >= 0) step(i, false, false, true); else drawTP(true); return }
     const nd = tg.closest("#ftext .vchip.nd"); if (nd) { if (dragged) return; saveText(); const v = nd.dataset.ref.match(/^#([1-4])\s*([\s\S]*)$/), ni = [...box().querySelectorAll(".vchip.nd")].indexOf(nd);
       const nn = P.nodes[ni]; nodeEdit({lvl: +v[1], text: nn ? nn.text : (v[2] || ""), node: nn}, nv => { const s = snapshot(); if (!nv) nd.remove(); else nd.dataset.ref = "#" + nv.lvl + " " + nv.text + (nn && nn.id ? "|" + nn.id : ""); d.text = richText(box()); changed(s); drawText() }, true); return }
     const sc = tg.closest("#ftext .vchip.sl"); if (sc) { if (dragged || sc.classList.contains("stop")) return; const nm = sc.dataset.ref; peek = peek === nm ? null : nm; side(); return }
@@ -755,7 +757,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
 // =====================================================================
 async function audience(){
   document.body.innerHTML = `<div class="au"><div class="auh"><b id="aut">Loading…</b><select id="aul" aria-label="Language"></select></div><div class="aus" id="aus"></div><div class="aun" id="aun"></div>
-    <div class="aubtm"><button type="button" id="aub">&larr;</button><span id="aust">Connecting…</span><button type="button" id="aun2">&rarr;</button><button type="button" id="aulive" hidden>Back to live</button></div></div>`;
+    <div class="aubtm"><button type="button" id="aub">&larr;</button><span id="aust">Connecting…</span><button type="button" id="aun2">&rarr;</button><button type="button" id="aulive" hidden>Back to live</button><button type="button" id="audl" title="Download the slides and notes so far as a PDF">⤓ PDF</button></div></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#aut").textContent = "Couldn't load the talk."; return }
   document.title = d.title; $("#aut").textContent = d.title; T.preload(d.slides || [], d);
   const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [];
@@ -770,6 +772,23 @@ async function audience(){
   const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
   const stepL = dd => { let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < pres && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(pres, i)); local = i >= pres ? null : i; show() };
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
+  // Download: a PDF with each slide, its words in the chosen language, and the notes, up to where the speaker is now (everything once the talk is over).
+  const lib = u => new Promise((ok, no) => { if (document.querySelector(`script[src="${u}"]`)) return ok(); const x = document.createElement("script"); x.src = u; x.onload = ok; x.onerror = no; document.head.appendChild(x) });
+  $("#audl").onclick = async () => { const btn = $("#audl"); if (btn.disabled) return; btn.disabled = true; const t0 = btn.textContent; btn.textContent = "Making…";
+    try { await lib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"); await lib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+      const upto = end || !on ? S.length - 1 : pres, items = []; let prev = null;
+      for (let i = 0; i <= upto; i++) { const key = noteAt(i) + "|" + (SH[i] && SH[i].name); if (key !== prev) { prev = key; items.push(i) } }
+      const box = document.createElement("div"); box.className = "aupdf"; document.body.appendChild(box);
+      const pdf = new window.jspdf.jsPDF({unit: "pt", format: "a4"}), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 28;
+      let y = M, first = true;
+      const put = async html => { box.innerHTML = html; await Promise.all([...box.querySelectorAll("img")].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r })));
+        const c = await window.html2canvas(box, {scale: 2, backgroundColor: "#ffffff", useCORS: true}); const w = W - 2 * M, h = c.height * w / c.width;
+        if (y + h > H - M && y > M) { pdf.addPage(); y = M } pdf.addImage(c.toDataURL("image/jpeg", 0.85), "JPEG", M, y, w, Math.min(h, H - 2 * M)); y += h + 14 };
+      await put(`<h1>${E(d.title)}</h1>${lang ? `<p>${E(lang)}</p>` : ""}`);
+      for (const i of items) { btn.textContent = `Making… ${items.indexOf(i) + 1}/${items.length}`; const sw = lang ? slideTrHTML(SH[i], lang) : "", h = noteAt(i);
+        await put(`<div class="aupg"><div class="aus">${SH[i] && SH[i].type === "video" ? "" : slideHTML(SH[i], d)}</div><div class="aun">${sw}${sw && h ? '<hr class="auhr">' : ""}${h ? cleanHTML(h) : ""}</div></div>`) }
+      box.remove(); pdf.save((d.title || "talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + (lang ? "-" + lang : "") + ".pdf") }
+    catch (e) { alert("Couldn't make the PDF. Check the connection and try again.") } finally { btn.disabled = false; btn.textContent = t0; const b2 = document.querySelector(".aupdf"); if (b2) b2.remove() } };
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} show() };
   try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
