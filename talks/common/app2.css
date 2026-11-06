@@ -232,3 +232,7 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .aupdf .aun{color:#111;padding:10px 6px}
 .aubtm a.audl{font-size:15px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-decoration:none}
 .aubtm a.audl[hidden]{display:none}
+.trrow{display:flex;justify-content:flex-end;padding:6px 8px 2px}
+.trrow[hidden]{display:none}
+.trwarn{margin:4px 0 0;font-size:12px}
+#tpbox.none .trrow{display:none}
