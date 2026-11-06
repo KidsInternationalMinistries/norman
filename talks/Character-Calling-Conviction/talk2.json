@@ -36,7 +36,15 @@
     "y": 45,
     "w": 28.3
    },
-   "ttSize": 117
+   "ttSize": 117,
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Pagkatao, Tawag at Paninindigan"
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"Character, Calling & Conviction\"}"
+   }
   },
   {
    "name": "John 15:1",
@@ -83,7 +91,16 @@
    "ttY": 15.9,
    "ttW": 72,
    "sbAlign": "center",
-   "ttAlign": "center"
+   "ttAlign": "center",
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Pagkatao, pagtawag, paninindigan...",
+     "slide": "Bunga ang mga ito...\n\n...at hindi natin kayang magbunga nang mag-isa."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"Character, calling, conviction...\",\"slide\":\"They are fruit...\\n\\n...and we cannot produce fruit by ourselves.\"}"
+   }
   },
   {
    "name": "Disciples",
