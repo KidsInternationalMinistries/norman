@@ -80,9 +80,10 @@ const pollAns = (s, lang, phone) => { const en = lines(s.bullets).slice(0, 6), t
   return en.map((x, i) => (phone && (pt[i] || pe[i])) || ts[i] || x) };
 const pollQ = (s, lang, phone) => { const t = pTr(s, lang) || {}; return (phone && (t.phoneQ || s.phoneQ)) || t.slideTitle || s.slideTitle || "" };
 const pollShown = s => s.reveal !== "next" || REVEAL.has(pollKey(s));
+let PHONES = null;      // phones connected right now (Stage and the Slides window ask the relay), for "12 of 40 phones voted"
 function pollInner(s, o){ o = o || {}; const A = pollAns(s, o.lang), c = POLLS[pollKey(s)] || {}, n = A.map((x, i) => +c[i] || 0), tot = n.reduce((a, b) => a + b, 0), max = Math.max(1, ...n), show = !o.hide && pollShown(s);
   return `<div class="pqr">${qrSVG(audienceURL())}</div><div class="pw"><div class="pq"><i class="pqs"></i>${E(pollQ(s, o.lang) || "Your question")}</div><div class="pans">${A.map((x, i) => `<div class="pa${o.mine === i ? " mine" : ""}"><div class="pl">${E(x)}</div><div class="pb"><i style="width:${show ? n[i] / max * 100 : 0}%"></i></div><div class="pn">${show ? n[i] : ""}</div></div>`).join("") || '<div class="pa"><div class="pl">Add answers, one per line</div></div>'}</div>
-    <div class="pf">${tot} vote${tot === 1 ? "" : "s"}${show ? "" : s.reveal === "next" && !o.hide ? " · the results come up next" : ""}${o.foot ? " · " + E(o.foot) : " · vote on your phone"}</div></div>` }
+    <div class="pf">${PHONES != null && !o.lang && !o.foot ? `${tot} of ${Math.max(PHONES, tot)} phone${Math.max(PHONES, tot) === 1 ? "" : "s"} voted` : `${tot} vote${tot === 1 ? "" : "s"}`}${show ? "" : s.reveal === "next" && !o.hide ? " · the results come up next" : ""}${o.foot ? " · " + E(o.foot) : " · vote on your phone"}</div></div>` }
 // Make a poll's words as big as the slide allows: try sizes (--pz) and keep the largest where nothing spills out.
 function pollFit(el){ const w = el.querySelector(".pw"); if (!w || !w.clientHeight) return; const fits = () => w.scrollHeight <= w.clientHeight + 1 && w.scrollWidth <= w.clientWidth + 1 && [...w.querySelectorAll(".pq, .pl")].every(x => x.scrollWidth <= x.clientWidth + 1);
   let lo = .4, hi = 3; for (let n = 0; n < 9; n++) { const m = (lo + hi) / 2; w.style.setProperty("--pz", m); if (fits()) lo = m; else hi = m } w.style.setProperty("--pz", lo) }
@@ -153,6 +154,8 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
       es.onmessage = e => { heard = Date.now(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; if (!pf) { pf = true; pollsFollow(d, es) } else es.addEventListener("poll", e => { try { const m = JSON.parse(e.data); POLLS[m.poll] = m.c || {}; pollsDraw(d) } catch (_) {} }) } catch (e) {} };
   connect(); setInterval(() => { if (!es || es.readyState === 2 || Date.now() - heard > 40000) { heard = Date.now(); connect() } }, 10000);
   setInterval(async () => { const a0 = lastAt; await catchUp(); if (lastAt !== a0) { heard = Date.now(); connect() } }, 5000);      // the stream missed a Next: reconnect it
+  // while a poll is on this screen: how many phones are connected, for "12 of 40 phones voted"
+  setInterval(async () => { if (window.OFFLINE || !document.querySelector(".slide.pollsl[data-poll]")) return; try { const c = await (await fetch(relay(d) + "/count", {cache: "no-store"})).json(), a = +c.audience || 0; if (PHONES !== a) { PHONES = a; pollsDraw(d) } } catch (e) {} }, 5000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (!es || es.readyState === 2 || Date.now() - heard > 40000)) { heard = Date.now(); connect() } });
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const L = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (L.length) from(L[L.length - 1]) } catch (e) {}
   show() }
@@ -324,7 +327,7 @@ async function present(){
     const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = firstAt(S, P.nodes[j]); if (i >= 0) go(i) } });
   // how many are following: phones and slide screens check in with the relay every 5 s
   const cnt = async () => { if (window.OFFLINE) return; try { const c = await (await fetch(relay(d) + "/count", {cache: "no-store"})).json(); const a = +c.audience || 0, sc = +c.screens || 0;
-      $("#pcnt").textContent = `📱 ${a} phone${a === 1 ? "" : "s"} · 🖥 ${sc} screen${sc === 1 ? "" : "s"}` } catch (e) { $("#pcnt").textContent = "" } };
+      $("#pcnt").textContent = `📱 ${a} phone${a === 1 ? "" : "s"} · 🖥 ${sc} screen${sc === 1 ? "" : "s"}`; if (PHONES !== a) { PHONES = a; pollsDraw(d) } } catch (e) { $("#pcnt").textContent = "" } };
   cnt(); setInterval(cnt, 5000);
   let pw = null; $("#pop").onclick = () => { pw = window.open(window.OFFLINE ? location.href.split("#")[0] + "#slides" : "slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { if (locked() || e.target.closest("input,textarea")) return; if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); back() } });
