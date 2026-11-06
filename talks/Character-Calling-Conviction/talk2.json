@@ -115,7 +115,16 @@
    "ttW": 56,
    "sbX": 2.7,
    "sbY": 50.8,
-   "sbW": 56
+   "sbW": 56,
+   "tr": {
+    "Tagalog": {
+     "slideTitle": "Mga Nakakandadong Pinto",
+     "slide": "Paninindigan?\nPagkatao?\nTawag?"
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slideTitle\":\"Locked doors\",\"slide\":\"Conviction?\\nCharacter?\\nCalling?\"}"
+   }
   },
   {
    "name": "Mark 14:50",
