@@ -200,14 +200,32 @@
    "type": "verse",
    "ref": "Acts 1:6",
    "text": "Then they gathered around him and asked him, “Lord, are you at this time going to restore the kingdom to Israel?",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Mga Gawa 1:6",
+     "text": "Pagkatapos, lumapit sila sa kanya at nagtanong, \"Panginoon, sa panahong ito na po ba ibabalik ninyo ang kaharian sa Israel?\""
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Acts 1:6\",\"text\":\"Then they gathered around him and asked him, “Lord, are you at this time going to restore the kingdom to Israel?\"}"
+   }
   },
   {
    "name": "Acts 1:8",
    "type": "verse",
    "ref": "Acts 1:8",
    "text": "But you will receive power when the Holy Spirit comes on you; and you will be my witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "Gawa 1:8",
+     "text": "Nguni't tatanggap kayo ng kapangyarihan, pagdating sa inyo ng Espiritu Santo: at kayo'y magiging mga saksi ko sa Jerusalem, at sa buong Judea at Samaria, at hanggang sa kahuli-hulihang hangganan ng lupa."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"Acts 1:8\",\"text\":\"But you will receive power when the Holy Spirit comes on you; and you will be my witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.\"}"
+   }
   },
   {
    "name": "Don't expect different",
