@@ -347,3 +347,4 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .pvb{display:block;width:100%;text-align:left;font-size:18px;padding:14px 16px;margin:8px 0;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .pvb.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .pvb:disabled:not(.on){opacity:.5}
+.pcnt{font-size:13px;color:var(--muted);white-space:nowrap}

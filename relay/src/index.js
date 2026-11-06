@@ -3,6 +3,7 @@
 //   POST /<topic>          publish one message (the body, at most 4 KB)
 //   GET  /<topic>/sse      Server-Sent Events: every new message as data: {"event":"message","message":"..."}
 //   GET  /<topic>/json     the last message as one JSON line (what a page reads when it opens)
+//   GET  /<topic>/count    how many phones (id a-…) and screens (id s-…) asked in the last 15 s (they ask every 5 s with ?id=)
 //   POST /<topic>/vote     one phone's vote on a poll {poll, a, voter} (once per voter); GET /<topic>/vote: {epoch, polls: every poll's totals}; POST {clear: true} starts all polls fresh (event: pollreset)
 //                          the totals also go out on the stream as  event: poll  data: {poll, c}
 //   POST /<topic>/review   store one translation review from review.html (at most 100 KB); GET /<topic>/review lists them
@@ -13,7 +14,7 @@ const CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods"
 export default {
   async fetch(req, env){
     if (req.method === "OPTIONS") return new Response(null, {headers: CORS});
-    const m = new URL(req.url).pathname.match(/^\/([A-Za-z0-9_-]{1,64})(\/(sse|json|review|vote))?\/?$/);
+    const m = new URL(req.url).pathname.match(/^\/([A-Za-z0-9_-]{1,64})(\/(sse|json|review|vote|count))?\/?$/);
     if (!m) return new Response("Talk relay", {headers: CORS});
     return env.ROOM.get(env.ROOM.idFromName(m[1])).fetch(req);
   }
@@ -23,7 +24,10 @@ export class Room {
   constructor(state){ this.state = state; this.subs = new Set(); this.last = null; this.beat = null }
 
   async fetch(req){
-    const url = new URL(req.url), kind = url.pathname.split("/")[2] || "";
+    const url = new URL(req.url), kind = url.pathname.split("/")[2] || "", who = (url.searchParams.get("id") || "").slice(0, 40);
+    if (who) { this.seen = this.seen || new Map(); this.seen.set(who, Date.now()) }
+    if (kind === "count") { const now = Date.now(), c = {audience: 0, screens: 0}; for (const [k, t] of this.seen || []) { if (now - t > 15000) { this.seen.delete(k); continue } if (k[0] === "a") c.audience++; else if (k[0] === "s") c.screens++ }
+      return Response.json(c, {headers: {...CORS, "Cache-Control": "no-store"}}) }
     if (this.last === null) this.last = (await this.state.storage.get("last")) || "";
     if (req.method === "POST" && !kind) {
       const body = (await req.text()).slice(0, 4096), msg = {id: Date.now().toString(36), time: Math.floor(Date.now() / 1000), event: "message", message: body};
