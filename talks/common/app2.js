@@ -115,7 +115,9 @@ function slideHTML0(s, d){ if (s && s.type === "qr") return qrSlide(s); if (s &&
 const icon = s => s.type === "qr" ? "⌗" : s.type === "poll" ? "📊" : s.stop ? "■" : s.type === "verse" ? "✝" : s.type === "video" ? "▶" : s.type === "quote" ? "❝" : /bullets/.test(s.type) ? "☰" : "▣";
 
 async function load(fresh){ if (window.OFFLINE) return {d: offD(), sha: null};
-  if (fresh || token()) { try { const g = await GH.get(FILE); return {d: JSON.parse(g.text), sha: g.sha} } catch (e) { if (fresh) throw e } }
+  // Edit (fresh) needs GitHub itself. The other pages try it for the very latest, but give up after 4 s and use the site's copy,
+  // so a network that blocks or slows api.github.com (some venue Wi-Fi does) doesn't hold up Stage or the slides.
+  if (fresh || token()) { try { const g = await (fresh ? GH.get(FILE) : Promise.race([GH.get(FILE), new Promise((_, no) => setTimeout(() => no(new Error("slow")), 4000))])); return {d: JSON.parse(g.text), sha: g.sha} } catch (e) { if (fresh) throw e } }
   const r = await fetch("talk2.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) throw new Error("talk2.json " + r.status); return {d: await r.json(), sha: null} }
 // The offline copy (⤓ Backup in Edit): one .html file with the talk, the code, the pictures and the videos inside.
 // Its media are base64 blocks turned into blob URLs at start; a linked video file becomes an "uploaded" one so it plays from the file.
