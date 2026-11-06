@@ -1195,8 +1195,12 @@
   },
   "65g0y:2": {
    "html": "<ul><li>Jesus said: “Apart from Me you can do nothing” (John 15:5) – without Him, whatever we do has no eternal value.</li><li>Question to think about: In my ministry, what am I trying to do apart from Jesus that will end up as nothing?</li></ul>",
-   "tr": {},
-   "src": {}
+   "tr": {
+    "Tagalog": "<ul><li>Sinabi ni Jesus: “Kung hiwalay kayo sa Akin, wala kayong magagawa” (Juan 15:5) – kung wala Siya, anuman ang gawin natin ay walang halaga sa walang hanggan.</li><li>Tanong na pag-isipan: Sa aking ministeryo, ano ang pinipilit kong gawin na hiwalay kay Jesus na mauuwi lang sa wala?</li></ul>"
+   },
+   "src": {
+    "Tagalog": "<ul><li>Jesus said: “Apart from Me you can do nothing” (John 15:5) – without Him, whatever we do has no eternal value.</li><li>Question to think about: In my ministry, what am I trying to do apart from Jesus that will end up as nothing?</li></ul>"
+   }
   }
  },
  "languages": [
