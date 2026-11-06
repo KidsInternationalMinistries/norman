@@ -1178,12 +1178,15 @@ async function audience(){
   let pres = 0, local = null, end = false, lastAt = 0, on = false, conn = true;
   const noteAt = i => auNoteAt(d, S, i, lang);
   const vidPh = s => `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(s.name || "Video")}</div><div class="vps">Playing on the main screen</div></div>`;
+  // The PDF (with the whole talk) can be downloaded only once the speaker reaches the last section, or the talk is over.
+  const lastSec = (() => { const L = P.nodes.filter(n => n.lvl === 1); const k = L.length ? firstAt(S, L[L.length - 1]) : -1; return k >= 0 ? k : S.length - 1 })();
+  const pdfOK = () => end || pres >= lastSec;
   const pollHere = i => { const s = SH[i]; return s && s.type === "poll" && !(end && local == null) ? s : null };
   const pollUI = s => { const k = pollKey(s), mine = myVote(k), live = local == null && on && !end;
     if (mine != null) return `<div class="aupoll"><div class="pvq">${E(pollQ(s, lang, true))}</div><p>You voted: <b>${E(pollAns(s, lang, true)[mine] || "")}</b> ✓</p>${pollShown(s) ? "" : '<p class="note">Thanks for voting! The results come up when the speaker shows them.</p>'}</div>`;
     if (!live) return `<div class="aupoll"><p class="note">This poll is open only while the speaker is on it.</p></div>`;
     return `<div class="aupoll"><div class="pvq">${E(pollQ(s, lang, true))}</div>${pollAns(s, lang, true).map((x, j) => `<button type="button" class="pvb" data-vote="${j}">${E(x)}</button>`).join("")}<p class="note">You can vote once.</p></div>` };
-  const show = () => { const i = local == null ? pres : local, ps = pollHere(i); setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : ps ? pollSlide(ps, {hide: myVote(pollKey(ps)) == null, mine: myVote(pollKey(ps)), lang, foot: myVote(pollKey(ps)) == null ? "" : "you voted"}) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = (ps ? pollUI(ps) : "") + sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "") + ((end && local == null) || i === S.length - 1 ? `<div class="audlend"><button type="button" id="audlbig">⤓ Download the notes</button><p>The slides, the notes${lang ? " in " + E(lang) : ""} and the whole talk, as a PDF.</p></div>` : "");
+  const show = () => { const i = local == null ? pres : local, ps = pollHere(i); $("#audl").hidden = !pdfOK(); setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : ps ? pollSlide(ps, {hide: myVote(pollKey(ps)) == null, mine: myVote(pollKey(ps)), lang, foot: myVote(pollKey(ps)) == null ? "" : "you voted"}) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = (ps ? pollUI(ps) : "") + sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "") + (pdfOK() && (end || i >= lastSec) ? `<div class="audlend"><button type="button" id="audlbig">⤓ Download the notes</button><p>The slides, the notes${lang ? " in " + E(lang) : ""} and the whole talk, as a PDF.</p></div>` : "");
     $("#aulive").hidden = local == null || !on || end || !alive(); $("#aust").textContent = on && !end && !alive() ? "Connection lost · browse on your own" : on && !end ? (local != null ? "Looking back" : "Live") : end ? "The talk is over" : conn ? "Waiting for the speaker…" : "Not connected · browse on your own"; $("#aust").className = local == null && on && !end ? "on" : "" };
   const from = m => { if (!m || m.v !== 2) return false; if (m.at && m.at <= lastAt) return false; lastAt = m.at || Date.now(); REVEAL.clear(); (m.rv || []).forEach(x => REVEAL.add(x)); const fresh = !m.at || Date.now() - m.at < 3 * 3600e3; if (fresh && !on) local = null; on = fresh; conn = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show(); return true };
   // Phones can't go past the speaker while they're connected. The relay sends a heartbeat every 25 s; if nothing comes for 70 s
@@ -1199,12 +1202,12 @@ async function audience(){
     catch (_) { document.querySelectorAll("[data-vote]").forEach(x => x.disabled = false); b.classList.remove("on"); alert("Your vote didn't go through. Check the internet connection and try again.") } });
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
   // ⤓ PDF: made right here on the phone, in the language picked, so nothing has to be uploaded beforehand.
-  $("#audl").onclick = async e => { e.preventDefault(); const a = $("#audl"); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent;
+  $("#audl").onclick = async e => { e.preventDefault(); const a = $("#audl"); if (a.dataset.busy || !pdfOK()) return; a.dataset.busy = 1; const t0 = a.textContent;
     try { const pb = await talkPDFFull(d, (n, m) => { a.textContent = `Making ${n}/${m}…`; const g = $("#audlbig"); if (g) g.textContent = `Making the notes… ${n} of ${m}` }, [lang]); a.textContent = "Saving…";
       const u = URL.createObjectURL(pb), x = document.createElement("a"); x.href = u;
       x.download = (d.title || "Talk").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") + (lang ? "-" + lang : "") + ".pdf"; document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000) }
     catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0; const g = $("#audlbig"); if (g) g.textContent = "⤓ Download the notes" } };
-  const dl = () => { $("#audl").hidden = !S.some((x, k) => noteText(auNoteAt(d, S, k, "")) || (x.slide && x.slide.type !== "video")) }; dl();
+  const dl = () => { $("#audl").hidden = !pdfOK() }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
   // Phones put to sleep (screen locked, app in the background) lose the live stream and often don't get it back by themselves.
   // So: reconnect when the page is seen again, when the internet comes back, or when no heartbeat came for 40 s, and catch up on the last Next.
