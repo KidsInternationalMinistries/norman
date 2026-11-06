@@ -149,13 +149,13 @@ function slideTrHTML(s, lang){ const src = slSrc(s), t = s && s.tr && s.tr[lang]
   if (s.type === "verse") return `<div class="aust"><div class="austt">${g("text")}</div><div class="austs">${g("ref")}</div></div>`;
   if (s.type === "quote") return `<div class="aust"><div class="austt">“${g("quote")}”</div>${t.by ? `<div class="austs">${g("by")}</div>` : ""}</div>`;
   return `<div class="aust">${t.eyebrow ? `<div class="austs">${g("eyebrow")}</div>` : ""}${t.slideTitle ? `<div class="austt">${g("slideTitle")}</div>` : ""}${t.slide ? `<div class="austs">${g("slide")}</div>` : ""}${t.bullets ? `<ul>${String(t.bullets).split("\n").filter(x => x.trim()).map(x => `<li>${E(x.replace(/^[-•*]\s*/, ""))}</li>`).join("")}</ul>` : ""}</div>` }
-// The Next presses that belong to an outline tag itself (not to the points under it), and marking the talking point line for the press you're on:
-// when a tag's talking points have one top line per press, line 1 goes with the first press, line 2 with the second, and so on. If the counts differ, nothing is marked.
+// Talking points go with each Next press: d.notes[id] holds press 1 of an outline tag, d.notes[id + ":2"] press 2, and so on.
+// A tag that only has d.notes[id] (older talks) shows it for all its presses. ownSteps: the presses that belong to the tag itself.
 const ownSteps = (S, n) => S.map((st, i) => st.node === n ? i : -1).filter(i => i >= 0);
-const tpLines = box => { const L = box && box.querySelector(":scope > ul, :scope > ol"); return L ? [...L.children].filter(x => x.tagName === "LI") : [] };
-function tpMark(box, S, n, k){ const lis = tpLines(box), st = ownSteps(S, n), at = st.indexOf(k);
-  if (!lis.length || lis.length !== st.length || at < 0) return; box.classList.add("tpone"); lis.forEach((li, j) => li.classList.add(j < at ? "tpdone" : j === at ? "tpnow" : "tpnext")) }
-function noteFor(d, n){ for (let p = n; p; p = p.parent) { const h = p.id && d.notes && d.notes[p.id]; if (h && noteText(h)) return {n: p, h} } return null }
+const nk = (id, j) => j ? id + ":" + (j + 1) : id;
+const perPress = (d, id) => !!id && Object.keys(d.notes || {}).some(x => x.startsWith(id + ":"));
+function noteFor(d, n, j){ const N = d.notes || {}; if (n && n.id && j > 0 && perPress(d, n.id)) { const h = N[nk(n.id, j)]; return h && noteText(h) ? {n, h, j} : {n, h: "", j} }
+  for (let p = n; p; p = p.parent) { const h = p.id && N[p.id]; if (h && noteText(h)) return {n: p, h} } return null }
 // The light box behind the words being read: from the top of the first line to the bottom of the last, across the text column.
 function hlBox(host, col, r){ let el = host.querySelector(":scope > .hlb"); const L = r ? [...r.getClientRects()].filter(x => x.width > 1 && x.height > 1) : [];
   if (!L.length) { if (el) el.hidden = true; return } if (!el) { el = document.createElement("div"); el.className = "hlb"; host.appendChild(el) }
@@ -228,8 +228,9 @@ async function present(){
       h = `<div class="olh">${E(b.lab)} ${E(b.text)}</div><ul class="ol">` + list.filter(x => x !== b).map(x => `<li class="l${x.lvl}${x === n ? " cur" : ""}" data-n="${x.j}"><span class="kn">${E(x.lab)}</span>${E(x.text)}${x.slides.filter(q => q.slide && !q.slide.stop).map(q => { return ` <button type="button" class="vtag${q.step === k || (SH[k] === q.slide && q.step <= k) ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("")}</li>`).join("") + "</ul>";
       const own = b.slides.filter(q => q.slide && !q.slide.stop); if (own.length) h = h.replace("</div>", " " + own.map(q => { return `<button type="button" class="vtag${SH[k] === q.slide && q.step <= k ? " on" : ""}" data-pk="${E(q.slide.name)}">${icon(q.slide)} ${E(q.slide.name)}</button>` }).join("") + "</div>");
       if (n === b) h = h.replace('class="olh"', 'class="olh cur"') }
-    const nt = n ? noteFor(d, n) : null; if (nt) h = `<div class="olh${n === nt.n ? " cur" : ""}">${E(nt.n.full)} ${E(nt.n.text)}</div><div class="tpn">${cleanHTML(nt.h)}</div>`;
-    $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`; $("#ol").scrollTop = 0; if (nt) tpMark($("#ol .tpn"), S, nt.n, k);
+    const own = n ? ownSteps(S, n) : [], pj = Math.max(0, own.indexOf(k)), nt = n ? noteFor(d, n, pj) : null;
+    if (nt && noteText(nt.h)) h = `<div class="olh${n === nt.n ? " cur" : ""}">${E(nt.n.full)} ${E(nt.n.text)}${nt.n === n && own.length > 1 && perPress(d, n.id) ? ` <span class="tpj">${pj + 1} of ${own.length}</span>` : ""}</div><div class="tpn">${cleanHTML(nt.h)}</div>`;
+    $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`; $("#ol").scrollTop = 0;
     $("#nav").innerHTML = treeHTML(P, S, k, true); const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); if (cn.offsetTop < nv.scrollTop || cn.offsetTop > nv.scrollTop + nv.clientHeight - 30) nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
     const ck = end ? null : $(`#sc .ck[data-s="${k}"]`); requestAnimationFrame(() => { let r = null; if (ck && showText) { r = document.createRange(); r.selectNodeContents(ck) } hlBox($("#ft"), $("#sc"), r) });
     const s = peek ? (d.slides || []).find(x => x.name === peek) : SH[k]; setSlide($("#m").parentElement.querySelector(".scr"), end ? '<div class="slide blank"></div>' : slideHTML(s, d));
@@ -280,9 +281,9 @@ async function edit(){
       <div class="ftext" id="ftext"></div></main><div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
     <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
       <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><button type="button" data-tab="au">Audience notes</button><button type="button" data-tab="lib">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd" hidden>+ New slide</button></div><div class="tabbody">
-      <div class="tp" id="tpbox"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button><button type="button" class="btn small aib" id="tpall" title="The AI drafts talking points for every part again, one line for each Next press">✨ Draft all</button></div>
+      <div class="tp" id="tpbox"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button><button type="button" class="btn small aib" id="tpall" title="The AI drafts talking points for every part again, a set for each Next press">✨ Draft all</button></div>
         <div class="aubar" id="aubar" hidden></div>
-        <div class="tpe" id="tpe" contenteditable="true" spellcheck="true" data-ph="What you glance at while you talk: a few short lines. Bold, underline and bullets work."></div><p class="tpcnt" id="tpcnt" hidden></p><div class="trrow" id="trrow" hidden><button type="button" class="btn small aib" id="trone"></button></div></div>
+        <div class="tpe" id="tpe" contenteditable="true" spellcheck="true" data-ph="What you glance at while you talk: a few short lines. Bold, underline and bullets work."></div><div class="trrow" id="trrow" hidden><button type="button" class="btn small aib" id="trone"></button></div></div>
       <input class="psq" id="psq" type="search" placeholder="Find a slide (name or words on it)…" aria-label="Find a slide" hidden><div class="plist" id="plist" hidden></div></div></div></aside></div>
     <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog><dialog class="sdlg pdlg" id="pdlg"></dialog>`;
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
@@ -503,24 +504,26 @@ async function edit(){
     hlBox($("#ftext"), b, r); if (!quiet) { const tl = $("#m .tools"); scrollPane($("#m"), r.getBoundingClientRect(), tl ? tl.offsetHeight : 0) } }
   addEventListener("resize", () => hl(true));
   // ---- talking points for the outline tag you're in ----
-  let tpKey = null, tpT = null; const keyOf = n => n ? (n.id || "@" + n.at) : "";
+  let tpKey = null, tpJ = 0, tpT = null; const keyOf = n => n ? (n.id || "@" + n.at) : "";
   let tpPick = null;      // an outline tag picked in the outline on the left: its talking points show, even if Next lands inside a point under it
   function tpNode(){ if (tpPick) { const n = P.nodes.find(x => keyOf(x) === tpPick); if (n) return n } const st = S[k]; return st && st.node || null }
+  const tpPress = n => tpPick || !n ? 0 : Math.max(0, ownSteps(S, n).indexOf(k));      // which Next press of the tag you're on (0 = the first)
   // The same editor holds the talking points (tpMode "tp") or the audience notes ("au"; auLang "" = the original, else one translation).
   let tpMode = "tp", auLang = "";
   const AU = id => { d.audNotes = d.audNotes || {}; return d.audNotes[id] || (d.audNotes[id] = {html: "", tr: {}, src: {}}) };
-  const getNote = n => !n || !n.id ? "" : tpMode === "tp" ? (d.notes || {})[n.id] || "" : (d.audNotes || {})[n.id] ? (auLang ? (d.audNotes[n.id].tr || {})[auLang] || "" : d.audNotes[n.id].html || "") : "";
-  function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; if (!force && (keyOf(n) === tpKey || document.activeElement === e)) return; tpKey = keyOf(n);
+  const getNote = (n, j) => !n || !n.id ? "" : tpMode === "tp" ? (d.notes || {})[nk(n.id, j == null ? tpJ : j)] || "" : (d.audNotes || {})[n.id] ? (auLang ? (d.audNotes[n.id].tr || {})[auLang] || "" : d.audNotes[n.id].html || "") : "";
+  function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; const j = tpMode === "tp" ? tpPress(n) : 0; if (!force && ((keyOf(n) === tpKey && j === tpJ) || document.activeElement === e)) return; if (tpKey && (keyOf(n) !== tpKey || j !== tpJ)) saveTP(); tpKey = keyOf(n); tpJ = j;
+    const np = n && tpMode === "tp" ? ownSteps(S, n).length : 0;
     const what = tpMode === "tp" ? "Talking points" : "Audience notes" + (auLang ? " (" + auLang + ")" : "");
-    $("#tpt").textContent = n ? what + " · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text : what + " (step into a point first)"; const none = nil(P, n) && !noteText(getNote(n)); e.contentEditable = n && !none ? "true" : "false"; $("#tpbox").classList.toggle("none", none);
-    e.dataset.ph = tpMode === "tp" ? "What you glance at while you talk: a few short lines. Bold, underline and bullets work." : auLang ? "No " + auLang + " yet. Write the notes in the original, then press ✨ Translate this. You can change the translation here by hand." : "What the audience sees on their phones for this part: the main idea, a verse, a question to think about…";
+    $("#tpt").textContent = n ? what + " · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text + (np > 1 ? ` · Next ${tpJ + 1} of ${np}` : "") : what + " (step into a point first)"; const none = nil(P, n) && !noteText(getNote(n)); e.contentEditable = n && !none ? "true" : "false"; $("#tpbox").classList.toggle("none", none);
+    e.dataset.ph = tpMode === "tp" ? (np > 1 ? `What you glance at during this part of ${n.full} (Next ${tpJ + 1} of ${np}): a few short lines. At the end of them, press Next.` : "What you glance at while you talk: a few short lines. Bold, underline and bullets work.") : auLang ? "No " + auLang + " yet. Write the notes in the original, then press ✨ Translate this. You can change the translation here by hand." : "What the audience sees on their phones for this part: the main idea, a verse, a question to think about…";
     if (none) e.dataset.ph = n.full + " has no words yet, so it has no " + (tpMode === "tp" ? "talking points." : "audience notes.");
     $("#tpai").textContent = tpMode === "au" && auLang ? "✨ Draft " + auLang : "✨ Draft"; $("#tpall").hidden = tpMode !== "tp"; $("#tpai").title = tpMode === "tp" ? "The AI drafts short talking points from this part's text" : auLang ? "The AI drafts the " + auLang + " translation of this note and this part's slides, keeping what was already translated" : "The AI drafts audience notes from this part's text";
-    e.innerHTML = cleanHTML(getNote(n)); drawAU(n); tpCount() }
+    e.innerHTML = cleanHTML(getNote(n)); drawAU(n) }
   function saveTP(){ clearTimeout(tpT); const e = $("#tpe"); if (!e) return; let n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const h = cleanHTML(e.innerHTML), has = !!noteText(h);
     if (getNote(n) === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
     if (!n.id) { if (!has) return; const id = newId(); d.text = d.text.slice(0, n.end - 1) + "|" + id + d.text.slice(n.end - 1); n.id = id; tpKey = id; var redrawText = true }
-    if (tpMode === "tp") { if (has) d.notes[n.id] = h; else delete d.notes[n.id] }
+    if (tpMode === "tp") { const key = nk(n.id, tpJ); if (has) d.notes[key] = h; else delete d.notes[key] }
     else { const a = AU(n.id); if (auLang) { a.tr[auLang] = has ? h : ""; a.ed = a.ed || {}; a.ed[auLang] = true; if (a.src[auLang] == null) a.src[auLang] = a.html } else a.html = has ? h : "" }
     changed(s); if (redrawText) drawText(); drawAU(n) }
   // ---- languages and translations of the audience notes ----
@@ -577,41 +580,39 @@ async function edit(){
     if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } (async () => { const L = auLang ? [auLang] : null; await translateSlides(L, nodeSlides(n)); await translateNotes([n.id], L, false, true); trShow(tpNode()) })(); return }
     if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
   document.addEventListener("input", e => { if (e.target.id === "psq") plist() });
-  document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(() => { saveTP(); trShow(tpNode()); tpCount() }, 700) } });
+  document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(() => { saveTP(); trShow(tpNode()) }, 700) } });
   document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
   document.addEventListener("keydown", e => { if (e.target.id !== "tpe" || e.key !== "Tab") return; e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent") });
   document.addEventListener("mousedown", e => { const b = e.target.closest(".tpb [data-c]"); if (!b) return; e.preventDefault(); const t = $("#tpe"); if (document.activeElement !== t) t.focus(); document.execCommand(b.dataset.c); clearTimeout(tpT); tpT = setTimeout(saveTP, 400) });
-  // ✨ Draft talking points: one top line per Next press in the part (lines under it are allowed), so each press brings up the next line.
-  const TP_RULES = `You turn part of a talk into the speaker's talking points: memory triggers he glances at on a screen while he speaks from memory. Each line is a short catch phrase of 1 to 4 words (never more than 5), like a heading, never a sentence: no full clauses, no explanation, no quotes from the text. Name the story, image or idea so it triggers his memory ("MC's Face", "CCS Talk"), in Title Case.
-The part is split into numbered presses: each time the speaker presses Next, the next press's words are highlighted (and often a new slide comes up). Write exactly ONE main line for each press, in order, so lines and presses match one to one. A main line may have 1 to 3 short lines under it (subs) only when that press is long and clearly has parts. A press with no words (only a slide) gets a line naming what the slide shows. Only mark bold the one main line that matters most, if any.
-Example. Text about: his friend Art first set the conference topic as "Nothing", he once gave a talk about nothing at a CCS graduation and walked off stage, the MC's terrified face, how "nothing" relates to Character, Calling and Conviction.
-Good lines: "Former Topic - Nothing", "CCS Talk", "MC's Face", "It Is Related to This Talk". Bad (too long): "When Art's topic was NOTHING, I was in".
-Return JSON {"presses": [{"press": 1, "text": "...", "bold": false, "subs": []}]} with exactly one entry per press.`;
+  // ✨ Draft talking points: a set of short lines for each Next press of a part, so he reads down the set, then presses Next for the next set.
+  const TP_RULES = `You turn part of a talk into the speaker's talking points: memory triggers he glances at on a screen while he speaks from memory. The part is split into numbered presses: each time he presses Next, the next press's words come up (often with a new slide). For EACH press write its own set of lines that follow the flow of that press: one line for each key idea, story beat, image, example or verse, in the order he says them, so that reading down the lines walks him through the press. When he reaches the last line of a set, he knows to press Next.
+Each line is a short catch phrase of 1 to 5 words, like a heading, never a sentence: no full clauses, no explanation. Name the story, image or idea so it triggers his memory ("MC's Face", "CCS Talk", "30 Years With Navigators"), in Title Case. A long press (a story) usually needs 4 to 8 lines; a short press 1 to 3. Use level 2 for a detail that belongs under the line before it. Mark bold at most one line per press, the one that matters most. Plain text only: no asterisks or Markdown.
+A press with no words (only a slide) gets one line naming what the slide shows.
+Example for a story press about his dad: "Dad: 30 Years With Navigators", "Effort-Focused: It's You", "Left The Field Broken", "Construction Supervisor", "Never About Effort; Christ", "2009: Back At 81", "St. Luke's: Blood Clots", "Men He Discipled, Now 60s", "We Sow, God Grows", "Faulty Ministry Model", "He Is Enough!" (bold).
+Return JSON {"presses": [{"press": 1, "lines": [{"text": "...", "level": 1, "bold": false}]}]} with exactly one entry per press, in order.`;
   const pressesOf = n => ownSteps(S, n).map((i, q) => { const st = S[i], w = st.a != null ? plain(d.text.slice(st.a, st.b)) : ""; return `Press ${q + 1}: ${w || "(no words; the slide \"" + ((st.slide && st.slide.name) || "") + "\" comes up)"}` });
   const canDraft = n => !!n && !nil(P, n) && ownSteps(S, n).some(i => S[i].a != null && words(d.text.slice(S[i].a, S[i].b)) >= 3);
+  const unmd = x => String(x || "").replace(/\*\*|__/g, "").replace(/^\s*[-*•]\s+/, "").trim();
+  const linesHTML = L => { let h = "<ul>", open2 = false; for (const x of L) { const t = unmd(x.text), li = `<li>${x.bold || /^\*\*.*\*\*$/.test(String(x.text).trim()) ? "<b>" + E(t) + "</b>" : E(t)}`; if (+x.level === 2 && h !== "<ul>") { h += (open2 ? "</li>" : "<ul>") + li; open2 = true } else { h += (open2 ? "</li></ul></li>" : h === "<ul>" ? "" : "</li>") + li; open2 = false } } return h + (open2 ? "</li></ul></li>" : h === "<ul>" ? "" : "</li>") + "</ul>" };
+  // returns one HTML set per press of the tag
   async function draftTP(n){ const ps = pressesOf(n), j = await K().chat(TP_RULES, `${brief()}\n\nThis part: ${n.full} ${n.text} (${ps.length} press${ps.length === 1 ? "" : "es"})\n\n${ps.join("\n\n")}`, {effort: "low"});
-    const L = (j.presses || j.points || []).filter(x => x && x.text).map(x => ({text: String(x.text), bold: !!x.bold, subs: (x.subs || []).filter(Boolean).map(String)}));
-    while (L.length > ps.length && L.length > 1) { const x = L.pop(); L[L.length - 1].subs.push(x.text, ...x.subs) }
-    const st = ownSteps(S, n); while (L.length < ps.length) { const sl = S[st[L.length]].slide; L.push({text: (sl && sl.name) || "…", bold: false, subs: []}) }
-    return "<ul>" + L.map(x => `<li>${x.bold ? "<b>" + E(x.text) + "</b>" : E(x.text)}${x.subs.length ? "<ul>" + x.subs.map(y => `<li>${E(y)}</li>`).join("") + "</ul>" : ""}</li>`).join("") + "</ul>" }
+    const st = ownSteps(S, n), out = (j.presses || []).slice(0, ps.length).map(x => linesHTML(((x && x.lines) || []).filter(y => y && y.text)));
+    while (out.length < ps.length) { const sl = S[st[out.length]].slide; out.push(linesHTML([{text: (sl && sl.name) || "…"}])) } return out }
+  // put drafted sets into the talk (adding ids to tags that have none), replacing the tag's old talking points
+  function putDrafts(map){ const s0 = snapshot(); d.notes = d.notes || {}; let t = d.text;
+    [...map.keys()].sort((a, b) => b.end - a.end).forEach(n => { let id = n.id; if (!id) { id = newId(); t = t.slice(0, n.end - 1) + "|" + id + t.slice(n.end - 1) }
+      Object.keys(d.notes).forEach(x => { if (x === id || x.startsWith(id + ":")) delete d.notes[x] }); map.get(n).forEach((h, q) => { if (noteText(h)) d.notes[nk(id, q)] = cleanHTML(h) }) });
+    d.text = t; tpKey = null; changed(s0); drawText(); drawTP(true) }
   $("#tpai").onclick = async () => { const n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; if (tpMode === "au") { auDraft(n); return } if (!canDraft(n)) { K().toast(`${n.full} ${n.text} has no text of its own (only what's under it), so there's nothing to draft from.`); return }
-    const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the talking points that are there now?")) return; const stop = busy("Drafting the talking points…");
-    try { const h = await draftTP(n); e.innerHTML = cleanHTML(h); tpKey = keyOf(n); saveTP(); tpCount() } catch (err) { aiFail(err) } finally { stop() } };
+    saveTP(); const np = ownSteps(S, n).length, has = n.id && Object.keys(d.notes || {}).some(x => (x === n.id || x.startsWith(n.id + ":")) && noteText(d.notes[x]));
+    if (has && !confirm(`Replace the talking points of ${n.full} ${n.text}` + (np > 1 ? ` (all ${np} Next presses)` : "") + "?")) return; const stop = busy("Drafting the talking points…");
+    try { putDrafts(new Map([[n, await draftTP(n)]])) } catch (err) { aiFail(err) } finally { stop() } };
   $("#tpall").onclick = async () => { const list = P.nodes.filter(canDraft); if (!list.length) return;
-    if (!confirm(`Draft new talking points for all ${list.length} parts, one line for each Next press? This replaces the talking points there now (↶ Undo brings them back).`)) return;
+    if (!confirm(`Draft new talking points for all ${list.length} parts, a set for each Next press? This replaces the talking points there now (↶ Undo brings them back).`)) return;
     saveTP(); const k0 = K(), dl = k0.dlg("ai2busy", `<div class="ed"><p class="aimsg" id="abm"></p></div>`); k0.show(dl); const out = new Map(); let done = 0, bad = 0; const m = () => { $("#abm").textContent = `Drafting talking points… ${done} of ${list.length}` + (bad ? ` (${bad} failed)` : "") }; m();
     try { let q = 0; await Promise.all([0, 1, 2, 3].map(async () => { while (q < list.length) { const n = list[q++]; try { out.set(n, await draftTP(n)) } catch (e) { bad++ } done++; m() } }));
-      if (!out.size) throw new Error("The AI didn't answer. Try again.");
-      const s0 = snapshot(); d.notes = d.notes || {}; let t = d.text;
-      [...out.keys()].sort((a, b) => b.end - a.end).forEach(n => { let id = n.id; if (!id) { id = newId(); t = t.slice(0, n.end - 1) + "|" + id + t.slice(n.end - 1) } d.notes[id] = cleanHTML(out.get(n)) });
-      d.text = t; tpKey = null; changed(s0); drawText(); drawTP(true); k0.toast(`Drafted ${out.size} parts` + (bad ? `; ${bad} failed, so press ✨ Draft all again for those` : "")) }
+      if (!out.size) throw new Error("The AI didn't answer. Try again."); putDrafts(out); k0.toast(`Drafted ${out.size} parts` + (bad ? `; ${bad} failed, so press ✨ Draft all again for those` : "")) }
     catch (err) { aiFail(err) } finally { dl.close() } };
-  // Under the talking points: how many Next presses this part has and how many top lines, when they don't match (then Stage can't light up the line you're on).
-  // In Edit the line for the Next press you're on is marked too (Stage shows only that line).
-  function tpCount(){ const c = $("#tpcnt"), n = tpMode === "tp" ? tpNode() : null; if (!c) return; const sts = n ? ownSteps(S, n) : [], st = sts.length, ln = n ? tpLines($("#tpe")).length : 0, at = sts.indexOf(k);
-    let css = $("#tpnowcss"); if (!css) { css = document.createElement("style"); css.id = "tpnowcss"; document.head.appendChild(css) }
-    const one = n && ln && ln === st && st > 1 && at >= 0; css.textContent = one ? `#tpe > ul > li:nth-child(${at + 1}), #tpe > ol > li:nth-child(${at + 1}){background:color-mix(in srgb,var(--cue) 35%,transparent);border-radius:6px}` : "";
-    c.hidden = !(n && ln && st && (ln !== st || one)); c.textContent = one ? `Next press ${at + 1} of ${st}: Stage shows only the marked line.` : `${st} Next press${st === 1 ? "" : "es"} here, ${ln} line${ln === 1 ? "" : "s"}. With one line per press, Stage shows the line for the press you're on.` }
   async function auDraft(n){ if (auLang) { if (!n.id) { K().toast("Write the notes in Original first."); return } saveTP(); await translateSlides([auLang], nodeSlides(n), true); await translateNotes([n.id], [auLang], true, true); trShow(tpNode()); return } const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own, so there's nothing to draft from.`); return }
     const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the audience notes that are there now?")) return; const stop = busy("Drafting the audience notes…");
     try { const j = await K().chat(`You write the notes people in the audience see on their phones while a Christian ministry leader speaks. For this part of the talk: 2 to 5 short lines: the main idea in plain words, any Bible verse he reads (reference and its key words), and if it fits one question to think about. Friendly and clear, no jargon, no retelling of the whole story. Return JSON {"lines": [{"text": "...", "bold": false}]}.`, `${brief()}\n\nThis part: ${n.full} ${n.text}\n\n${plain(seg)}`, {effort: "low"});
@@ -620,7 +621,7 @@ Return JSON {"presses": [{"press": 1, "text": "...", "bold": false, "subs": []}]
   function side(){ drawTP(); const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
-  function redraw(){ try { tpCount() } catch (e) {} $("#tree").innerHTML = treeHTML(P, S, k, false, tpPick ? tpNode() : null); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist(); hl(true) }
+  function redraw(){ $("#tree").innerHTML = treeHTML(P, S, k, false, tpPick ? tpNode() : null); const c = $("#tree .cur"); if (c) { const t = $("#tree"); if (c.offsetTop < t.scrollTop || c.offsetTop > t.scrollTop + t.clientHeight - 30) t.scrollTo({top: c.offsetTop - t.clientHeight / 2}) } side(); plist(); hl(true) }
   function step(i, quiet, keep, picked){ if (LS.on && !keep) stopListen(); if (!picked) { if (tpPick) saveTP(); tpPick = null } peek = null; k = Math.max(0, Math.min(S.length - 1, i)); redraw(); hl(quiet) }
   const stepTo = i => step(i, false, true);
   $("#en").onclick = () => { if (peek) { peek = null; side(); return } step(k + 1) }; $("#eb").onclick = () => { if (peek) { peek = null; side(); return } step(k - 1) };

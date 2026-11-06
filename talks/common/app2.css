@@ -285,3 +285,4 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .tpn.tpone > ul > li:not(.tpnow),.tpn.tpone > ol > li:not(.tpnow){display:none}
 .tpn.tpone > ul,.tpn.tpone > ol{list-style:none;padding-left:0}
 .tpn.tpone li.tpnow{background:none;margin-left:0;padding:0}
+.olh .tpj{font-size:.7em;font-weight:700;opacity:.65;margin-left:6px;white-space:nowrap}

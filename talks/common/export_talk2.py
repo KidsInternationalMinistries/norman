@@ -52,8 +52,11 @@ for kind, v in parts:
     lab = label(lvl)
     tm = (t.get("times") or {}).get(nid or f"{lvl}|{name}")
     L += [("## " if lvl == 1 else "### " if lvl == 2 else "#### ") + f"{lab} {name}" + (f" (practiced {tm//60}:{tm%60:02d})" if isinstance(tm, (int, float)) and tm >= 5 else ""), ""]
-    if nid and notes.get(nid):
-        L += ["**Talking points:**"] + plain(notes[nid]) + [""]
+    if nid:
+        keys = [nid] + sorted([k for k in notes if k.startswith(nid + ":")], key=lambda k: int(k.split(":")[1]))
+        sets = [(k, plain(notes[k])) for k in keys if notes.get(k) and plain(notes[k])]
+        for k, pl in sets:
+            L += ["**Talking points" + ((" (Next " + (k.split(":")[1] if ":" in k else "1") + ")") if len(keys) > 1 else "") + ":**"] + pl + [""]
     a = aud.get(nid) if nid else None
     if a and plain(a.get("html")):
         L += ["**Audience notes:**"] + plain(a.get("html")) + [""]
