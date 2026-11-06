@@ -136,6 +136,23 @@ function hlBox(host, col, r){ let el = host.querySelector(":scope > .hlb"); cons
 // The first step at or after an outline node (clicking a point in a list).
 const firstAt = (S, n) => n ? S.findIndex(z => z.pos >= n.at) : -1;
 // Bring a range into view below the sticky parts: in the middle if it fits, else its start at the top.
+// Edit and Stage share one layout: outline | text | slide over tabs, with dividers you drag (sizes kept on this computer).
+const LAYK = "v2-lay";
+function layout(lay, onResize){ let z = {}; try { z = JSON.parse(localStorage.getItem(LAYK) || "{}") } catch (e) {}
+  const put = () => { if (z.c1) lay.style.setProperty("--c1", z.c1 + "px"); if (z.c3) lay.style.setProperty("--c3", z.c3 + "px"); if (z.h1) lay.style.setProperty("--h1", z.h1 + "px") };
+  const fit = () => { const top = lay.getBoundingClientRect().top, bar = $(".bar"), ct = $(".ctimer:not([hidden])"); let bot = 0; if (bar) bot = innerHeight - bar.getBoundingClientRect().top; else if (ct) bot = ct.offsetHeight;
+    lay.style.setProperty("--avail", Math.max(300, innerHeight - top - bot) + "px"); onResize && onResize() };
+  put(); fit(); addEventListener("resize", fit);
+  lay.addEventListener("pointerdown", e => { const g = e.target.closest(".gut"); if (!g) return; e.preventDefault(); const k = g.dataset.g, L = lay.getBoundingClientRect(), st = lay.querySelector(".stop2"); g.classList.add("on");
+    const mv = ev => { if (k === "c1") z.c1 = Math.round(Math.max(150, Math.min(520, ev.clientX - L.left)));
+      else if (k === "c3") z.c3 = Math.round(Math.max(260, Math.min(L.width - 420, L.right - ev.clientX)));
+      else if (st) z.h1 = Math.round(Math.max(120, Math.min(L.height - 140, ev.clientY - st.getBoundingClientRect().top))); put(); onResize && onResize() };
+    const up = () => { removeEventListener("pointermove", mv); removeEventListener("pointerup", up); g.classList.remove("on"); try { localStorage.setItem(LAYK, JSON.stringify(z)) } catch (err) {} };
+    addEventListener("pointermove", mv); addEventListener("pointerup", up) });
+  lay.addEventListener("dblclick", e => { const g = e.target.closest(".gut"); if (!g) return; delete z[g.dataset.g]; lay.style.removeProperty("--" + g.dataset.g); try { localStorage.setItem(LAYK, JSON.stringify(z)) } catch (err) {} onResize && onResize() }) }
+// Bring a range into view inside a scrolling pane: in the middle if it fits, else its start at the top (pad: room taken by sticky parts at its top).
+function scrollPane(pane, r, pad){ if (!pane || !r || !r.height) return; const pr = pane.getBoundingClientRect(), top = pr.top + (pad || 0) + 8, bottom = pr.bottom - 8, room = bottom - top, y = r.height <= room - 16 ? r.top - top - (room - r.height) / 2 : r.top - top - 10;
+  if (Math.abs(y) > 2) pane.scrollTo({top: Math.max(0, pane.scrollTop + y), behavior: "smooth"}) }
 function scrollToPart(r, top, bottom){ if (!r || !r.height) return; const room = bottom - top, y = r.height <= room - 16 ? r.top - top - (room - r.height) / 2 : r.top - top - 10;
   if (Math.abs(y) > 2) window.scrollTo({top: Math.max(0, scrollY + y), behavior: "smooth"}) }
 
@@ -148,16 +165,17 @@ async function present(){
   document.title = d.title + " · Stage"; T.preload(d.slides || [], d);
   const P = parse(d), S = build(P), SH = S.map(x => x.slide);
   let k = 0, peek = null, end = false, showText = true; try { const v = +localStorage.getItem("pres2-" + FOLDER); if (v >= 0 && v < S.length) k = v; showText = localStorage.getItem("pres2-text") !== "0" } catch (e) {}
-  document.body.innerHTML = topBar(d, "present") + `<div class="lay v2s"><nav class="cues" id="nav"></nav><main class="pane" id="m">
+  document.body.innerHTML = topBar(d, "present") + `<div class="lay v2x v2s" id="lay"><nav class="cues tree" id="nav"></nav><div class="gut" data-g="c1" title="Drag to resize; double-click to reset"></div><main class="pane" id="m">
       <div class="row tt"><label class="chk"><input type="checkbox" id="stx"${showText ? " checked" : ""}> Show the full text</label></div><div class="fulltext" id="ft"${showText ? "" : " hidden"}><div class="script" id="sc"></div></div></main>
-      <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="olbox" id="ol"></div><div class="nxt" id="nx"></div></aside></div>
+      <div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
+      <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
+        <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button></div><div class="tabbody"><div class="olbox" id="ol"></div></div></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
       <button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   $("#sc").innerHTML = textHTML(d, P, false, S, true);
   const TIMER = CountTimer($("#ct"), "pres2-timer-" + FOLDER); TIMER.setMinutes(timerMinutes(d, []));
-  // The left list: sections and points to jump to.
-  $("#nav").innerHTML = P.nodes.filter(n => n.lvl <= 2).map(n => n.lvl === 1 ? `<div class="sec" data-n="${n.j}">${E(n.lab)}. ${E(n.text)}</div>` : `<button type="button" class="it" data-n="${n.j}"><i>${E(n.lab)}</i><span>${E(n.text)}</span></button>`).join("");
+  // The left list: the same outline as in Edit, to jump to.
   const branch = n => { let p = n; while (p && p.lvl > 2) p = p.parent; return p };     // the point (or section) you're in
   function draw(){ const st = S[k], n = st && st.node, b = n ? branch(n) : null;
     // the outline of the point you're in, big, with the current line lit and its slide chips
@@ -167,15 +185,14 @@ async function present(){
       if (n === b) h = h.replace('class="olh"', 'class="olh cur"') }
     const nt = n ? noteFor(d, n) : null; if (nt) h = `<div class="olh${n === nt.n ? " cur" : ""}">${E(nt.n.full)} ${E(nt.n.text)}</div><div class="tpn">${cleanHTML(nt.h)}</div>`;
     $("#ol").innerHTML = h || `<div class="olh">${E(d.title)}</div>`; $("#ol").scrollTop = 0;
-    document.querySelectorAll("#nav [data-n]").forEach(e => e.classList.toggle("cur", !!b && +e.dataset.n === b.j));
-    const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
+    $("#nav").innerHTML = treeHTML(P, S, k, true); const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); if (cn.offsetTop < nv.scrollTop || cn.offsetTop > nv.scrollTop + nv.clientHeight - 30) nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
     const ck = end ? null : $(`#sc .ck[data-s="${k}"]`); requestAnimationFrame(() => { let r = null; if (ck && showText) { r = document.createRange(); r.selectNodeContents(ck) } hlBox($("#ft"), $("#sc"), r) });
     const s = peek ? (d.slides || []).find(x => x.name === peek) : SH[k]; setSlide($("#m").parentElement.querySelector(".scr"), end ? '<div class="slide blank"></div>' : slideHTML(s, d));
     $("#cap").textContent = end ? "End of the talk" : peek ? "Showing " + peek + " · Next or Back goes back" : s ? s.name : "Title slide";
     const nx = S.slice(k + 1).find(z => z.node && z.node !== n); $("#nx").innerHTML = nx ? `Up next: <b>${E(nx.node.lab)}</b> ${E(nx.node.text)}` : "End of the talk";
     $("#pos").textContent = (k + 1) + " of " + S.length; vid();
     requestAnimationFrame(() => { const el = ck || (n && $(`#sc .bmark[data-n="${n.j}"]`)); const ol = $("#ol"), tb = $(".top");
-      if (showText && el) { const top = (tb ? tb.offsetHeight : 0) + 20, bar = $(".bar"); scrollToPart(el.getBoundingClientRect(), top, bar ? bar.getBoundingClientRect().top : innerHeight) } }) }
+      if (showText && el) scrollPane($("#m"), el.getBoundingClientRect(), $("#m .tt") ? $("#m .tt").offsetHeight : 0) }) }
   function vid(){ const v = $(".side .slide.vid[data-next]"); if (!v || v.dataset.hooked) return; v.dataset.hooked = 1; const at = k; v.addEventListener("vidend", () => setTimeout(() => { if (k === at && !peek) next() }, 1200)) }
   async function push(){ const m = {v: 2, step: k, at: Date.now()}; if (peek) m.pk = peek; if (end) m.end = 1; try { localStorage.setItem("pres2-" + FOLDER, k) } catch (e) {}
     if (bc) try { bc.postMessage(m) } catch (e) {} const se = $("#sync");
@@ -191,6 +208,7 @@ async function present(){
     const t = e.target.closest("[data-n]"); if (t && (t.closest("#nav") || t.closest("#ol") || t.closest("#sc"))) { const j = +t.dataset.n, i = firstAt(S, P.nodes[j]); if (i >= 0) go(i) } });
   $("#pop").onclick = () => { window.open("slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { if (locked() || e.target.closest("input,textarea")) return; if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); back() } });
+  layout($("#lay"), () => { const ck = !end && $(`#sc .ck[data-s="${k}"]`); if (ck && showText) { const r = document.createRange(); r.selectNodeContents(ck); hlBox($("#ft"), $("#sc"), r) } });
   draw(); presenterGate(C.passHash, "pres-ok", () => { push(); TIMER.at(k === 0) }) }
 
 // =====================================================================
@@ -203,17 +221,18 @@ async function edit(){
     if (e.status === 401 || e.status === 403) { try { localStorage.removeItem("gh-token") } catch (_) {} tokenSetup(() => edit()); return }
     document.body.innerHTML = `<p class="status">Couldn't load this talk's new version from GitHub (${E(e.message)}).</p>`; return }
   d.slides = d.slides || []; document.title = d.title + " · Edit"; T.preload(d.slides, d);
-  let P = parse(d), S = build(P), SH = S.map(x => x.slide), k = 0, peek = null, dirty = false, saving = false, timer = null, panel = "lib";
+  let P = parse(d), S = build(P), SH = S.map(x => x.slide), k = 0, peek = null, dirty = false, saving = false, timer = null, panel = "tp";
   const hist = [];                 // earlier versions of the text and slides, for Undo
-  document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2e"><nav class="cues tree" id="tree"></nav>
+  document.body.innerHTML = topBar(d, "edit") + `<div class="lay v2x v2e" id="lay"><nav class="cues tree" id="tree"></nav><div class="gut" data-g="c1" title="Drag to resize; double-click to reset"></div>
     <main class="pane" id="m"><div class="tools"><button type="button" class="btn small" id="det">Talk details</button><button type="button" class="btn small" id="undo" disabled title="Undo the last change">↶ Undo</button>
       <button type="button" class="btn small aib" id="aiol" title="The AI reads your text and adds the outline tags (sections and points); you check them first">✨ Outline from the text</button><button type="button" class="btn small aib" id="aisp" title="Spelling in the whole text and on every slide; you check each change">✨ Check spelling</button><button type="button" class="btn small" id="lis" title="The AI voice reads the talk from where you are; Next steps along">▶ Listen from here</button>
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
-      <div class="ftext" id="ftext"></div></main>
-    <aside class="side"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div>
-      <div class="tp"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button></div>
+      <div class="ftext" id="ftext"></div></main><div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
+    <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
+      <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><button type="button" data-tab="lib">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd" hidden>+ New slide</button></div><div class="tabbody">
+      <div class="tp" id="tpbox"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button></div>
         <div class="tpe" id="tpe" contenteditable="true" spellcheck="true" data-ph="What you glance at while you talk: a few short lines. Bold, underline and bullets work."></div></div>
-      <div class="ptabs"><button type="button" data-tab="lib" class="on">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd">+ New slide</button></div><div class="plist" id="plist"></div></aside></div>
+      <div class="plist" id="plist" hidden></div></div></div></aside></div>
     <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog><dialog class="sdlg pdlg" id="pdlg"></dialog>`;
   $(".top h1").insertAdjacentHTML("afterend", `<span id="save">All changes saved</span>`);
   const setSave = (t, err) => { const s = $("#save"); s.textContent = t; s.className = err ? "err" : "" };
@@ -294,7 +313,7 @@ async function edit(){
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } $("#nx").focus() }
   // ---- slides: library, editor ----
   const usesOf = nm => P.toks.filter(x => x.k === "slide" && x.slide.name === nm).length;
-  function plist(){ const el = $("#plist"); if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null);
+  function plist(){ const el = $("#plist"); if (panel === "tp") return; if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null);
       el.innerHTML = L.length ? L.map(x => { const i = x.step; return `<div class="pi run${SH[k] === x.slide && i <= k ? " cur" : ""}" data-step="${i}"><div class="th">${slideHTML(x.slide, d)}</div><div class="pn"><b>${E(x.slide.name)}</b><span>${x.node ? E(x.node.full + " " + x.node.text) : "Opening"}</span></div></div>` }).join("") : `<p class="note">No slides in the text yet.</p>`; return }
     el.innerHTML = d.slides.map((s, i) => { const u = usesOf(s.name); return `<div class="pi${u ? "" : " unused"}${SH[k] === s ? " cur" : ""}" draggable="true" data-si="${i}"><div class="th">${slideHTML(s, d)}</div><div class="pn"><b>${icon(s)} ${E(s.name)}</b><span>${E(TYPES[s.type] || "Slide")}${u > 1 ? ` · used ${u}×` : u ? "" : " · not in the text"}</span></div></div>` }).join("") || `<p class="note">No slides yet. Press + New slide.</p>` }
   function slideNew(done){ const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">New slide</div>` + Object.entries(TYPES).map(([t, n]) => `<button type="button" data-t="${t}">${E(n)}</button>`).join("");
@@ -360,7 +379,7 @@ async function edit(){
     const spot = e => { const r = caretAt(e.clientX, e.clientY); return r && b.contains(r.startContainer) && !c.contains(r.startContainer) ? r : null };
     const mv = e => { if (!g) { if (Math.hypot(e.clientX - x0, e.clientY - y0) < 6) return; g = c.cloneNode(true); g.classList.add("ghost"); document.body.appendChild(g); mark = document.createElement("div"); mark.className = "dropmark"; document.body.appendChild(mark); c.classList.add("dragging") }
       g.style.left = e.clientX + 10 + "px"; g.style.top = e.clientY + 10 + "px"; const r = spot(e), rc = r && r.getBoundingClientRect(); mark.hidden = !rc || !rc.height; if (rc && rc.height) { mark.style.left = rc.left + "px"; mark.style.top = rc.top + "px"; mark.style.height = rc.height + "px" }
-      if (e.clientY > innerHeight - 40) scrollBy(0, 14); else if (e.clientY < 140) scrollBy(0, -14) };
+      const pm = $("#m"), pr = pm.getBoundingClientRect(); if (e.clientY > pr.bottom - 40) pm.scrollBy(0, 14); else if (e.clientY < pr.top + 60) pm.scrollBy(0, -14) };
     const up = e => { removeEventListener("pointermove", mv); removeEventListener("pointerup", up); if (!g) return; dragged = true; setTimeout(() => dragged = false, 300); g.remove(); mark.remove(); c.classList.remove("dragging");
       const r = spot(e); if (!r) return; c.remove(); r.insertNode(c); const pv = c.previousSibling, nx = c.nextSibling; if (pv && pv.nodeType === 3 && /\S$/.test(pv.nodeValue)) pv.nodeValue += " "; if (!nx || nx.nodeType !== 3 || /^\S/.test(nx.nodeValue)) c.after(document.createTextNode(" ")); saveText(); if (c.classList.contains("nd")) drawText() };
     addEventListener("pointermove", mv); addEventListener("pointerup", up) });
@@ -371,7 +390,7 @@ async function edit(){
     if (st.a == null) { const sc = chips[st.pre]; if (!sc) return; sc.classList.add("on"); r.selectNode(sc) }      // a slide with no words after it
     else { if (st.pre >= 0 && chips[st.pre]) r.setStartAfter(chips[st.pre]); else r.setStart(b, 0); if (st.nxt >= 0 && chips[st.nxt]) r.setEndBefore(chips[st.nxt]); else r.setEnd(b, b.childNodes.length);
       }
-    hlBox($("#ftext"), b, r); if (!quiet) { const tb = $(".top"), tl = $("#m .tools"); scrollToPart(r.getBoundingClientRect(), (tb ? tb.offsetHeight : 0) + (tl ? tl.offsetHeight : 0) + 12, innerHeight - 8) } }
+    hlBox($("#ftext"), b, r); if (!quiet) { const tl = $("#m .tools"); scrollPane($("#m"), r.getBoundingClientRect(), tl ? tl.offsetHeight : 0) } }
   addEventListener("resize", () => hl(true));
   // ---- talking points for the outline tag you're in ----
   let tpKey = null, tpT = null; const keyOf = n => n ? (n.id || "@" + n.at) : "";
@@ -410,7 +429,7 @@ async function edit(){
     const pe = tg.closest("[data-edit]"); if (pe) { const i = d.slides.findIndex(x => x.name === pe.dataset.edit); if (i >= 0) slideEdit(i); return }
     const pi = tg.closest(".pi[data-si]"); if (pi) { slideEdit(+pi.dataset.si); return }
     const pr = tg.closest(".pi[data-step]"); if (pr) { step(+pr.dataset.step); return }
-    const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); plist(); return } });
+    const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); $("#tpbox").hidden = panel !== "tp"; $("#plist").hidden = panel === "tp"; $("#sadd").hidden = panel === "tp"; plist(); return } });
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
@@ -638,7 +657,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     if (!b || menu || LS.on || !sl.rangeCount || sl.isCollapsed || !b.contains(sl.anchorNode) || !b.contains(sl.focusNode) || !sl.toString().trim()) { if (el && !el.dataset.open) el.remove(); return }
     if (!el) { el = document.createElement("button"); el.type = "button"; el.id = "selai"; el.className = "btn small aib"; el.textContent = "✨"; el.title = "AI and voice for the selected words"; document.body.appendChild(el);
       el.onmousedown = e => e.preventDefault(); el.onclick = () => selMenu(el) }
-    selR = sl.getRangeAt(0).cloneRange(); const rc = [...selR.getClientRects()].pop() || selR.getBoundingClientRect(); el.style.left = Math.min(innerWidth - 50, rc.right + 6) + "px"; el.style.top = Math.max(60, rc.top - 34) + scrollY + "px" }
+    selR = sl.getRangeAt(0).cloneRange(); const rc = [...selR.getClientRects()].pop() || selR.getBoundingClientRect(); el.style.left = Math.min(innerWidth - 50, rc.right + 6) + "px"; el.style.top = Math.max(60, rc.top - 34) + "px" }
   let selT = null; document.addEventListener("selectionchange", () => { clearTimeout(selT); selT = setTimeout(selButton, 250) });
   function selRange(){ if (!selR) return null; saveText(); let a = offsetOf(selR.startContainer, selR.startOffset), b = offsetOf(selR.endContainer, selR.endOffset); const t = d.text || "";
     while (a < b && /\s/.test(t[a])) a++; while (b > a && /\s/.test(t[b - 1])) b--; return b > a ? [a, b] : null }
@@ -659,6 +678,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   // the × on a voice tag removes it (and its end tag)
   document.addEventListener("click", e => { const x = e.target.closest("#ftext .vchip.cue .cx"); if (!x) return; e.stopPropagation(); saveText(); const c = x.closest(".vchip"), i = [...box().querySelectorAll(".vchip")].indexOf(c), tk = P.toks[i]; if (!tk) return;
     const sn = snapshot(); let t = d.text; const pr = tk.pair != null ? P.toks[tk.pair] : null; if (pr) t = t.slice(0, pr.at) + t.slice(pr.end); t = t.slice(0, tk.at) + t.slice(tk.end); d.text = t; changed(sn); drawText() }, true);
+  layout($("#lay"), () => hl(true)); $("#m").addEventListener("scroll", () => { const el = $("#selai"); if (el && !el.dataset.open) el.remove() });
   drawText(); redraw(); hl(true)
 }
 ({edit2: edit, present2: present, slides2: slides}[MODE] || (() => {}))();

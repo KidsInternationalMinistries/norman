@@ -116,7 +116,7 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 .vchip.cue .cx{font-style:normal;margin-left:5px;opacity:.6;cursor:pointer;font-weight:700}
 .vchip.cue .cx:hover{opacity:1}
 .v2e .rich.big .vchip.cue.end{padding:0;min-width:0;width:5px;height:1.1em;border-radius:2px;vertical-align:-2px;margin:0 2px}
-#selai{position:absolute;z-index:60;padding:2px 8px;box-shadow:0 3px 10px rgba(0,0,0,.2);background:var(--bg)}
+#selai{position:fixed;z-index:60;padding:2px 8px;box-shadow:0 3px 10px rgba(0,0,0,.2);background:var(--bg)}
 #selm{max-width:250px}
 #selm .cuev{font-weight:600}
 .vpick{display:grid;gap:6px}
@@ -143,3 +143,25 @@ ul.ol li.cur{background:color-mix(in srgb,#E9B949 35%,transparent);color:var(--i
 .tpn ul,.tpn ol{padding-left:1.2em}
 .tpn li{margin:4px 0}
 .v2s ul.ol{font-size:22px}
+/* Nov 6: one layout for Edit and Stage, with dividers you drag */
+body[data-mode="edit2"],body[data-mode="present2"]{overflow:hidden}
+.lay.v2x{display:grid;grid-template-columns:var(--c1,260px) 6px minmax(0,1fr) 6px var(--c3,420px);height:var(--avail,calc(100vh - 58px));min-height:0}
+.lay.v2x>nav.cues{position:static;height:auto;overflow:auto;border-right:0;min-height:0}
+.lay.v2x>main.pane{overflow:auto;height:100%;min-height:0;padding:0 22px 60px;box-sizing:border-box}
+.v2x .gut{background:var(--line);cursor:col-resize;touch-action:none;position:relative;z-index:3}
+.v2x .gut:hover,.v2x .gut.on{background:var(--accent)}
+.v2x .gut.h{height:6px;cursor:row-resize;flex-shrink:0;margin:6px -12px;border-radius:0}
+.lay.v2x .side.side2{position:static;max-height:none;height:100%;border-left:0;padding:8px 12px;display:flex;flex-direction:column;overflow:hidden;min-height:0;box-sizing:border-box}
+.v2x .stop2{height:var(--h1,330px);overflow:hidden;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.v2x .stop2 .scr{width:min(100%,calc((var(--h1,330px) - 76px) * 1.7778));margin:0 auto;flex-shrink:0;border-radius:10px}
+.v2x .sbot{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.v2x .sbot .ptabs{margin-top:0;flex-shrink:0}
+.v2x .tabbody{flex:1 1 auto;overflow:auto;min-height:0;padding-top:8px}
+.v2x .tabbody .tp{border:0;background:none}
+.v2x .tabbody .tpe{max-height:none;min-height:200px}
+.v2e .tools{top:0;padding-top:10px}
+.v2s.v2x #m .tt{position:sticky;top:0;z-index:2;background:var(--bg);margin:0;padding:8px 0}
+.v2s.v2x .side .olbox{position:static;max-height:none;overflow:visible;border:0;padding:0 2px;min-height:0}
+.v2s .tabbody .tpn{font-size:26px}
+.v2s .script{font-family:Georgia,serif;font-size:20px;line-height:1.65}
+@media (max-width:900px){body[data-mode="edit2"],body[data-mode="present2"]{overflow:auto}.lay.v2x{grid-template-columns:1fr;height:auto}.v2x .gut{display:none}.lay.v2x>main.pane{height:auto;overflow:visible}}
