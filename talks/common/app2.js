@@ -831,7 +831,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     $("#nc").onclick = () => { $("#nu").select(); try { navigator.clipboard.writeText(share()) } catch (e) { document.execCommand("copy") } k0.toast("Link copied") };
     GH.get(PATH + "/narration2.json").then(g => { const n = JSON.parse(g.text); $("#nm").textContent = "Last made " + new Date(n.made).toLocaleString() + ". Make it again after you change the talk."; $("#nl").hidden = false }).catch(() => {});
     $("#ngo").onclick = async () => { const b = $("#ngo"), m = $("#nm"); b.disabled = true; saveText();
-      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); const voice = await k0.voiceNow(), model = d.voiceModel === "v3" ? (d.v3Feel === "natural" ? "v3n" : "v3") : "v2"; k0.setV3(d.v3Feel);
+      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); const voice = await k0.voiceNow(), model = d.voiceModel === "v3" ? (d.v3Feel === "natural" ? "v3" : "v3s") : "v2"; k0.setV3(d.v3Feel);
         let old = {}, osha = null; try { const g = await GH.get(PATH + "/narration2.json"); old = JSON.parse(g.text); osha = g.sha } catch (e) {}
         const have = new Set(); (old.steps || []).forEach(x => (x.items || []).forEach(y => y.say && have.add(y.say)));
         const steps = [], jobs = [];
