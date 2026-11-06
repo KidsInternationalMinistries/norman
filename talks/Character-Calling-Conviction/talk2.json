@@ -27,7 +27,10 @@
    "layout": "center",
    "image": "slides/bg/cover.jpg",
    "textY": 44,
-   "ebSize": 95
+   "ebSize": 95,
+   "ttX": 1.9,
+   "ttY": 22.4,
+   "ttW": 82
   },
   {
    "name": "John 15:1",
