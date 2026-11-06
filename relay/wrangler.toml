@@ -1,4 +1,4 @@
-name = "talk-relay"
+name = "norman"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
