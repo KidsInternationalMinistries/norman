@@ -454,7 +454,8 @@
    "type": "video",
    "url": "https://hrkuoltvevzlrhsnaslb.supabase.co/storage/v1/object/public/fw_videos/5dad46bd-379f-4f9d-a675-7f498bf58d63.mp4",
    "video": "",
-   "autoNext": true
+   "autoNext": true,
+   "secs": 133
   },
   {
    "name": "James 1:2-4",
