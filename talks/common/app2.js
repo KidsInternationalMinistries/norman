@@ -615,7 +615,7 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
     $("#aikeys").onclick = () => { try { K().settings() } catch (e) { aiFail(e) } };
     (async () => { try { const k0 = K(), key = await k0.need("eleven"), why = await k0.voicePick($("#dvoice"), key, d.voice || "", d.voiceName || "", "Default voice (from ✨ AI keys and voice)"); $("#dvm").textContent = why || "" } catch (e) {} })();
-    dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); const vs = $("#dvoice"); if (vs && vs.value !== "__id") { d.voice = vs.value; d.voiceName = vs.value && vs.selectedOptions[0] ? vs.selectedOptions[0].textContent.replace(/ \(yours\)$/, "") : "" } dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
+    dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); const vs = $("#dvoice"); if (vs && vs.value !== "__id") { d.voice = vs.value; d.voiceName = vs.value && vs.selectedOptions[0] ? vs.selectedOptions[0].textContent.replace(/ \(yours\)$/, "") : "" } try { K().setVoice(d.voice || "") } catch (e) {} dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } };
   // ---- ✨ Outline from the text ----
   $("#aiol").onclick = () => outlineAI().catch(e => alert((e && e.message) || "Something went wrong"));
@@ -646,6 +646,7 @@ Return JSON {"outline": [{"level": 1, "text": "...", "start": "..."}]}.`, JSON.s
   // The building blocks (keys, OpenAI, ElevenLabs, ESV) come from ai.js as TALKAI.kit.
   // =====================================================================
   const K = () => { const k = window.TALKAI && TALKAI.kit; if (!k) throw new Error("The AI tools didn't load. Reload the page."); return k };
+  try { K().setVoice(d.voice || "") } catch (e) {}
   const aiFail = e => { try { K().fail(e) } catch (_) { alert((e && e.message) || "Something went wrong") } };
   const RE_TAG = /\[[^\[\]\n]{1,300}\]/g, isCue = t => !!CUETAG[t.slice(1, -1).trim().toLowerCase()];
   const plain = x => (x || "").replace(RE_TAG, " ").replace(/\s+/g, " ").trim();
