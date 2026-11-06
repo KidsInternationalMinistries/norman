@@ -330,3 +330,19 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .audlend{text-align:center;margin:26px 0 10px}
 #audlbig{font-size:20px;font-weight:700;padding:16px 26px;border-radius:14px;border:0;background:var(--accent);color:#fff;cursor:pointer;width:100%;max-width:420px}
 .audlend p{font-size:14px;color:var(--muted);margin:8px 0 0}
+/* poll slide (📊): question, answers with bars that grow as votes come in */
+.slide.pollsl{display:flex;flex-direction:column;justify-content:center;padding:5cqw 7cqw;box-sizing:border-box;gap:2.2cqw}
+.slide.pollsl .pq{color:#E9B949;font:700 4.4cqw/1.15 Cambria,Georgia,"Times New Roman",serif}
+.slide.pollsl .pans{display:flex;flex-direction:column;gap:1.5cqw}
+.slide.pollsl .pa{display:grid;grid-template-columns:minmax(0,38%) 1fr 6cqw;align-items:center;gap:1.6cqw}
+.slide.pollsl .pl{font:400 3.1cqw/1.2 Calibri,system-ui,sans-serif;color:#fff}
+.slide.pollsl .pb{height:3.8cqw;background:rgba(255,255,255,.12);border-radius:.6cqw;overflow:hidden}
+.slide.pollsl .pb i{display:block;height:100%;background:#E9B949;border-radius:.6cqw;transition:width .6s ease}
+.slide.pollsl .pn{font:700 3.1cqw/1 Calibri,system-ui,sans-serif;color:#fff;text-align:right}
+.slide.pollsl .pa.mine .pl{font-weight:700}.slide.pollsl .pa.mine .pl::after{content:" ✓";color:#E9B949}
+.slide.pollsl .pf{font:400 1.9cqw/1.2 Calibri,system-ui,sans-serif;color:rgba(255,255,255,.65)}
+.aupoll{margin:0 0 14px}
+.aupoll .pvq{font-weight:700;font-size:20px;margin:0 0 10px}
+.pvb{display:block;width:100%;text-align:left;font-size:18px;padding:14px 16px;margin:8px 0;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.pvb.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.pvb:disabled:not(.on){opacity:.5}

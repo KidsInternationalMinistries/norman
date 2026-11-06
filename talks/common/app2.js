@@ -17,7 +17,7 @@ const MODE = document.body.dataset.mode;
 const parts = location.pathname.replace(/\/[^/]*\.html$/, "/").split("/").filter(Boolean);
 const FOLDER = window.OFFLINE ? window.OFFLINE.folder : decodeURIComponent(parts[parts.length - 1] || ""), PATH = C.root + "/" + FOLDER, FILE = PATH + "/talk2.json";
 const LV = ["", "Section", "Point", "Sub point", "Detail"];
-const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video", qr: "QR code to the audience page"};
+const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video", qr: "QR code to the audience page", poll: "Poll (the audience votes on their phones)"};
 const STOP = {name: "Stop", stop: true};
 // Each outline tag can carry a short id ([#2 Joke|k3f9]) so its talking points (d.notes[id]) stay with it when it moves or is renamed.
 const newId = () => Math.random().toString(36).slice(2, 7);
@@ -65,16 +65,42 @@ function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = nu
     pos = x.end; pre = i });
   words(t.length); if (fresh) bare();
   return S }
+// ---------- polls ----------
+// A poll slide: a question (slideTitle) and answers (bullets, one per line). Phones vote once (it can't be changed);
+// the relay counts the votes and sends the totals to every screen. reveal "next": the bars show when Stage presses Next once more.
+// The votes belong to name#round, so "Clear the votes" in Edit (round + 1) starts the poll fresh.
+const POLLS = {}, REVEAL = new Set();
+const pollKey = s => s.name + "#" + (+s.round || 0);
+const pollAns = (s, lang) => { const en = String(s.bullets || "").split("\n").map(x => x.replace(/^[-•*]\s*/, "").trim()).filter(Boolean).slice(0, 6);
+  const t = lang && s.tr && s.tr[lang] && (s.trSrc || {})[lang] === slSrc(s) ? String(s.tr[lang].bullets || "").split("\n").map(x => x.replace(/^[-•*]\s*/, "").trim()).filter(Boolean) : [];
+  return en.map((x, i) => t[i] || x) };
+const pollQ = (s, lang) => (lang && s.tr && s.tr[lang] && (s.trSrc || {})[lang] === slSrc(s) && s.tr[lang].slideTitle) || s.slideTitle || "";
+const pollShown = s => s.reveal !== "next" || REVEAL.has(pollKey(s));
+function pollInner(s, o){ o = o || {}; const A = pollAns(s, o.lang), c = POLLS[pollKey(s)] || {}, n = A.map((x, i) => +c[i] || 0), tot = n.reduce((a, b) => a + b, 0), max = Math.max(1, ...n), show = !o.hide && pollShown(s);
+  return `<div class="pq">${E(pollQ(s, o.lang) || "Your question")}</div><div class="pans">${A.map((x, i) => `<div class="pa${o.mine === i ? " mine" : ""}"><div class="pl">${E(x)}</div><div class="pb"><i style="width:${show ? n[i] / max * 100 : 0}%"></i></div><div class="pn">${show ? n[i] : ""}</div></div>`).join("") || '<div class="pa"><div class="pl">Add answers, one per line</div></div>'}</div>
+    <div class="pf">${tot} vote${tot === 1 ? "" : "s"}${show ? "" : s.reveal === "next" && !o.hide ? " · the results come up next" : ""}${o.foot ? " · " + E(o.foot) : " · vote on your phone"}</div>` }
+function pollSlide(s, o){ return `<div class="slide pollsl" data-poll="${E(pollKey(s))}">${pollInner(s, o)}</div>` }
+// redraw every poll on the page (the counts or the reveal changed)
+function pollsDraw(d){ document.querySelectorAll(".slide.pollsl[data-poll]").forEach(el => { if (el.closest(".aupoll, #aus")) return; const s = (d.slides || []).find(x => x.type === "poll" && pollKey(x) === el.dataset.poll); if (s) el.innerHTML = pollInner(s) }) }
+// get the totals now, then follow them live (the relay sends "event: poll" on the same stream as Next)
+async function pollsFollow(d, es, after){ const take = m => { if (m && m.poll) { POLLS[m.poll] = m.c || {}; pollsDraw(d); if (after) after() } };
+  if (!(d.slides || []).some(x => x.type === "poll")) return;
+  try { const r = await fetch(relay(d) + "/vote", {cache: "no-store"}); if (r.ok) { const all = await r.json(); Object.keys(all || {}).forEach(k => POLLS[k] = all[k]); pollsDraw(d); if (after) after() } } catch (e) {}
+  if (es) es.addEventListener("poll", e => { try { take(JSON.parse(e.data)) } catch (_) {} });
+  // the big screens also ask every 4 s while a poll is showing, in case the live stream drops
+  if (!after) setInterval(async () => { if (!document.querySelector(".slide.pollsl[data-poll]")) return; try { const r = await fetch(relay(d) + "/vote", {cache: "no-store"}); if (r.ok) { const all = await r.json(); Object.keys(all || {}).forEach(k => POLLS[k] = all[k]); pollsDraw(d) } } catch (e) {} }, 4000) }
+const voterId = () => { let v = ""; try { v = localStorage.getItem("voter-id") || "" } catch (e) {} if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem("voter-id", v) } catch (e) {} } return v };
+const myVote = k => { try { const v = localStorage.getItem("vote-" + k); return v == null ? null : +v } catch (e) { return null } };
 // The audience page (people follow the talk on their phones) and the QR code slide that opens it.
 const audienceURL = () => new URL("audience.html", window.OFFLINE ? window.OFFLINE.site : location.href.replace(/[?#].*$/, "")).href;
 function qrSVG(url){ try { const q = window.qrcode(0, "M"); q.addData(url); q.make(); return q.createSvgTag({scalable: true, margin: 2}) } catch (e) { return `<div class="qrno">QR code</div>` } }
 function qrSlide(s){ const u = audienceURL(); return `<div class="slide qrs"><div class="qrx"><div class="qrt">${E(s.slideTitle || "Follow along on your phone")}</div>${(s.slide || "").trim() ? `<div class="qrs2">${E(s.slide)}</div>` : ""}<div class="qru">${E(u.replace(/^https?:\/\//, ""))}</div></div><div class="qri">${qrSVG(u)}</div></div>` }
 function qrOver(s){ const q = s.qr; return `<div class="qro" style="left:${+q.x || 0}%;top:${+q.y || 0}%;width:${+q.w || 20}%">${qrSVG(audienceURL())}<i class="qrh" title="Drag to resize"></i></div>` }
 function slideHTML(s, d){ const h = slideHTML0(s, d); return s && s.qr && typeof s.qr === "object" && s.type !== "qr" ? h.replace(/<\/div>\s*$/, qrOver(s) + "</div>") : h }
-function slideHTML0(s, d){ if (s && s.type === "qr") return qrSlide(s); if (!s) return d && d.titleImage ? `<div class="slide">${T.imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d ? d.title : ""});
+function slideHTML0(s, d){ if (s && s.type === "qr") return qrSlide(s); if (s && s.type === "poll") return pollSlide(s); if (!s) return d && d.titleImage ? `<div class="slide">${T.imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d ? d.title : ""});
   if (s.type === "verse") return verseSlide({ref: s.ref || s.name, text: s.text, version: s.version});
   return xsHTML(s.type && SLIDE_TYPES[s.type] ? s : {...s, type: "image"}) }
-const icon = s => s.type === "qr" ? "⌗" : s.stop ? "■" : s.type === "verse" ? "✝" : s.type === "video" ? "▶" : s.type === "quote" ? "❝" : /bullets/.test(s.type) ? "☰" : "▣";
+const icon = s => s.type === "qr" ? "⌗" : s.type === "poll" ? "📊" : s.stop ? "■" : s.type === "verse" ? "✝" : s.type === "video" ? "▶" : s.type === "quote" ? "❝" : /bullets/.test(s.type) ? "☰" : "▣";
 
 async function load(fresh){ if (window.OFFLINE) return {d: offD(), sha: null};
   if (fresh || token()) { try { const g = await GH.get(FILE); return {d: JSON.parse(g.text), sha: g.sha} } catch (e) { if (fresh) throw e } }
@@ -102,7 +128,7 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
   const show = () => { const k = follow ? pres : local, pv = follow && pk ? (d.slides || []).find(x => x.name === pk) : null;
     setSlide($("#s"), follow && end ? '<div class="slide blank"></div>' : slideHTML(pv || SH[k], d)); st.className = follow ? (on ? "on" : "") : "local";
     st.lastChild.textContent = follow ? (on ? "Following the presenter" : "Waiting for the presenter") : "Stepping here, snaps back when the presenter moves" };
-  const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); pk = m.pk || null; follow = true; show() };
+  const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); REVEAL.clear(); (m.rv || []).forEach(x => REVEAL.add(x)); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); pk = m.pk || null; follow = true; show() };
   const step = dd => { let k = follow ? pres : local; const cur = SH[k]; do { k += dd } while (k > 0 && k < S.length - 1 && SH[k] === cur); local = Math.max(0, Math.min(S.length - 1, k)); follow = false; show() };
   $("#b").onclick = () => step(-1); $("#n").onclick = () => step(1);
   const full = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen() } catch (e) {} }; $("#f").onclick = full;
@@ -110,7 +136,7 @@ async function slides(){ if (new URLSearchParams(location.search).has("play")) r
   let hideT; const ui = $("#ui"), wake = () => { ui.classList.remove("hide"); clearTimeout(hideT); hideT = setTimeout(() => ui.classList.add("hide"), 3000) };
   document.addEventListener("mousemove", wake); document.addEventListener("touchstart", wake); wake();
   if (bc) bc.onmessage = e => from(e.data); addEventListener("message", e => { if (e.source === window.opener) from(e.data) });
-  try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
+  try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; pollsFollow(d, es) } catch (e) {}
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const L = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (L.length) from(L[L.length - 1]) } catch (e) {}
   show() }
 
@@ -165,9 +191,9 @@ function cleanHTML(h){ const tp = document.createElement("template"); tp.innerHT
   walk(tp.content); const out = tp.innerHTML.trim(); return out.replace(/<br>$/, "").replace(/<(div|p)><br><\/\1>/g, "<br>") }
 const noteText = h => (h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").trim();
 // The notes for a step: its own outline tag's, else the nearest one above it that has some.
-const SLTR = {image: ["eyebrow", "slideTitle", "slide"], plain: ["eyebrow", "slideTitle", "slide"], bulletsimg: ["slideTitle", "bullets"], bullets: ["slideTitle", "bullets"], quote: ["quote", "by"], verse: ["ref", "text"], qr: ["slideTitle", "slide"]};
+const SLTR = {image: ["eyebrow", "slideTitle", "slide"], plain: ["eyebrow", "slideTitle", "slide"], bulletsimg: ["slideTitle", "bullets"], bullets: ["slideTitle", "bullets"], quote: ["quote", "by"], verse: ["ref", "text"], qr: ["slideTitle", "slide"], poll: ["slideTitle", "bullets"]};
 const slSrc = s => { const f = SLTR[s && s.type] || []; const o = {}; f.forEach(k => { if ((s[k] || "").trim()) o[k] = s[k].trim() }); return Object.keys(o).length ? JSON.stringify(o) : "" };
-function slideTrHTML(s, lang){ const src = slSrc(s), t = s && s.tr && s.tr[lang]; if (!src || !t || (s.trSrc || {})[lang] !== src) return ""; const g = k => E(t[k] || "");
+function slideTrHTML(s, lang){ if (s && s.type === "poll") return ""; const src = slSrc(s), t = s && s.tr && s.tr[lang]; if (!src || !t || (s.trSrc || {})[lang] !== src) return ""; const g = k => E(t[k] || "");
   if (s.type === "verse") return `<div class="aust"><div class="austt">${g("text")}</div><div class="austs">${g("ref")}</div></div>`;
   if (s.type === "quote") return `<div class="aust"><div class="austt">“${g("quote")}”</div>${t.by ? `<div class="austs">${g("by")}</div>` : ""}</div>`;
   return `<div class="aust">${t.eyebrow ? `<div class="austs">${g("eyebrow")}</div>` : ""}${t.slideTitle ? `<div class="austt">${g("slideTitle")}</div>` : ""}${t.slide ? `<div class="austs">${g("slide")}</div>` : ""}${t.bullets ? `<ul>${String(t.bullets).split("\n").filter(x => x.trim()).map(x => `<li>${E(x.replace(/^[-•*]\s*/, ""))}</li>`).join("")}</ul>` : ""}</div>` }
@@ -255,18 +281,19 @@ async function present(){
     $("#nav").innerHTML = treeHTML(P, S, k, true); const cn = $("#nav .cur"); if (cn) { const nv = $("#nav"); if (cn.offsetTop < nv.scrollTop || cn.offsetTop > nv.scrollTop + nv.clientHeight - 30) nv.scrollTo({top: cn.offsetTop - nv.clientHeight / 2, behavior: "smooth"}) }
     const ck = end ? null : $(`#sc .ck[data-s="${k}"]`); requestAnimationFrame(() => { let r = null; if (ck && showText) { r = document.createRange(); r.selectNodeContents(ck) } hlBox($("#ft"), $("#sc"), r) });
     const s = peek ? (d.slides || []).find(x => x.name === peek) : SH[k]; setSlide($("#m").parentElement.querySelector(".scr"), end ? '<div class="slide blank"></div>' : slideHTML(s, d));
-    $("#cap").textContent = end ? "End of the talk" : peek ? "Showing " + peek + " · Next or Back goes back" : s ? s.name : "Title slide";
+    $("#cap").textContent = end ? "End of the talk" : peek ? "Showing " + peek + " · Next or Back goes back" : s && s.type === "poll" && !pollShown(s) ? s.name + " · Next shows the results" : s ? s.name : "Title slide";
     const nx = S.slice(k + 1).find(z => z.node && z.node !== n); $("#nx").innerHTML = nx ? `Up next: <b>${E(nx.node.lab)}</b> ${E(nx.node.text)}` : "End of the talk";
     $("#pos").textContent = (k + 1) + " of " + S.length; vid();
     requestAnimationFrame(() => { const el = ck || (n && $(`#sc .bmark[data-n="${n.j}"]`)); const ol = $("#ol"), tb = $(".top");
       if (showText && el) scrollPane($("#m"), el.getBoundingClientRect(), $("#m .tt") ? $("#m .tt").offsetHeight : 0) }) }
   function vid(){ const v = $(".side .slide.vid[data-next]"); if (!v || v.dataset.hooked) return; v.dataset.hooked = 1; const at = k; v.addEventListener("vidend", () => setTimeout(() => { if (k === at && !peek) next() }, 1200)) }
-  async function push(){ const m = {v: 2, step: k, at: Date.now()}; if (peek) m.pk = peek; if (end) m.end = 1; try { localStorage.setItem("pres2-" + FOLDER, k) } catch (e) {}
+  const curSl = () => peek ? (d.slides || []).find(x => x.name === peek) : SH[k];
+  async function push(){ const m = {v: 2, step: k, at: Date.now()}; if (peek) m.pk = peek; if (end) m.end = 1; if (REVEAL.size) m.rv = [...REVEAL]; try { localStorage.setItem("pres2-" + FOLDER, k) } catch (e) {}
     if (bc) try { bc.postMessage(m) } catch (e) {} try { if (pw && !pw.closed) pw.postMessage(m, "*") } catch (e) {} const se = $("#sync");
     try { const r = await fetch(relay(d), {method: "POST", body: JSON.stringify(m)}); se.className = r.ok ? "ok" : "bad"; se.lastChild.textContent = r.ok ? "Monitors following" : "Sync failed" } catch (e) { se.className = "bad"; se.lastChild.textContent = "Offline: only the slides window follows" } }
   const locked = () => !!$("#gate");
   function go(i, rec){ if (locked()) return; if (rec) record(); const p0 = ptOf(S[k]); peek = null; end = false; k = Math.max(0, Math.min(S.length - 1, i)); if (!rec || ptOf(S[k]) !== p0 || true) arrive = Date.now(); draw(); push(); TIMER.at(k === 0); pace() }
-  function next(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (k < S.length - 1) go(k + 1, true); else if (!end) { record(); end = true; arrive = Date.now(); draw(); push(); pace() } }
+  function next(){ if (locked()) return; const ps = !end && curSl(); if (ps && ps.type === "poll" && !pollShown(ps)) { REVEAL.add(pollKey(ps)); draw(); push(); return } if (peek) { peek = null; draw(); push(); return } if (k < S.length - 1) go(k + 1, true); else if (!end) { record(); end = true; arrive = Date.now(); draw(); push(); pace() } }
   function back(){ if (locked()) return; if (peek) { peek = null; draw(); push(); return } if (end) { end = false; draw(); push(); return } if (k > 0) go(k - 1) }
   $("#n").onclick = next; $("#b").onclick = back;
 
@@ -281,6 +308,7 @@ async function present(){
   let pw = null; $("#pop").onclick = () => { pw = window.open(window.OFFLINE ? location.href.split("#")[0] + "#slides" : "slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { if (locked() || e.target.closest("input,textarea")) return; if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); back() } });
   layout($("#lay"), () => { const ck = !end && $(`#sc .ck[data-s="${k}"]`); if (ck && showText) { const r = document.createRange(); r.selectNodeContents(ck); hlBox($("#ft"), $("#sc"), r) } });
+  try { if ((d.slides || []).some(x => x.type === "poll")) pollsFollow(d, new EventSource(relay(d) + "/sse")) } catch (e) {}
   draw(); (window.OFFLINE ? (a, b, f) => f() : presenterGate)(C.passHash, "pres-ok", () => { push(); TIMER.at(k === 0) }) }
 
 // =====================================================================
@@ -418,7 +446,7 @@ async function edit(){
     document.body.appendChild(m); const r = ($("#sadd") || document.body).getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 260)) + "px"; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
     const off = e => { if (!m.contains(e.target)) { m.remove(); removeEventListener("mousedown", off) } }; setTimeout(() => addEventListener("mousedown", off), 0);
     m.onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; m.remove(); removeEventListener("mousedown", off); const t = b.dataset.t; let n = d.slides.length + 1, nm; do { nm = (t === "verse" ? "Verse " : "Slide ") + n++ } while (d.slides.some(s => s.name === nm));
-      const s = snapshot(), o = {name: nm, type: t}; if (t === "qr") Object.assign(o, {name: "QR code", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}); else if (t === "verse") Object.assign(o, {ref: "", text: "", version: "ESV"}); else if (t === "quote") Object.assign(o, {quote: "", by: ""}); else if (t === "video") Object.assign(o, {url: "", video: "", autoNext: true}); else Object.assign(o, {slideTitle: "", slide: "", eyebrow: "", layout: "center", image: "", bullets: ""});
+      const s = snapshot(), o = {name: nm, type: t}; if (t === "qr") Object.assign(o, {name: "QR code", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}); else if (t === "verse") Object.assign(o, {ref: "", text: "", version: "ESV"}); else if (t === "quote") Object.assign(o, {quote: "", by: ""}); else if (t === "video") Object.assign(o, {url: "", video: "", autoNext: true}); else if (t === "poll") Object.assign(o, {name: "Poll " + (d.slides.filter(x => x.type === "poll").length + 1), slideTitle: "", bullets: "", reveal: "live"}); else Object.assign(o, {slideTitle: "", slide: "", eyebrow: "", layout: "center", image: "", bullets: ""});
       draft = o; slideEdit(-1, done) } }      // a new slide is only a draft until Save
   // The / menu's "Slide…": every slide as a small picture with its name; pick one to put it in the text.
   function slidePick(done){ const dl = $("#pdlg");
@@ -440,11 +468,13 @@ async function edit(){
     if (ty === "verse") h += `<div class="row"><label style="flex:1 1 220px">Reference (or some words from the verse)<input data-f="ref" value="${E(o.ref)}" placeholder="John 15:5, or words you remember"></label><label style="flex:0 1 140px">Version<input data-f="version" value="${E(o.version)}" placeholder="ESV, NIV, NLT…"></label></div>` + fld("text", "Text (**bold**, __underline__)", true) + (o.aiText ? `<p class="note">✨ This text came from the AI. Check it against your Bible, then edit it if needed.</p>` : "");
     else if (ty === "quote") h += fld("quote", "Quote", true) + fld("by", "Who said it");
     else if (ty === "video") h += fld("url", "Link (YouTube or a video file)", false, "https://…") + `<label style="max-width:220px">Length (seconds; read from a video file by itself)<input type="number" min="0" step="1" ${A("secs")} value="${E(o.secs || "")}" placeholder="${E(VDUR[(o.url || o.video || "").trim()] || "")}"></label>` + `<label class="chk"><input type="checkbox" ${A("autoNext")}${o.autoNext !== false ? " checked" : ""}> When it ends, go to the next step</label>`;
+    else if (ty === "poll") h += fld("slideTitle", "Question", true) + fld("bullets", "Answers (one per line, up to 6)", true) + `<label style="max-width:360px">Results<select ${A("reveal")}><option value="live"${o.reveal !== "next" ? " selected" : ""}>Show the results live as people vote</option><option value="next"${o.reveal === "next" ? " selected" : ""}>Show the results when I press Next</option></select></label>`
+      + `<div class="row"><span class="note" style="flex:1">Each phone can vote once, and the vote can't be changed. ${(() => { const c = POLLS[pollKey(o)] || {}, t = Object.values(c).reduce((a, b) => a + (+b || 0), 0); return t ? t + " vote" + (t > 1 ? "s" : "") + " so far." : "" })()}</span>${isNew ? "" : '<button type="button" class="btn small" id="spollclr" title="Starts the poll fresh, for example after you practiced with it">Clear the votes</button>'}</div>`;
     else if (ty === "qr") h += fld("slideTitle", "Title", true) + fld("slide", "Text under it", true) + `<p class="note">The code opens ${E(audienceURL())}</p>`;
     else if (/bullets/.test(ty)) h += fld("slideTitle", "Title", true) + fld("bullets", "Bullets (one per line)", true);
     else h += fld("eyebrow", "Small line on top") + fld("slideTitle", "Title", true) + fld("slide", "Subtitle", true) + `<label>Style<select ${A("layout")}><option value="left"${o.layout !== "center" ? " selected" : ""}>Gold title, white subtitle (left)</option><option value="center"${o.layout === "center" ? " selected" : ""}>White title, gold subtitle (centered)</option></select></label>`;
     if (ty === "image" || ty === "bulletsimg") h += `<div class="row"><span class="tag">Picture (no words in it)</span><label class="btn small">${o.image ? "Replace" : "Add"} picture<input type="file" accept="image/*" id="simg" hidden></label>${o.image ? '<button type="button" class="btn small" id="sdelimg">Remove picture</button>' : ""}<span class="note" id="smsg"></span></div>`;
-    if (ty !== "qr" && ty !== "video") h += `<label class="chk"><input type="checkbox" id="sqr"${o.qr ? " checked" : ""}> Show a QR code to the audience page (drag it on the slide to move it, drag its corner to resize)</label>`;
+    if (ty !== "qr" && ty !== "video" && ty !== "poll") h += `<label class="chk"><input type="checkbox" id="sqr"${o.qr ? " checked" : ""}> Show a QR code to the audience page (drag it on the slide to move it, drag its corner to resize)</label>`;
     h += `<label class="chk"><input type="checkbox" ${A("keep")}${o.keep ? " checked" : ""}> Keep it up until another slide comes (even after its point ends)</label>
       ${isNew ? "" : `<div class="row"><span class="note" style="flex:1">Used ${usesOf(o.name)}× in the text.</span><button type="button" class="btn small danger" id="sdel">Delete this slide</button></div>`}</div>`;
     dl.innerHTML = h; dl.dataset.si = i; dl.querySelectorAll("textarea.auto").forEach(t => { t.style.height = t.scrollHeight + 4 + "px" });
@@ -458,6 +488,7 @@ async function edit(){
       const bar = $("#txbar"); if (!bar) return; if (!has) { bar.innerHTML = `<span class="note">${pr.querySelector(".slide [data-k]") ? "Click a line of words on the slide to move it, resize it or line it up." : ""}</span>`; return }
       const al = o[selK + "Align"] || ""; bar.innerHTML = `<b>${LNM[selK] || "Words"}</b><span class="seg">${["left", "center", "right"].map(a => `<button type="button" class="btn small${al === a ? " on" : ""}" data-al="${a}" title="Line up ${a}">${{left: "⯇ Left", center: "Center", right: "Right ⯈"}[a]}</button>`).join("")}</span><button type="button" class="btn small" data-sz="-1" title="Smaller">A−</button><button type="button" class="btn small" data-sz="1" title="Bigger">A+</button><button type="button" class="btn small" data-kreset="1" title="Put it back where it was">Reset</button>` };
     const pv = () => { $("#prev").innerHTML = slideHTML(o, d); mark() };
+    const pc = $("#spollclr"); if (pc) pc.onclick = () => { if (!confirm("Clear all the votes on this poll? Phones that voted can vote again.")) return; const s = snapshot(); o.round = (+o.round || 0) + 1; commit(s); slideEdit(i, onSave) };
     const sq = $("#sqr"); if (sq) sq.onchange = () => { const s = snapshot(); if (sq.checked) o.qr = {x: 74, y: 50, w: 22}; else delete o.qr; commit(s); pv() };
     mark();
     $("#txbar").onclick = e => { const b = e.target.closest("button"); if (!b || !selK) return; const s0 = snapshot(), k = selK;
@@ -565,7 +596,7 @@ async function edit(){
   async function rvFetch(){ if (!(d.languages || []).length || !d.relayTopic) return; try { const r = await fetch(relay(d) + "/review", {cache: "no-store"}); if (!r.ok) return; const all = await r.json(); const done = new Set(d.reviewsDone || []);
       rvIn = (Array.isArray(all) ? all : []).map(x => { try { return typeof x === "string" ? JSON.parse(x) : x } catch (e) { return null } }).filter(x => x && x.id && x.lang && !done.has(x.id)); drawAU(tpNode());
       if (rvIn.length) K().toast(`📝 ${rvIn.length} translation review${rvIn.length > 1 ? "s" : ""} came in. See Audience notes.`) } catch (e) {} }
-  setTimeout(rvFetch, 1500);
+  setTimeout(rvFetch, 1500); setTimeout(() => pollsFollow(d), 1500);
   function rvOpen(){ if (!rvIn.length) return; saveTP(); const ch = [], ids = rvIn.map(x => x.id);
     rvIn.slice().sort((a, b) => a.at - b.at).forEach(rv => { const lg = rv.lang, by = `${rv.who || "Someone"} · ${lg}`;
       Object.entries(rv.notes || {}).forEach(([k, h]) => { const a = (d.audNotes || {})[k]; if (!a) return; const before = (a.tr || {})[lg] || ""; if (cleanHTML(h) === cleanHTML(before)) return;
@@ -1121,15 +1152,25 @@ async function audience(){
   let pres = 0, local = null, end = false, lastAt = 0, on = false, conn = true;
   const noteAt = i => auNoteAt(d, S, i, lang);
   const vidPh = s => `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(s.name || "Video")}</div><div class="vps">Playing on the main screen</div></div>`;
-  const show = () => { const i = local == null ? pres : local; setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "") + ((end && local == null) || i === S.length - 1 ? `<div class="audlend"><button type="button" id="audlbig">⤓ Download the notes</button><p>The slides, the notes${lang ? " in " + E(lang) : ""} and the whole talk, as a PDF.</p></div>` : "");
+  const pollHere = i => { const s = SH[i]; return s && s.type === "poll" && !(end && local == null) ? s : null };
+  const pollUI = s => { const k = pollKey(s), mine = myVote(k), live = local == null && on && !end;
+    if (mine != null) return `<div class="aupoll"><p>You voted: <b>${E(pollAns(s, lang)[mine] || "")}</b> ✓</p>${pollShown(s) ? "" : '<p class="note">Thanks for voting! The results come up when the speaker shows them.</p>'}</div>`;
+    if (!live) return `<div class="aupoll"><p class="note">This poll is open only while the speaker is on it.</p></div>`;
+    return `<div class="aupoll"><div class="pvq">${E(pollQ(s, lang))}</div>${pollAns(s, lang).map((x, j) => `<button type="button" class="pvb" data-vote="${j}">${E(x)}</button>`).join("")}<p class="note">You can vote once.</p></div>` };
+  const show = () => { const i = local == null ? pres : local, ps = pollHere(i); setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : SH[i] && SH[i].type === "video" ? vidPh(SH[i]) : ps ? pollSlide(ps, {hide: myVote(pollKey(ps)) == null, mine: myVote(pollKey(ps)), lang, foot: myVote(pollKey(ps)) == null ? "" : "you voted"}) : slideHTML(SH[i], d)); const h = noteAt(i), sw = lang && !(end && local == null) ? slideTrHTML(SH[i], lang) : ""; $("#aun").innerHTML = (ps ? pollUI(ps) : "") + sw + (sw && h ? '<hr class="auhr">' : "") + (h ? cleanHTML(h) : "") + ((end && local == null) || i === S.length - 1 ? `<div class="audlend"><button type="button" id="audlbig">⤓ Download the notes</button><p>The slides, the notes${lang ? " in " + E(lang) : ""} and the whole talk, as a PDF.</p></div>` : "");
     $("#aulive").hidden = local == null || !on || end || !alive(); $("#aust").textContent = on && !end && !alive() ? "Connection lost · browse on your own" : on && !end ? (local != null ? "Looking back" : "Live") : end ? "The talk is over" : conn ? "Waiting for the speaker…" : "Not connected · browse on your own"; $("#aust").className = local == null && on && !end ? "on" : "" };
-  const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); const fresh = !m.at || Date.now() - m.at < 3 * 3600e3; if (fresh && !on) local = null; on = fresh; conn = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
+  const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); REVEAL.clear(); (m.rv || []).forEach(x => REVEAL.add(x)); const fresh = !m.at || Date.now() - m.at < 3 * 3600e3; if (fresh && !on) local = null; on = fresh; conn = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
   // Phones can't go past the speaker while they're connected. The relay sends a heartbeat every 25 s; if nothing comes for 70 s
   // (or the phone goes offline), the phone counts as not connected and can browse the whole talk.
   let heard = 0; const hear = () => { heard = Date.now() }; const alive = () => conn && navigator.onLine !== false && Date.now() - heard < 70000;
   setInterval(() => { const was = show.alive; show.alive = alive(); if (was !== show.alive) show() }, 5000);
   const stepL = dd => { const live = on && !end && alive(), max = live ? pres : S.length - 1; let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < max && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(max, i)); local = live && i >= pres ? null : i; show() };
   document.addEventListener("click", e => { if (e.target.closest && e.target.closest("#audlbig")) $("#audl").click() });
+  document.addEventListener("click", async e => { const b = e.target.closest && e.target.closest("[data-vote]"); if (!b) return; const i = local == null ? pres : local, s = pollHere(i); if (!s) return; const k = pollKey(s); if (myVote(k) != null) return;
+    document.querySelectorAll("[data-vote]").forEach(x => x.disabled = true); b.classList.add("on");
+    try { const r = await fetch(relay(d) + "/vote", {method: "POST", body: JSON.stringify({poll: k, a: +b.dataset.vote, voter: voterId()})}); if (!r.ok) throw 0; const j = await r.json().catch(() => ({}));
+      try { localStorage.setItem("vote-" + k, b.dataset.vote) } catch (_) {} if (j.c) POLLS[k] = j.c; show() }
+    catch (_) { document.querySelectorAll("[data-vote]").forEach(x => x.disabled = false); b.classList.remove("on"); alert("Your vote didn't go through. Check the internet connection and try again.") } });
   $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
   // ⤓ PDF: made right here on the phone, in the language picked, so nothing has to be uploaded beforehand.
   $("#audl").onclick = async e => { e.preventDefault(); const a = $("#audl"); if (a.dataset.busy) return; a.dataset.busy = 1; const t0 = a.textContent;
@@ -1139,7 +1180,7 @@ async function audience(){
     catch (_) { alert("The PDF couldn't be made. Check the internet connection and try again.") } finally { delete a.dataset.busy; a.textContent = t0; const g = $("#audlbig"); if (g) g.textContent = "⤓ Download the notes" } };
   const dl = () => { $("#audl").hidden = !S.some((x, k) => noteText(auNoteAt(d, S, k, "")) || (x.slide && x.slide.type !== "video")) }; dl();
   $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} dl(); show() };
-  try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; hear(); show() }; es.onerror = () => { conn = false; show() }; es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) { conn = false }
+  try { const es = new EventSource(relay(d) + "/sse"); es.onopen = () => { conn = true; hear(); show() }; es.onerror = () => { conn = false; show() }; es.addEventListener("ping", () => { hear(); if (!show.alive) { show.alive = true; show() } }); es.onmessage = e => { hear(); try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} }; pollsFollow(d, es, () => { const i = local == null ? pres : local; if (pollHere(i)) show() }) } catch (e) { conn = false }
   try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
   show() }
 // =====================================================================
