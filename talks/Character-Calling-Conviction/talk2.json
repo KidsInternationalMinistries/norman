@@ -776,7 +776,16 @@
    "type": "verse",
    "ref": "1 Corinthians 1:18, 25",
    "text": "For the message of the cross is foolishness to those who are perishing, but to us who are being saved it is the power of God. ... For the foolishness of God is wiser than human wisdom, and the weakness of God is stronger than human strength.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "1 Corinto 1:18, 25",
+     "text": "Sapagka't ang salita ng krus ay kamangmangan sa kanila na nangapapahamak; nguni't sa atin na nangaliligtas ay kapangyarihan ng Dios. ... Sapagka't ang kamangmangan ng Dios ay lalong marunong kaysa mga tao; at ang kahinaan ng Dios ay lalong malakas kaysa mga tao."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"1 Corinthians 1:18, 25\",\"text\":\"For the message of the cross is foolishness to those who are perishing, but to us who are being saved it is the power of God. ... For the foolishness of God is wiser than human wisdom, and the weakness of God is stronger than human strength.\"}"
+   }
   },
   {
    "name": "Walk the line",
@@ -826,7 +835,16 @@
    "ref": "2 Corinthians 4:7",
    "text": "But we have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.",
    "version": "NIV",
-   "aiText": true
+   "aiText": true,
+   "tr": {
+    "Tagalog": {
+     "ref": "2 Corinto 4:7",
+     "text": "Datapuwa't mayroon kaming kayamanang ito sa mga sisidlang putik, upang ang kadakilaan ng kapangyarihan ay maging sa Dios, at huwag sa amin."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"2 Corinthians 4:7\",\"text\":\"But we have this treasure in jars of clay to show that this all-surpassing power is from God and not from us.\"}"
+   }
   },
   {
    "name": "Slide 49",
