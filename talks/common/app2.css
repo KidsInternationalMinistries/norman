@@ -274,3 +274,4 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .tn.l1 i{color:var(--ink)}
 .tn.l1:hover{background:color-mix(in srgb,var(--accent) 32%,transparent)}
 .tn.l1.cur{background:var(--cue);color:var(--cue-ink)}
+#lbar select{border:0;border-radius:999px;padding:4px 8px;font:700 13px system-ui;background:var(--bg);color:var(--ink)}

@@ -611,10 +611,11 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen(); $("#narr").onclick = () => narrate();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
-    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}<label>Speaking speed (words a minute)<input data-k="wpm" type="number" min="60" max="300" step="5" value="${E(d.wpm || 140)}"></label></div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
+    dl.innerHTML = `<form method="dialog" class="ed"><div class="pgh"><b>Talk details</b></div>${f("title", "Title")}${f("audience", "Audience")}<div class="row">${f("length", "Length")}${f("event", "Date / event")}${f("timerMinutes", "Countdown (minutes)")}<label>Speaking speed (words a minute)<input data-k="wpm" type="number" min="60" max="300" step="5" value="${E(d.wpm || 140)}"></label></div>${f("bigIdea", "Big idea", true)}${f("imageStyle", "Picture style for ✨ pictures (one sentence)", true)}<label>Voice<select id="dvoice"><option value="${E(d.voice || "")}">${E(d.voice ? d.voiceName || "Chosen voice" : "Default voice (from ✨ AI keys and voice)")}</option></select></label><p class="note" id="dvm"></p><label>Voice style for Listen<select data-k="voiceModel"><option value=""${d.voiceModel === "v3" ? "" : " selected"}>Standard (steady)</option><option value="v3"${d.voiceModel === "v3" ? " selected" : ""}>Expressive (newer v3; reads feeling from the text)</option></select></label><div class="row"><button type="button" class="btn small aib" id="aikeys">✨ AI keys and voice</button></div>
       <div class="row"><span style="flex:1"></span><button class="btn small pri" type="submit">Done</button></div></form>`;
     $("#aikeys").onclick = () => { try { K().settings() } catch (e) { aiFail(e) } };
-    dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
+    (async () => { try { const k0 = K(), key = await k0.need("eleven"), why = await k0.voicePick($("#dvoice"), key, d.voice || "", d.voiceName || "", "Default voice (from ✨ AI keys and voice)"); $("#dvm").textContent = why || "" } catch (e) {} })();
+    dl.querySelector("form").onsubmit = ev => { ev.preventDefault(); const s = snapshot(); dl.querySelectorAll("[data-k]").forEach(x => { d[x.dataset.k] = x.value }); const vs = $("#dvoice"); if (vs && vs.value !== "__id") { d.voice = vs.value; d.voiceName = vs.value && vs.selectedOptions[0] ? vs.selectedOptions[0].textContent.replace(/ \(yours\)$/, "") : "" } dl.close(); changed(s); $(".top h1").firstChild.textContent = d.title + " " };
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } };
   // ---- ✨ Outline from the text ----
   $("#aiol").onclick = () => outlineAI().catch(e => alert((e && e.message) || "Something went wrong"));
@@ -766,7 +767,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
     k0.show(dl); $("#a2want").focus() }
   document.addEventListener("click", e => { const b = e.target.closest("[data-ai2]"); if (!b) return; const i = +($("#sdlg").dataset.si); slideAI(i, b.dataset.ai2).catch(aiFail) });
   // ---- Listen from here: reads each stretch of text in the talk's voice and steps along as it goes ----
-  const LS = {on: false, run: 0, au: null, paused: false};
+  const LS = {on: false, run: 0, au: null, paused: false, rate: 1}; try { LS.rate = +localStorage.getItem("listen-rate") || 1 } catch (e) {}
   // How a stretch is read. A cue covers the next sentence only, then the voice goes back by itself ([Normal] still ends it early).
   // Pieces are only split where the voice really changes, so it doesn't jump at tags. The expressive voice (v3) gets one piece with the cues inside.
   const V3TAG = {excited: "[excited]", exclaim: "[excited]", calm: "[calm]", gentle: "[softly]", slow: "[slowly]", fast: "[quickly]", pause: "...", "long pause": "[long pause]"};
@@ -814,7 +815,8 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   const wait = ms => new Promise(r => setTimeout(r, ms));
   function lbar(){ let el = $("#lbar"); if (!LS.on) { if (el) el.remove(); return } if (!el) { el = document.createElement("div"); el.id = "lbar"; document.body.appendChild(el);
       el.onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.l === "stop") stopListen(); else { LS.paused = !LS.paused; if (LS.au) LS.paused ? LS.au.pause() : LS.au.play(); lbar() } } }
-    el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><button type="button" class="btn small" data-l="stop">■ Stop</button>` }
+    el.innerHTML = `<span>🔊 Listening · ${E(S[k] && S[k].node ? S[k].node.full : "")}</span><button type="button" class="btn small" data-l="pause">${LS.paused ? "▶ Go on" : "❚❚ Pause"}</button><select id="lrate" title="Speed">${[.75, .9, 1, 1.15, 1.3, 1.5, 1.75, 2].map(r => `<option value="${r}"${r === LS.rate ? " selected" : ""}>${r}×</option>`).join("")}</select><button type="button" class="btn small" data-l="stop">■ Stop</button>`;
+    el.querySelector("#lrate").onchange = e => { LS.rate = +e.target.value || 1; try { localStorage.setItem("listen-rate", LS.rate) } catch (x) {} if (LS.au) LS.au.playbackRate = LS.rate } }
   function stopListen(){ try { CSS.highlights && CSS.highlights.delete("kpword") } catch (e) {} LS.on = false; LS.run++; LS.paused = false; if (LS.au) { LS.au.pause(); LS.au = null } lbar() }
   let caretPos = null;      // the last spot of the cursor in the text (Listen starts there)
   document.addEventListener("selectionchange", () => { const b = box(), sl = getSelection(); if (!b || !sl.rangeCount || !b.contains(sl.anchorNode) || LS.on) return; caretPos = {node: sl.getRangeAt(0).startContainer, off: sl.getRangeAt(0).startOffset} });
@@ -854,7 +856,7 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
         const parts = partsOf(st, i === i0 ? from : null), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
         const jobs = parts.map((p, q) => p.v3 ? k0.ttsV3(p.say) : p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
         for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue }
-          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.onended = ok; au.onerror = ok; wordLight(p, au, r.starts); if (!LS.paused) au.play().catch(ok) }) } }
+          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok; wordLight(p, au, r.starts); if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
   // ---- ✨ on selected text: grammar, spelling, tighten, listen, and the voice for those words ----
   const VOICES = ["excited", "exclaim", "calm", "gentle", "slow", "fast"];

@@ -62,8 +62,7 @@ function settings(){
   $("#aisx").onclick = () => d.close();
   const collect = () => { const o = {...KEYS}; d.querySelectorAll("[data-key]").forEach(i => { if (i.value.trim()) o[i.dataset.key] = i.value.trim() });
     const vs = $("#aivoice"); o.voice = vs.value; o.voiceName = vs.selectedOptions[0] ? vs.selectedOptions[0].textContent : ""; o.imageQuality = $("#aiq").value; o.textModel = $("#aitm").value.trim(); return o };
-  async function loadVoices(k){ if (!k) return; try { const r = await fetch("https://api.elevenlabs.io/v1/voices", {headers: {"xi-api-key": k}}); const vs = $("#aivoice"), j = r.ok ? await r.json() : {voices: STD_VOICES.map(([voice_id, name]) => ({voice_id, name}))};
-    vs.innerHTML = (j.voices || []).map(v => `<option value="${E(v.voice_id)}"${v.voice_id === KEYS.voice ? " selected" : ""}>${E(v.name)}</option>`).join("") } catch (e) {} }
+  async function loadVoices(k){ if (!k) return; voicePick($("#aivoice"), k, KEYS.voice, KEYS.voiceName, "") }
   loadVoices(KEYS.eleven); d.querySelector('[data-key="eleven"]').addEventListener("change", e => loadVoices(e.target.value.trim()));
   $("#aist").onclick = async () => { const o = collect(); msg("Testing…"); const out = [];
     if (o.openai) { try { const r = await fetch("https://api.openai.com/v1/models", {headers: {Authorization: "Bearer " + o.openai}}); out.push("OpenAI: " + (r.ok ? "✓ works" : r.status === 401 ? "✗ key not accepted (expired?)" : "✗ " + r.status)) } catch (e) { out.push("OpenAI: ✗ can't reach it") } }
@@ -198,6 +197,19 @@ async function createImage(t){
     catch (err) { b.disabled = false; b.querySelector("span").textContent = "Use this one"; fail(err) } };
   show(d); $("#aiwant").focus() }
 function afterPic(t){ const ed = T.ed, sd = $("#sdlg"); if (sd && sd.open) { ed.fillDlg(); ed.refreshSlide() } else ed.render() }
+
+// A voice list for a <select>: your ElevenLabs voices (or the standard ones when the key can't list them), the chosen voice even if it isn't listed,
+// and "Paste a voice ID…" for any voice from ElevenLabs. dflt: the label for "no voice chosen" ("" leaves that option out).
+async function voicePick(sl, key, cur, curName, dflt){ if (!sl) return; let list = STD_VOICES.map(([voice_id, name]) => ({voice_id, name})), why = "";
+  try { const r = await fetch("https://api.elevenlabs.io/v1/voices?t=" + Date.now(), {headers: {"xi-api-key": key}, cache: "no-store"}); if (r.ok) { const j = await r.json(); if ((j.voices || []).length) list = j.voices } else why = "This ElevenLabs key can't list your voices, so the standard ones show. Use Paste a voice ID for your own." } catch (e) { why = "Couldn't list your voices." }
+  const mine = x => x.category && !/premade|professional_library/.test(x.category); list.sort((a, b) => (mine(b) ? 1 : 0) - (mine(a) ? 1 : 0));
+  sl.innerHTML = (dflt ? `<option value="">${E(dflt)}</option>` : "") + list.map(x => `<option value="${E(x.voice_id)}"${x.voice_id === cur ? " selected" : ""}>${E(x.name)}${mine(x) ? " (yours)" : ""}</option>`).join("")
+    + (cur && !list.some(x => x.voice_id === cur) ? `<option value="${E(cur)}" selected>${E(curName || "My voice")}</option>` : "") + `<option value="__id">Paste a voice ID…</option>`;
+  if (!cur && !dflt) sl.selectedIndex = 0; sl.dataset.last = sl.value;
+  if (!sl.dataset.pk) { sl.dataset.pk = 1; sl.addEventListener("change", () => { if (sl.value !== "__id") { sl.dataset.last = sl.value; return }
+    const id = (prompt("Paste the voice ID from ElevenLabs (My Voices, then the voice's ⋯ menu, then Copy voice ID):") || "").trim(); if (!/^[A-Za-z0-9]{10,40}$/.test(id)) { sl.value = sl.dataset.last || ""; return }
+    const nm = (prompt("A name for this voice:", "My voice") || "My voice").trim(); sl.querySelector('option[value="__id"]').insertAdjacentHTML("beforebegin", `<option value="${E(id)}">${E(nm)}</option>`); sl.value = id; sl.dataset.last = id }) }
+  return why }
 
 // ---- the talk's picture style (Talk details) ----
 function voiceHTML(d){ const v = d.voice || "";
@@ -663,7 +675,7 @@ window.TALKAI = {html: {
   esv: () => `<button type="button" class="btn small aib" id="aiesv" title="Fill in the ESV text for this reference">✨ ESV text</button>`
 }, chat, image, settings, outline,
   // building blocks for the new version (app2.js)
-  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, esvStrict, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }, sha, blobB64, voiceNow: async () => voiceId(await need("eleven"))}};
+  kit: {chat, image, picBlob, savePic, PIC_RULES, styleOf, placeNote, esvText, esvStrict, wdiff, dlg, show, toast, ticker, fail, tts, ttsV3, voiceOf, settings, setVoice: v => { VOICE2 = v || "" }, sha, blobB64, voiceNow: async () => voiceId(await need("eleven")), voicePick, need}};
 function aiMenu(btn){ let m = $("#aimenu"); if (m) { m.remove(); return } m = document.createElement("div"); m.id = "aimenu"; m.className = "vmenu";
   m.innerHTML = `<div class="vmh">✨ AI</div><button type="button" data-a="check">Check spelling, grammar and flow</button><button type="button" data-a="listen">Listen to the talk from here</button><button type="button" data-a="narr">Make the narrated version (share link)</button><button type="button" data-a="split">Key points from the text (points that have none)</button><button type="button" data-a="sec">New movement with AI</button><a href="../prepare.html" class="vbtn">Prepare a new talk…</a><button type="button" data-a="set">Settings and keys</button>`;
   document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + "px";
