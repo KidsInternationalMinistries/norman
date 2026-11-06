@@ -868,7 +868,16 @@
    "type": "verse",
    "ref": "james 1:2-4",
    "text": "When all kinds of trials and temptations crowd into your lives my brothers, don’t resent them as intruders, but welcome them as friends! Realise that they come to test your faith and to produce in you the quality of endurance.",
-   "version": "Philips"
+   "version": "Philips",
+   "tr": {
+    "Tagalog": {
+     "ref": "Santiago 1:2-4",
+     "text": "Mga kapatid, magalak kayo kapag kayo'y dumaranas ng iba't ibang uri ng pagsubok. Sapagkat alam ninyong ang pagsubok sa inyong pananampalataya ay nagbubunga ng pagtitiyaga. At dapat kayong magpakatatag hanggang wakas upang kayo'y maging ganap at walang pagkukulang."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"james 1:2-4\",\"text\":\"When all kinds of trials and temptations crowd into your lives my brothers, don’t resent them as intruders, but welcome them as friends! Realise that they come to test your faith and to produce in you the quality of endurance.\"}"
+   }
   },
   {
    "name": "Slide 51",
