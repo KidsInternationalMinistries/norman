@@ -109,7 +109,7 @@ const SLIDE_TYPES = {image: "Image", plain: "Plain", bullets: "Bullets", bullets
 const hasPic = t => t === "image" || t === "bulletsimg", isBul = t => t === "bullets" || t === "bulletsimg";
 const isXS = v => !!(v && SLIDE_TYPES[v.type]);
 function xsHTML(v){ if (v.type === "video") return videoHTML(v); if (v.type === "quote") return quoteHTML(v); if (isBul(v.type)) return bulletsHTML(v); return v.type === "plain" ? slideBox({...v, image: ""}, " plain") : slideBox(v) }
-// A video slide plays from the start each time it comes up (sound on the slides screens, muted on Stage and in Edit).
+// A video slide plays from the start each time it comes up (sound on the slides screens and in the slide editor, muted on Stage and in the Edit preview).
 // If "next when it ends" is on, Stage moves to the next step when it finishes.
 // The video can be an uploaded file (v.video) or a link (v.url): YouTube, or a direct link to a video file. A link wins if both are set.
 function ytInfo(u){ const m = (u || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/); if (!m) return null;
@@ -122,14 +122,14 @@ function videoHTML(v){ const nx = v.autoNext !== false ? ' data-next="1"' : "", 
 function soundButton(on){ if (document.getElementById("snd")) return; const b = document.createElement("button"); b.id = "snd"; b.type = "button"; b.textContent = "🔊 Click for sound";
   b.onclick = () => { b.remove(); document.querySelectorAll("video").forEach(x => { x.muted = false }); YTP.forEach(p => { try { p.unMute() } catch (e) {} }); if (on) on() }; document.body.appendChild(b) }
 const vidEnded = el => { const w = el.closest && el.closest(".slide.vid"); if (w) w.dispatchEvent(new Event("vidend")) };
-function startVideo(vd){ if (vd.dataset.go) return; vd.dataset.go = 1; const mon = MODE === "monitor", inDlg = !!vd.closest("dialog");
+function startVideo(vd){ if (vd.dataset.go) return; vd.dataset.go = 1; const inDlg = !!vd.closest("dialog"), mon = MODE === "monitor" || MODE === "slides2" || inDlg;
   vd.muted = !mon; if (inDlg) vd.controls = true; vd.currentTime = 0; vd.addEventListener("ended", () => vidEnded(vd));
   const p = vd.play(); if (p && p.catch) p.catch(() => { vd.muted = true; vd.play().catch(() => {}); if (mon) soundButton() }) }      // the browser blocked sound until someone clicks this page
 // YouTube links play through YouTube's player (the screens need internet for these).
 const YTP = []; let ytReady = null;
 function ytAPI(){ if (!ytReady) ytReady = new Promise(ok => { if (window.YT && YT.Player) return ok(); const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { if (prev) prev(); ok() };
   const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc) }); return ytReady }
-function startYT(el){ if (el.dataset.go) return; el.dataset.go = 1; const mon = MODE === "monitor", inDlg = !!el.closest("dialog"), start = +el.dataset.start || 0, wrap = el.closest(".slide");
+function startYT(el){ if (el.dataset.go) return; el.dataset.go = 1; const inDlg = !!el.closest("dialog"), mon = MODE === "monitor" || MODE === "slides2" || inDlg, start = +el.dataset.start || 0, wrap = el.closest(".slide");
   ytAPI().then(() => { if (!el.isConnected) return; const pl = new YT.Player(el, {videoId: el.dataset.yt, width: "100%", height: "100%",
     playerVars: {autoplay: 1, controls: inDlg ? 1 : 0, rel: 0, modestbranding: 1, playsinline: 1, start, disablekb: 1, iv_load_policy: 3},
     events: {onReady: e => { if (!mon) e.target.mute(); e.target.seekTo(start, true); e.target.playVideo();
@@ -973,8 +973,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=88"><link rel="stylesheet" href="../common/countdown.css?v=88"><link rel="stylesheet" href="../common/gate.css?v=88"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=88"></script><script src="../common/countdown.js?v=88"></script><script src="../common/gate.js?v=88"></script><script src="../common/app.js?v=88"></script>${mode === "edit" ? '<script src="../common/ai.js?v=88"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=89"><link rel="stylesheet" href="../common/countdown.css?v=89"><link rel="stylesheet" href="../common/gate.css?v=89"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=89"></script><script src="../common/countdown.js?v=89"></script><script src="../common/gate.js?v=89"></script><script src="../common/app.js?v=89"></script>${mode === "edit" ? '<script src="../common/ai.js?v=89"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -983,8 +983,8 @@ const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase()
 // ---- New version (talk/2): one text with outline tags and a slide library ----
 const STUB2 = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=88"><link rel="stylesheet" href="../common/app2.css?v=88"><link rel="stylesheet" href="../common/countdown.css?v=88"><link rel="stylesheet" href="../common/gate.css?v=88"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=88"></script><script src="../common/countdown.js?v=88"></script><script src="../common/gate.js?v=88"></script><script src="../common/app.js?v=88"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=88"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=88"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=89"><link rel="stylesheet" href="../common/app2.css?v=89"><link rel="stylesheet" href="../common/countdown.css?v=89"><link rel="stylesheet" href="../common/gate.css?v=89"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=89"></script><script src="../common/countdown.js?v=89"></script><script src="../common/gate.js?v=89"></script><script src="../common/app.js?v=89"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=89"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=89"></script>' : ""}</body></html>
 `;
 const relayTopic = () => "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
 const newTalk2 = title => ({format: "talk/2", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", relayTopic: relayTopic(),
