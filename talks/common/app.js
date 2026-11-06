@@ -973,13 +973,45 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=80"><link rel="stylesheet" href="../common/countdown.css?v=80"><link rel="stylesheet" href="../common/gate.css?v=80"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=80"></script><script src="../common/countdown.js?v=80"></script><script src="../common/gate.js?v=80"></script><script src="../common/app.js?v=80"></script>${mode === "edit" ? '<script src="../common/ai.js?v=80"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=81"><link rel="stylesheet" href="../common/countdown.css?v=81"><link rel="stylesheet" href="../common/gate.css?v=81"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=81"></script><script src="../common/countdown.js?v=81"></script><script src="../common/gate.js?v=81"></script><script src="../common/app.js?v=81"></script>${mode === "edit" ? '<script src="../common/ai.js?v=81"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
   relayTopic: "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join(""),
   sections: [{id: "s1", title: "Opening", minutes: "", points: [{id: "p1", cue: "Opening slide", eyebrow: "", slideTitle: title, slide: "", layout: "center", image: "", verses: [], script: "", scriptDraft: false}]}]});
+// ---- New version (talk/2): one text with outline tags and a slide library ----
+const STUB2 = mode => `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
+<link rel="stylesheet" href="../common/app.css?v=81"><link rel="stylesheet" href="../common/app2.css?v=81"><link rel="stylesheet" href="../common/countdown.css?v=81"><link rel="stylesheet" href="../common/gate.css?v=81"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=81"></script><script src="../common/countdown.js?v=81"></script><script src="../common/gate.js?v=81"></script><script src="../common/app.js?v=81"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=81"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=81"></script>' : ""}</body></html>
+`;
+const relayTopic = () => "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
+const newTalk2 = title => ({format: "talk/2", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", relayTopic: relayTopic(),
+  text: "[#1 Opening]\n[Title]\n", slides: [{name: "Title", type: "image", eyebrow: "", slideTitle: title, slide: "", layout: "center", image: ""}], times: {}, notes: {}, audNotes: {}, languages: []});
+// A talk in the old shape (sections → points with their own text) turned into the new one (same as convert_talk2.py).
+function toV2(d){ const PLACE = /^(text[XYW]|align|(eb|tt|sb)(X|Y|W|Size|Align|Color)|bl(Size|Color))$/, slides = [], names = new Set(), times = {}, verseBy = {}, T = [];
+  const uniq = (n, lab) => { n = String(n || "").replace(/[\[\]{}\n]+/g, " ").trim() || "Slide"; if (["stop", "main slide"].includes(n.toLowerCase())) n += " slide"; if (!names.has(n)) { names.add(n); return n } let k = `${n} (${lab})`, i = 2; while (names.has(k)) k = `${n} (${lab} ${i++})`; names.add(k); return k };
+  const tag = (l, t) => `[#${l} ` + String(t).replace(/[\[\]\n]+/g, " ").replace(/\s+/g, " ").trim() + "]";
+  (d.sections || []).forEach((s, si) => { T.push(tag(1, s.title || "Section " + (si + 1)));
+    (s.points || []).forEach((p, pi) => { const lab = (si + 1) + "." + String.fromCharCode(97 + pi), ren = {}; T.push(tag(2, p.cue || "Point")); if (p.seconds) times["2|" + String(p.cue || "Point").replace(/\s+/g, " ").trim()] = p.seconds;
+      let main = null; if (p.image || (p.slideTitle || "").trim() || (p.slide || "").trim() || (p.eyebrow || "").trim()) { main = uniq(p.cue || "Slide", lab);
+        const o = {name: main, type: "image", eyebrow: p.eyebrow || "", slideTitle: p.slideTitle || "", slide: p.slide || "", layout: p.layout || "left", image: p.image || ""}; for (const [k, v] of Object.entries(p)) if (PLACE.test(k) || ["imagePrompt", "prevImage", "imageStyle"].includes(k)) o[k] = v; slides.push(o) }
+      for (const v of p.verses || []) { const ref = (v.ref || "").trim(); if (!ref) continue; const key = ref + "|" + (v.text || ""); if (verseBy[key]) { ren[ref] = verseBy[key]; continue } const n = uniq(ref, lab); verseBy[key] = n; ren[ref] = n; slides.push({name: n, type: "verse", ref, text: v.text || "", version: v.version || ""}) }
+      for (const x of p.slides || []) { if (!x.name) continue; const n = uniq(x.name, lab); ren[x.name.trim()] = n; slides.push({...x, name: n}) }
+      if (main) ren["Main slide"] = main;
+      const parts = (p.script || "").split(/(\[#[12](?: [^\[\]\n]*)?\])/); let sc = parts[0];
+      for (let i = 1; i < parts.length; i += 2) { const m = parts[i].match(/\[#[12](?: ([^\[\]\n]*))?\]/), txt = (m && m[1]) || "", body = parts[i + 1] || "", refs = [...txt.matchAll(/\{([^{}\n]+)\}/g)].map(x => x[1].trim()); sc += refs.filter(r => !body.includes("[" + r + "]")).map(r => "[" + r + "]").join("") + body }
+      sc = sc.replace(/\[([^\[\]\n]{1,60})\]/g, (a, r) => ren[r.trim()] ? "[" + ren[r.trim()] + "]" : a);
+      T.push((main ? "[" + main + "]" : "") + (sc.trim() ? "\n" + sc.replace(/^\n+|\n+$/g, "") : "")) }) });
+  const o = {...d}; delete o.sections; return Object.assign(o, {format: "talk/2", text: T.join("\n"), slides, times, notes: d.notes || {}, audNotes: d.audNotes || {}, languages: d.languages || []}) }
+// Makes a new-version talk's folder (talk2.json + its pages) and lists it. Returns the folder and talk2.json's sha.
+async function createTalk2(talk){ const folder = folderName(talk.title), base = C.root + "/" + folder;
+  const sha = await GH.put(base + "/talk2.json", b64e(JSON.stringify(talk, null, 1) + "\n"), null, "New talk: " + talk.title);
+  for (const [f, m] of [["index.html", "slides2"], ["slides2.html", "slides2"], ["present2.html", "present2"], ["edit2.html", "edit2"], ["audience.html", "audience2"]]) await GH.put(base + "/" + f, b64e(STUB2(m)), null, "New talk: " + talk.title);
+  let lsha = null, cur = []; try { const g = await GH.get(C.root + "/talks.json"); lsha = g.sha; cur = JSON.parse(g.text) } catch (e) {}
+  if (!cur.some(t => t.folder === folder)) { cur.push({folder, title: talk.title, v: 2}); await GH.put(C.root + "/talks.json", b64e(JSON.stringify(cur, null, 1) + "\n"), lsha, "List new talk: " + talk.title) }
+  return {folder, sha} }
 // Makes the talk's folder (talk.json + its three pages) and lists it. Returns the folder and talk.json's sha.
 async function createTalk(talk){ const folder = folderName(talk.title), base = C.root + "/" + folder;
   const sha = await GH.put(base + "/talk.json", b64e(JSON.stringify(talk, null, 1) + "\n"), null, "New talk: " + talk.title);
@@ -991,18 +1023,18 @@ async function index(){
   document.body.innerHTML = `<div class="setup" style="max-width:820px"><h1 style="margin:0">Talks</h1><div id="list"><p class="note">Loading…</p></div>
     <div><button class="btn" id="new" type="button">+ New talk</button> <a class="btn" href="prepare.html">✨ Prepare a new talk with AI</a> <span class="note" id="msg"></span></div></div>`;
   let list = []; try { list = await (await fetch("talks.json?t=" + Date.now(), {cache: "no-store"})).json() } catch (e) {}
-  $("#list").innerHTML = list.length ? `<ul>${list.map(t => `<li style="margin:6px 0"><b>${E(t.title)}</b>: <a href="${E(t.folder)}/present.html">Stage</a> · <a href="${E(t.folder)}/edit.html">Edit</a> · <a href="${E(t.folder)}/">Monitor (slides)</a></li>`).join("")}</ul>` : '<p class="note">No talks yet.</p>';
+  $("#list").innerHTML = list.length ? `<ul>${list.map(t => `<li style="margin:6px 0"><b>${E(t.title)}</b>: ${t.v === 2 || t.v2 ? `<a href="${E(t.folder)}/present2.html">Stage</a> · <a href="${E(t.folder)}/edit2.html">Edit</a> · <a href="${E(t.folder)}/slides2.html">Slides</a> · <a href="${E(t.folder)}/audience.html">Audience</a>${t.v2 ? ` · <a class="note" href="${E(t.folder)}/edit.html">old version</a>` : ""}` : `<a href="${E(t.folder)}/present.html">Stage</a> · <a href="${E(t.folder)}/edit.html">Edit</a> · <a href="${E(t.folder)}/">Monitor (slides)</a>`}</li>`).join("")}</ul>` : '<p class="note">No talks yet.</p>';
   $("#new").onclick = () => presenterGate(C.passHash, "pres-ok", async () => {
     if (!token()) { tokenSetup(() => location.reload()); return }
     const title = prompt("Title of the new talk?"); if (!title) return; const folder = folderName(title); const msg = $("#msg");
     if (!folder) return; if (list.some(t => t.folder === folder)) { msg.textContent = "A talk with that folder already exists."; return }
     msg.textContent = "Creating…";
-    try { await createTalk(newTalk(title));
-      msg.innerHTML = `Created. Its pages go live in about a minute: <a href="${E(folder)}/edit.html">open the editor</a>.` }
+    try { await createTalk2(newTalk2(title));
+      msg.innerHTML = `Created. Its pages go live in about a minute: <a href="${E(folder)}/edit2.html">open the editor</a>.` }
     catch (e) { msg.textContent = "Couldn't create it: " + (e.detail || e.message) }
   });
 }
 
-window.TALKAPP = {setSlide, imgTag, preload, SLIDE_TYPES, isXS, hasPic, isBul, stepsOf, CUETAG, tagKey, bullets, bulRefs, bulPlain, bulTag, BUL, BREF, splitBlocks, trimBlk, C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
+window.TALKAPP = {setSlide, imgTag, preload, SLIDE_TYPES, isXS, hasPic, isBul, stepsOf, CUETAG, tagKey, bullets, bulRefs, bulPlain, bulTag, BUL, BREF, splitBlocks, trimBlk, C, E, $, GH, PATH, FOLDER, RAW, LOCALIMG, toJpeg, b64e, token, tokenSetup, presenterGate: window.presenterGate, folderName, newTalk, createTalk, newTalk2, createTalk2, toV2, steps, letter, TAG, tagOf, fmtVerse, slideBox, xsHTML, verseSlide, D: () => D};
 ({monitor, present, edit, index}[MODE] || (() => {}))();
 })();

@@ -1,3 +1,7 @@
 [
- {"folder": "Character-Calling-Conviction", "title": "Character, Calling & Conviction"}
+ {
+  "folder": "Character-Calling-Conviction",
+  "title": "Character, Calling & Conviction",
+  "v2": true
+ }
 ]

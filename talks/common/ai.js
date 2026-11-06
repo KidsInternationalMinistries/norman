@@ -636,11 +636,11 @@ Return JSON in this ${GEN_SHAPE}`, parts(`Title: ${st.title || "(choose)"}\nPict
       talk.sections = (j.sections || []).map((s, si) => toSection(s, si === 0)); if (!talk.sections.length) throw new Error("The AI didn't return any movements. Try again.");
       const tp = talk.sections[0].points[0]; if (tp) { tp.slideTitle = tp.slideTitle || title; tp.layout = "center" }
       m.textContent = "Looking up the verses…"; await fillVerses(talk.sections.flatMap(s => s.points));
-      m.textContent = "Saving the talk…"; const base = C.root + "/" + folder; let {sha: tsha} = await T.createTalk(talk);
+      m.textContent = "Saving the talk…"; const base = C.root + "/" + folder; let {sha: tsha} = await T.createTalk2(T.toV2(talk));
       if (styleRef) { const path = `slides/style-${Date.now().toString(36)}.jpg`; await GH.put(base + "/" + path, styleRef.split(",")[1], null, "Style picture"); talk.imageStyleRef = path; T.LOCALIMG[path] = styleRef }
-      const saveTalk = async () => { for (let a = 0; a < 3; a++) { try { tsha = await GH.put(base + "/talk.json", T.b64e(JSON.stringify(talk, null, 1) + "\n"), tsha, "AI pictures for " + title); return } catch (e) { if (e.status !== 409 && e.status !== 422) throw e; tsha = (await GH.get(base + "/talk.json")).sha } } };
+      const saveTalk = async () => { for (let a = 0; a < 3; a++) { try { tsha = await GH.put(base + "/talk2.json", T.b64e(JSON.stringify(T.toV2(talk), null, 1) + "\n"), tsha, "AI pictures for " + title); return } catch (e) { if (e.status !== 409 && e.status !== 422) throw e; tsha = (await GH.get(base + "/talk2.json")).sha } } };
       if (styleRef) await saveTalk();
-      const link = `<a href="${E(folder)}/edit.html">Open it in the editor</a> (live in about a minute).`;
+      const link = `<a href="${E(folder)}/edit2.html">Open it in the editor</a> (live in about a minute).`;
       if ($("#aipics").checked) { const jobs = picJobs(talk); if (styleRef) T.LOCALIMG[talk.imageStyleRef] = styleRef;
         const prevPATH = T.PATH; m.innerHTML = `Talk created. ${link}<br>Making pictures 0 of ${jobs.length} (about a minute each, 3 at a time). Keep this page open until they're done.`;
         let since = 0; await makePictures(base, talk, jobs, async (jb, path) => { jb.o.image = path; if (++since >= 3) { since = 0; await saveTalk().catch(() => {}) } },
