@@ -359,3 +359,28 @@ body[data-mode="audience2"]{margin:0;background:var(--bg)}
 .fullpdf .fblk .aun{padding:0 2px}
 .fullpdf .fthin{border:0;border-top:1px solid #ddd;margin:8px 0 0;clear:both}
 .fullpdf .fsep{border:0;border-top:1px solid #ddd;margin:8px 0 0}
+/* practice.html: phone page for practicing on a walk */
+.pr{max-width:720px;margin:0 auto;padding:0 0 84px;min-height:100vh;touch-action:pan-y}
+.prh{display:flex;gap:10px;align-items:center;padding:8px 12px;position:sticky;top:0;background:var(--bg);z-index:2;border-bottom:1px solid var(--line)}
+.prh select{flex:1;min-width:0;font-size:16px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.prh span{font-size:14px;opacity:.7;white-space:nowrap}
+.prs{margin:10px 12px 0;background:#E9B949;color:#1c1a12;font:800 15px/1.2 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em;padding:7px 10px;border-radius:6px}
+.prpt{margin:8px 14px 0;font-size:19px}
+.prpt b{color:var(--accent);margin-right:4px}
+.prsl{padding:8px 12px 0}
+.prsl .slide{border-radius:10px}
+.prtp{font-size:24px;padding:10px 18px}
+.prnone{opacity:.55;font-size:17px}
+.prbtm{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+.prbtm button{font-size:20px;padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.prbtm #prt{font-size:16px;flex:1;max-width:260px}
+.prbtm button:disabled{opacity:.35}
+.prm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:24px 0 0}
+.prm[hidden]{display:none}
+.prmb{background:var(--bg);color:var(--ink);width:100%;max-width:720px;max-height:100%;border-radius:14px 14px 0 0;display:flex;flex-direction:column}
+.prmh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.prmh b{flex:1;font-size:17px}
+.prmh button{font-size:20px;border:0;background:none;color:var(--ink);padding:4px 8px}
+.prmx{overflow:auto;padding:12px 18px calc(24px + env(safe-area-inset-bottom));font-size:19px;line-height:1.55}
+.prmx p{margin:0 0 12px}
+body.prlock{overflow:hidden}

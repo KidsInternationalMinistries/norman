@@ -6,7 +6,7 @@ const C = window.TALKS_CONFIG;
 const MODE = document.body.dataset.mode;
 const $ = s => document.querySelector(s);
 const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const parts = location.pathname.replace(/\/(index|present|edit|present2|edit2|slides2|audience|review)\.html$/, "/").split("/").filter(Boolean);
+const parts = location.pathname.replace(/\/(index|present|edit|present2|edit2|slides2|audience|review|practice)\.html$/, "/").split("/").filter(Boolean);
 const FOLDER = window.OFFLINE ? window.OFFLINE.folder : MODE === "index" ? "" : decodeURIComponent(parts[parts.length - 1] || "");
 const PATH = C.root + "/" + FOLDER;                    // repo path of this talk's folder
 const RAW = `https://raw.githubusercontent.com/${C.owner}/${C.repo}/${C.branch}/`;
@@ -983,8 +983,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=127"><link rel="stylesheet" href="../common/countdown.css?v=127"><link rel="stylesheet" href="../common/gate.css?v=127"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=127"></script><script src="../common/countdown.js?v=127"></script><script src="../common/gate.js?v=127"></script><script src="../common/app.js?v=127"></script>${mode === "edit" ? '<script src="../common/ai.js?v=127"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=128"><link rel="stylesheet" href="../common/countdown.css?v=128"><link rel="stylesheet" href="../common/gate.css?v=128"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=128"></script><script src="../common/countdown.js?v=128"></script><script src="../common/gate.js?v=128"></script><script src="../common/app.js?v=128"></script>${mode === "edit" ? '<script src="../common/ai.js?v=128"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",
@@ -993,8 +993,8 @@ const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase()
 // ---- New version (talk/2): one text with outline tags and a slide library ----
 const STUB2 = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=127"><link rel="stylesheet" href="../common/app2.css?v=127"><link rel="stylesheet" href="../common/countdown.css?v=127"><link rel="stylesheet" href="../common/gate.css?v=127"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=127"></script><script src="../common/countdown.js?v=127"></script><script src="../common/gate.js?v=127"></script><script src="../common/app.js?v=127"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=127"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=127"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=128"><link rel="stylesheet" href="../common/app2.css?v=128"><link rel="stylesheet" href="../common/countdown.css?v=128"><link rel="stylesheet" href="../common/gate.css?v=128"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=128"></script><script src="../common/countdown.js?v=128"></script><script src="../common/gate.js?v=128"></script><script src="../common/app.js?v=128"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="../common/app2.js?v=128"></script>${mode === "edit2" ? '<script src="../common/ai.js?v=128"></script>' : ""}</body></html>
 `;
 const relayTopic = () => "kim-talk-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
 const newTalk2 = title => ({format: "talk/2", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", relayTopic: relayTopic(),
@@ -1018,7 +1018,7 @@ function toV2(d){ const PLACE = /^(text[XYW]|align|(eb|tt|sb)(X|Y|W|Size|Align|C
 // Makes a new-version talk's folder (talk2.json + its pages) and lists it. Returns the folder and talk2.json's sha.
 async function createTalk2(talk){ const folder = folderName(talk.title), base = C.root + "/" + folder;
   const sha = await GH.put(base + "/talk2.json", b64e(JSON.stringify(talk, null, 1) + "\n"), null, "New talk: " + talk.title);
-  for (const [f, m] of [["index.html", "slides2"], ["slides2.html", "slides2"], ["present2.html", "present2"], ["edit2.html", "edit2"], ["audience.html", "audience2"], ["review.html", "review2"]]) await GH.put(base + "/" + f, b64e(STUB2(m)), null, "New talk: " + talk.title);
+  for (const [f, m] of [["index.html", "slides2"], ["slides2.html", "slides2"], ["present2.html", "present2"], ["edit2.html", "edit2"], ["audience.html", "audience2"], ["review.html", "review2"], ["practice.html", "practice2"]]) await GH.put(base + "/" + f, b64e(STUB2(m)), null, "New talk: " + talk.title);
   let lsha = null, cur = []; try { const g = await GH.get(C.root + "/talks.json"); lsha = g.sha; cur = JSON.parse(g.text) } catch (e) {}
   if (!cur.some(t => t.folder === folder)) { cur.push({folder, title: talk.title, v: 2}); await GH.put(C.root + "/talks.json", b64e(JSON.stringify(cur, null, 1) + "\n"), lsha, "List new talk: " + talk.title) }
   return {folder, sha} }

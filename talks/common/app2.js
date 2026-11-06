@@ -125,7 +125,7 @@ const relay = d => C.relay + "/" + d.relayTopic;
 function topBar(d, active){ if (window.OFFLINE) return `<div class="top"><h1>${E(d.title)} <span class="v2">offline copy</span></h1><div class="mode"><a class="btn${active === "present" ? " on" : ""}" href="#stage">Stage</a><a class="btn" href="#slides" target="_blank" rel="noopener">Slides</a><a class="btn" href="#">Start</a></div></div>`;
   return `<div class="top"><h1>${E(d.title)} <span class="v2">new version</span></h1><div class="mode">
   <a class="btn${active === "edit" ? " on" : ""}" href="edit2.html">Edit</a><a class="btn${active === "present" ? " on" : ""}" href="present2.html">Stage</a>
-  <a class="btn" href="slides2.html" target="_blank" rel="noopener">Slides</a><a class="btn" href="audience.html" target="_blank" rel="noopener" title="The page the audience follows on their phones">Audience</a><a class="btn" href="edit.html" title="The version you used before">Old version</a></div></div>` }
+  <a class="btn" href="slides2.html" target="_blank" rel="noopener">Slides</a><a class="btn" href="audience.html" target="_blank" rel="noopener" title="The page the audience follows on their phones">Audience</a><a class="btn" href="practice.html" target="_blank" rel="noopener" title="A phone page to practice the talk: the slide, the talking points, and the text if you want it; swipe to move">📱 Mobile practice</a><a class="btn" href="edit.html" title="The version you used before">Old version</a></div></div>` }
 
 // =====================================================================
 // SLIDES (monitor): follows the presenter; arrows step through the slides here, and it snaps back when the presenter moves.
@@ -1323,6 +1323,40 @@ function trItems(d, S){ const out = [], seenS = new Set(), seenK = new Set();
     const a = key && (d.audNotes || {})[key]; if (a && noteText(a.html) && !seenK.has(key)) { seenK.add(key); out.push({k: "n", key, a, n: n0}) } });
   return out }
 const SLF = {eyebrow: "Small line above", slideTitle: "Title", slide: "Words", bullets: "Bullets (one per line)", quote: "Quote", by: "Who said it", ref: "Verse reference", text: "Verse", phoneQ: "Question on the phones", phoneA: "Answers on the phones (one per line)"};
+// practice.html: a phone page for practicing on a walk. One card per Next press: the slide on top, the talking points under it,
+// and "Show the text" opens the words of that press in a box. Swipe left/right (or the arrows) to move; the place is kept on this phone.
+async function practice(){
+  document.body.innerHTML = `<div class="pr"><div class="prh"><select id="prj" aria-label="Go to a point"></select><span id="prc"></span></div><div id="prb"><p class="rvnote">Loading…</p></div>
+    <div class="prbtm"><button type="button" id="prp" aria-label="Back">&larr;</button><button type="button" id="prt">Show the text</button><button type="button" id="prn" aria-label="Next">&rarr;</button></div></div>
+    <div class="prm" id="prm" hidden><div class="prmb"><div class="prmh"><b id="prmt"></b><button type="button" id="prx" aria-label="Close">✕</button></div><div class="prmx" id="prmx"></div></div></div>`;
+  let d; try { d = (await load(false)).d } catch (e) { $("#prb").innerHTML = `<p class="rvnote">Couldn't load the talk.</p>`; return }
+  document.title = "Practice · " + d.title; T.preload(d.slides || [], d);
+  const P = parse(d), S = build(P), SH = S.map(x => x.slide), KK = "pr-" + FOLDER; if (!S.length) { $("#prb").innerHTML = `<p class="rvnote">This talk has no text yet.</p>`; return }
+  let k = 0; try { k = Math.min(S.length - 1, Math.max(0, +localStorage.getItem(KK) || 0)) } catch (e) {}
+  const up = (n, lv) => { let p = n; while (p && p.lvl > lv) p = p.parent; return p && p.lvl === lv ? p : null };
+  const words = i => { const st = S[i]; return st.a != null ? P.t.slice(st.a, st.b).replace(TAG, "").trim() : "" };
+  const pts = P.nodes.filter(n => n.lvl <= 2 && firstAt(S, n) >= 0);
+  $("#prj").innerHTML = pts.map(n => `<option value="${firstAt(S, n)}">${n.lvl === 1 ? "" : "  "}${E(n.full || n.lab || "")} ${E(n.text || "")}</option>`).join("");
+  const thumb = s => s && s.type === "video" ? `<div class="slide vidph"><div class="vpi">▶</div><div class="vpt">${E(s.name || "Video")}</div></div>` : slideHTML(s, d);
+  function draw(){ const st = S[k], n = st.node, sec = up(n, 1), own = n ? ownSteps(S, n) : [], pj = Math.max(0, own.indexOf(k)), nt = n ? noteFor(d, n, pj) : null;
+    const head = `${sec ? `<div class="prs">${E(sec.lab || sec.full || "")} ${E(sec.text)}</div>` : ""}${n && n !== sec ? `<div class="prpt"><b>${E(n.full)}</b> ${E(n.text)}${own.length > 1 ? ` <span class="tpj">${pj + 1} of ${own.length}</span>` : ""}</div>` : ""}`;
+    $("#prb").innerHTML = `${head}<div class="prsl">${SH[k] ? thumb(SH[k]) : '<div class="slide blank"></div>'}</div><div class="tpn prtp">${nt && noteText(nt.h) ? cleanHTML(nt.h) : '<p class="prnone">No talking points here.</p>'}</div>`;
+    $("#prc").textContent = `${k + 1} / ${S.length}`; $("#prt").disabled = !words(k); $("#prp").disabled = k === 0; $("#prn").disabled = k === S.length - 1;
+    let o = null; [...$("#prj").options].forEach(x => { if (+x.value <= k) o = x }); if (o) $("#prj").value = o.value;
+    try { localStorage.setItem(KK, k) } catch (e) {} window.scrollTo(0, 0) }
+  const go = j => { j = Math.max(0, Math.min(S.length - 1, j)); if (j !== k) { k = j; draw() } };
+  $("#prp").onclick = () => go(k - 1); $("#prn").onclick = () => go(k + 1); $("#prj").onchange = e => go(+e.target.value);
+  const box = $("#prm"), close = () => { box.hidden = true; document.body.classList.remove("prlock") };
+  $("#prt").onclick = () => { const st = S[k], n = st.node, w = words(k); $("#prmt").textContent = n ? `${n.full} ${n.text}` : d.title;
+    $("#prmx").innerHTML = w.split(/\n{2,}/).map(x => `<p>${E(x).replace(/\n/g, "<br>")}</p>`).join(""); box.hidden = false; $("#prmx").scrollTop = 0; document.body.classList.add("prlock") };
+  $("#prx").onclick = close; box.onclick = e => { if (e.target === box) close() };
+  document.addEventListener("keydown", e => { if (!box.hidden) { if (e.key === "Escape") close(); return } if (e.key === "ArrowRight") go(k + 1); if (e.key === "ArrowLeft") go(k - 1) });
+  // swipe: a mostly sideways move of 50px or more
+  let x0 = null, y0 = 0; const pr = $(".pr");
+  pr.addEventListener("touchstart", e => { if (!box.hidden || e.touches.length > 1) { x0 = null; return } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY }, {passive: true});
+  pr.addEventListener("touchend", e => { if (x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(k + (dx < 0 ? 1 : -1)) }, {passive: true});
+  draw() }
+
 async function reviewPage(){
   document.body.innerHTML = `<div class="rv"><div class="rvh"><b id="rvt">Loading…</b><select id="rvl" aria-label="Language"></select></div><div id="rvb"></div></div>`;
   let d; try { d = (await load(false)).d } catch (e) { $("#rvt").textContent = "Couldn't load the talk."; return }
@@ -1369,5 +1403,5 @@ async function reviewPage(){
       fields().forEach(el => { if (el.dataset.n != null) { const a = d.audNotes[el.dataset.n]; a.tr = a.tr || {}; a.tr[lang] = val(el) } else { const sl = d.slides.find(x => x.name === el.dataset.s); sl.tr = sl.tr || {}; sl.tr[lang] = sl.tr[lang] || {}; sl.tr[lang][el.dataset.f] = val(el) } });
       count(); b.textContent = "Sent ✓ Thank you!"; setTimeout(() => { b.disabled = false; b.textContent = "Send my changes" }, 4000) }
     catch (e) { b.disabled = false; b.textContent = "Send my changes"; alert("It didn't send. Check the internet connection and try again. Your changes are still here.") } } }
-({edit2: edit, present2: present, slides2: slides, audience2: audience, review2: reviewPage, offline: offlineStart}[MODE] || (() => {}))();
+({edit2: edit, present2: present, slides2: slides, audience2: audience, review2: reviewPage, practice2: practice, offline: offlineStart}[MODE] || (() => {}))();
 })();
