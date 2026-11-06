@@ -3,7 +3,7 @@
 //   POST /<topic>          publish one message (the body, at most 4 KB)
 //   GET  /<topic>/sse      Server-Sent Events: every new message as data: {"event":"message","message":"..."}
 //   GET  /<topic>/json     the last message as one JSON line (what a page reads when it opens)
-//   POST /<topic>/vote     one phone's vote on a poll {poll, a, voter} (once per voter); GET /<topic>/vote: every poll's totals
+//   POST /<topic>/vote     one phone's vote on a poll {poll, a, voter} (once per voter); GET /<topic>/vote: {epoch, polls: every poll's totals}; POST {clear: true} starts all polls fresh (event: pollreset)
 //                          the totals also go out on the stream as  event: poll  data: {poll, c}
 //   POST /<topic>/review   store one translation review from review.html (at most 100 KB); GET /<topic>/review lists them
 // Each topic is one Durable Object, so all the phones of one talk share one place in memory.
@@ -32,14 +32,18 @@ export class Room {
       return Response.json({ok: true, followers: this.subs.size}, {headers: CORS});
     }
     if (kind === "vote") {
+      const epoch = (await this.state.storage.get("epoch")) || 0;
       if (req.method === "POST") { let v; try { v = JSON.parse((await req.text()).slice(0, 2000)) } catch (e) { return new Response("Not JSON", {status: 400, headers: CORS}) }
+        if (v.clear) {            // start every poll fresh: a new epoch (phones vote again under new keys) and the old counts deleted
+          const ne = epoch + 1, old = await this.state.storage.list({prefix: "poll:"}); await this.state.storage.put("epoch", ne); if (old.size) await this.state.storage.delete([...old.keys()]);
+          this.send("event: pollreset\ndata: " + JSON.stringify({epoch: ne, polls: {}}) + "\n\n"); return Response.json({epoch: ne, polls: {}}, {headers: CORS}) }
         const poll = String(v.poll || "").slice(0, 200), a = Math.floor(+v.a), voter = String(v.voter || "").slice(0, 80);
         if (!poll || !voter || !(a >= 0 && a < 10)) return new Response("Bad vote", {status: 400, headers: CORS});
         const key = "poll:" + poll, p = (await this.state.storage.get(key)) || {c: {}, v: {}};
         if (p.v[voter] == null) { p.v[voter] = a; p.c[a] = (p.c[a] || 0) + 1; await this.state.storage.put(key, p); this.pollOut(poll, p.c) }
         return Response.json({ok: true, c: p.c, yours: p.v[voter]}, {headers: CORS}) }
       const all = await this.state.storage.list({prefix: "poll:"}), out = {}; for (const [k, p] of all) out[k.slice(5)] = p.c;
-      return Response.json(out, {headers: {...CORS, "Cache-Control": "no-store"}});
+      return Response.json({epoch, polls: out}, {headers: {...CORS, "Cache-Control": "no-store"}});
     }
     if (kind === "review") {          // translation reviews wait here until the speaker accepts them in Edit (each is its own key: values are limited to 128 KB)
       if (req.method === "POST") { const body = (await req.text()).slice(0, 100000); try { JSON.parse(body) } catch (e) { return new Response("Not JSON", {status: 400, headers: CORS}) }

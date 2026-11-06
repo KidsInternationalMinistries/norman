@@ -68,9 +68,11 @@ function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = nu
 // ---------- polls ----------
 // A poll slide: a question (slideTitle) and answers (bullets, one per line). Phones vote once (it can't be changed);
 // the relay counts the votes and sends the totals to every screen. reveal "next": the bars show when Stage presses Next once more.
-// The votes belong to name#round, so "Clear the votes" in Edit (round + 1) starts the poll fresh.
-const POLLS = {}, REVEAL = new Set();
-const pollKey = s => s.name + "#" + (+s.round || 0);
+// The votes belong to name#epoch; clearing (Stage opening, or a Clear the votes button) moves the relay to a new epoch, so every poll starts fresh.
+const POLLS = {}, REVEAL = new Set(); let EPOCH = 0;
+const pollKey = s => s.name + "#" + EPOCH;
+const pollTake = (d, j) => { const all = j && j.polls ? j.polls : j || {}; if (j && j.epoch != null && +j.epoch !== EPOCH) { EPOCH = +j.epoch; Object.keys(POLLS).forEach(k => delete POLLS[k]); REVEAL.clear() } Object.keys(all).forEach(k => POLLS[k] = all[k]); pollsDraw(d) };
+async function pollClear(d){ const r = await fetch(relay(d) + "/vote", {method: "POST", body: JSON.stringify({clear: true})}); if (!r.ok) throw new Error("relay " + r.status); pollTake(d, await r.json()) }
 const pollAns = (s, lang) => { const en = String(s.bullets || "").split("\n").map(x => x.replace(/^[-•*]\s*/, "").trim()).filter(Boolean).slice(0, 6);
   const t = lang && s.tr && s.tr[lang] && (s.trSrc || {})[lang] === slSrc(s) ? String(s.tr[lang].bullets || "").split("\n").map(x => x.replace(/^[-•*]\s*/, "").trim()).filter(Boolean) : [];
   return en.map((x, i) => t[i] || x) };
@@ -85,10 +87,10 @@ function pollsDraw(d){ document.querySelectorAll(".slide.pollsl[data-poll]").for
 // get the totals now, then follow them live (the relay sends "event: poll" on the same stream as Next)
 async function pollsFollow(d, es, after){ const take = m => { if (m && m.poll) { POLLS[m.poll] = m.c || {}; pollsDraw(d); if (after) after() } };
   if (!(d.slides || []).some(x => x.type === "poll")) return;
-  try { const r = await fetch(relay(d) + "/vote", {cache: "no-store"}); if (r.ok) { const all = await r.json(); Object.keys(all || {}).forEach(k => POLLS[k] = all[k]); pollsDraw(d); if (after) after() } } catch (e) {}
-  if (es) es.addEventListener("poll", e => { try { take(JSON.parse(e.data)) } catch (_) {} });
+  try { const r = await fetch(relay(d) + "/vote", {cache: "no-store"}); if (r.ok) { pollTake(d, await r.json()); if (after) after() } } catch (e) {}
+  if (es) { es.addEventListener("poll", e => { try { take(JSON.parse(e.data)) } catch (_) {} }); es.addEventListener("pollreset", e => { try { pollTake(d, JSON.parse(e.data)); if (after) after() } catch (_) {} }) }
   // the big screens also ask every 4 s while a poll is showing, in case the live stream drops
-  if (!after) setInterval(async () => { if (!document.querySelector(".slide.pollsl[data-poll]")) return; try { const r = await fetch(relay(d) + "/vote", {cache: "no-store"}); if (r.ok) { const all = await r.json(); Object.keys(all || {}).forEach(k => POLLS[k] = all[k]); pollsDraw(d) } } catch (e) {} }, 4000) }
+  if (!after) setInterval(async () => { if (!document.querySelector(".slide.pollsl[data-poll]")) return; try { const r = await fetch(relay(d) + "/vote", {cache: "no-store"}); if (r.ok) pollTake(d, await r.json()) } catch (e) {} }, 4000) }
 const voterId = () => { let v = ""; try { v = localStorage.getItem("voter-id") || "" } catch (e) {} if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem("voter-id", v) } catch (e) {} } return v };
 const myVote = k => { try { const v = localStorage.getItem("vote-" + k); return v == null ? null : +v } catch (e) { return null } };
 // The audience page (people follow the talk on their phones) and the QR code slide that opens it.
@@ -247,7 +249,7 @@ async function present(){
       <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="nxt" id="nx"></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
         <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><span class="zm" data-z="n"><button type="button" data-d="-1" title="Smaller talking points">A−</button><button type="button" data-d="1" title="Bigger talking points">A+</button></span></div><div class="tabbody"><div class="olbox" id="ol"></div></div></div></aside></div>
     <div class="bar"><button class="btn" id="b" type="button">&larr; Back</button><span id="pos"></span><span id="sync"><b></b>Not sent yet</span>
-      <span class="pst" id="pst"></span><button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
+      <span class="pst" id="pst"></span>${(d.slides || []).some(x => x.type === "poll") ? '<button class="btn" id="pclr" type="button" title="Clear the votes on every poll, so they start fresh">Clear votes</button>' : ""}<button class="btn" id="pop" type="button" title="Slides in their own window on this computer; works without internet">Slides window</button><button class="btn pri" id="n" type="button">Next &rarr;</button></div>
     <div class="ctimer idle" id="ct" hidden><div class="ct-track"><i></i></div><span class="ct-txt"></span></div>`;
   $("#sc").innerHTML = textHTML(d, P, false, S, true);
   const pts = P.nodes.filter(n => n.lvl === 2), total = () => P.nodes.filter(n => n.lvl === 1).reduce((a, n) => a + planSecs(P, n).s, 0) || pts.reduce((a, n) => a + planSecs(P, n).s, 0);
@@ -308,7 +310,11 @@ async function present(){
   let pw = null; $("#pop").onclick = () => { pw = window.open(window.OFFLINE ? location.href.split("#")[0] + "#slides" : "slides2.html?window=1", "slides2-" + FOLDER, "popup,width=1280,height=720"); setTimeout(push, 900) };
   document.addEventListener("keydown", e => { if (locked() || e.target.closest("input,textarea")) return; if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next() } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); back() } });
   layout($("#lay"), () => { const ck = !end && $(`#sc .ck[data-s="${k}"]`); if (ck && showText) { const r = document.createRange(); r.selectNodeContents(ck); hlBox($("#ft"), $("#sc"), r) } });
-  try { if ((d.slides || []).some(x => x.type === "poll")) pollsFollow(d, new EventSource(relay(d) + "/sse")) } catch (e) {}
+  if ((d.slides || []).some(x => x.type === "poll")) {
+    // Opening Stage starts the polls fresh (practice votes are gone); a reload in the middle of the talk keeps them.
+    let reload = false; try { reload = (performance.getEntriesByType("navigation")[0] || {}).type === "reload" } catch (e) {}
+    (async () => { if (!reload && !window.OFFLINE) { try { await pollClear(d); draw(); push() } catch (e) {} } try { pollsFollow(d, new EventSource(relay(d) + "/sse")) } catch (e) {} })();
+    $("#pclr").onclick = async () => { if (!confirm("Clear the votes on every poll? Phones that voted can vote again.")) return; try { await pollClear(d); draw(); push() } catch (e) { alert("The votes weren't cleared. Check the internet connection.") } } }
   draw(); (window.OFFLINE ? (a, b, f) => f() : presenterGate)(C.passHash, "pres-ok", () => { push(); TIMER.at(k === 0) }) }
 
 // =====================================================================
@@ -469,7 +475,7 @@ async function edit(){
     else if (ty === "quote") h += fld("quote", "Quote", true) + fld("by", "Who said it");
     else if (ty === "video") h += fld("url", "Link (YouTube or a video file)", false, "https://…") + `<label style="max-width:220px">Length (seconds; read from a video file by itself)<input type="number" min="0" step="1" ${A("secs")} value="${E(o.secs || "")}" placeholder="${E(VDUR[(o.url || o.video || "").trim()] || "")}"></label>` + `<label class="chk"><input type="checkbox" ${A("autoNext")}${o.autoNext !== false ? " checked" : ""}> When it ends, go to the next step</label>`;
     else if (ty === "poll") h += fld("slideTitle", "Question", true) + fld("bullets", "Answers (one per line, up to 6)", true) + `<label style="max-width:360px">Results<select ${A("reveal")}><option value="live"${o.reveal !== "next" ? " selected" : ""}>Show the results live as people vote</option><option value="next"${o.reveal === "next" ? " selected" : ""}>Show the results when I press Next</option></select></label>`
-      + `<div class="row"><span class="note" style="flex:1">Each phone can vote once, and the vote can't be changed. ${(() => { const c = POLLS[pollKey(o)] || {}, t = Object.values(c).reduce((a, b) => a + (+b || 0), 0); return t ? t + " vote" + (t > 1 ? "s" : "") + " so far." : "" })()}</span>${isNew ? "" : '<button type="button" class="btn small" id="spollclr" title="Starts the poll fresh, for example after you practiced with it">Clear the votes</button>'}</div>`;
+      + `<div class="row"><span class="note" style="flex:1">Each phone can vote once, and the vote can't be changed. ${(() => { const c = POLLS[pollKey(o)] || {}, t = Object.values(c).reduce((a, b) => a + (+b || 0), 0); return t ? t + " vote" + (t > 1 ? "s" : "") + " so far." : "" })()}</span>${isNew ? "" : '<button type="button" class="btn small" id="spollclr" title="Starts every poll in the talk fresh, for example after you practiced. Opening Stage does this too.">Clear the votes</button>'}</div>`;
     else if (ty === "qr") h += fld("slideTitle", "Title", true) + fld("slide", "Text under it", true) + `<p class="note">The code opens ${E(audienceURL())}</p>`;
     else if (/bullets/.test(ty)) h += fld("slideTitle", "Title", true) + fld("bullets", "Bullets (one per line)", true);
     else h += fld("eyebrow", "Small line on top") + fld("slideTitle", "Title", true) + fld("slide", "Subtitle", true) + `<label>Style<select ${A("layout")}><option value="left"${o.layout !== "center" ? " selected" : ""}>Gold title, white subtitle (left)</option><option value="center"${o.layout === "center" ? " selected" : ""}>White title, gold subtitle (centered)</option></select></label>`;
@@ -488,7 +494,7 @@ async function edit(){
       const bar = $("#txbar"); if (!bar) return; if (!has) { bar.innerHTML = `<span class="note">${pr.querySelector(".slide [data-k]") ? "Click a line of words on the slide to move it, resize it or line it up." : ""}</span>`; return }
       const al = o[selK + "Align"] || ""; bar.innerHTML = `<b>${LNM[selK] || "Words"}</b><span class="seg">${["left", "center", "right"].map(a => `<button type="button" class="btn small${al === a ? " on" : ""}" data-al="${a}" title="Line up ${a}">${{left: "⯇ Left", center: "Center", right: "Right ⯈"}[a]}</button>`).join("")}</span><button type="button" class="btn small" data-sz="-1" title="Smaller">A−</button><button type="button" class="btn small" data-sz="1" title="Bigger">A+</button><button type="button" class="btn small" data-kreset="1" title="Put it back where it was">Reset</button>` };
     const pv = () => { $("#prev").innerHTML = slideHTML(o, d); mark() };
-    const pc = $("#spollclr"); if (pc) pc.onclick = () => { if (!confirm("Clear all the votes on this poll? Phones that voted can vote again.")) return; const s = snapshot(); o.round = (+o.round || 0) + 1; commit(s); slideEdit(i, onSave) };
+    const pc = $("#spollclr"); if (pc) pc.onclick = async () => { if (!confirm("Clear the votes on every poll in this talk? Phones that voted can vote again.")) return; try { await pollClear(d); K().toast("Votes cleared ✓") } catch (e) { K().toast("The votes weren't cleared (no connection?)", true) } slideEdit(i, onSave) };
     const sq = $("#sqr"); if (sq) sq.onchange = () => { const s = snapshot(); if (sq.checked) o.qr = {x: 74, y: 50, w: 22}; else delete o.qr; commit(s); pv() };
     mark();
     $("#txbar").onclick = e => { const b = e.target.closest("button"); if (!b || !selK) return; const s0 = snapshot(), k = selK;
