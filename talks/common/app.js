@@ -6,7 +6,7 @@ const C = window.TALKS_CONFIG;
 const MODE = document.body.dataset.mode;
 const $ = s => document.querySelector(s);
 const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const parts = location.pathname.replace(/\/(index|present|edit|present2|edit2|slides2)\.html$/, "/").split("/").filter(Boolean);
+const parts = location.pathname.replace(/\/(index|present|edit|present2|edit2|slides2|audience)\.html$/, "/").split("/").filter(Boolean);
 const FOLDER = MODE === "index" ? "" : decodeURIComponent(parts[parts.length - 1] || "");
 const PATH = C.root + "/" + FOLDER;                    // repo path of this talk's folder
 const RAW = `https://raw.githubusercontent.com/${C.owner}/${C.repo}/${C.branch}/`;
@@ -973,8 +973,8 @@ async function toJpeg(file){
 // =====================================================================
 const STUB = mode => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Talk</title>
-<link rel="stylesheet" href="../common/app.css?v=62"><link rel="stylesheet" href="../common/countdown.css?v=62"><link rel="stylesheet" href="../common/gate.css?v=62"></head>
-<body data-mode="${mode}"><script src="../common/config.js?v=62"></script><script src="../common/countdown.js?v=62"></script><script src="../common/gate.js?v=62"></script><script src="../common/app.js?v=62"></script>${mode === "edit" ? '<script src="../common/ai.js?v=62"></script>' : ""}</body></html>
+<link rel="stylesheet" href="../common/app.css?v=63"><link rel="stylesheet" href="../common/countdown.css?v=63"><link rel="stylesheet" href="../common/gate.css?v=63"></head>
+<body data-mode="${mode}"><script src="../common/config.js?v=63"></script><script src="../common/countdown.js?v=63"></script><script src="../common/gate.js?v=63"></script><script src="../common/app.js?v=63"></script>${mode === "edit" ? '<script src="../common/ai.js?v=63"></script>' : ""}</body></html>
 `;
 const folderName = t => t.replace(/&/g, " ").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1)).join("-");
 const newTalk = title => ({format: "talk/1", id: folderName(title).toLowerCase(), title, audience: "", length: "", event: "", bigIdea: "", timerMinutes: "", coverImage: "", titleImage: "",

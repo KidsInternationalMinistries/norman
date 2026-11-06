@@ -17,7 +17,7 @@ const MODE = document.body.dataset.mode;
 const parts = location.pathname.replace(/\/[^/]*\.html$/, "/").split("/").filter(Boolean);
 const FOLDER = decodeURIComponent(parts[parts.length - 1] || ""), PATH = C.root + "/" + FOLDER, FILE = PATH + "/talk2.json";
 const LV = ["", "Section", "Point", "Sub point", "Detail"];
-const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video"};
+const TYPES = {image: "Picture with words", verse: "Verse", plain: "Words only", bullets: "Bullets", bulletsimg: "Bullets on a picture", quote: "Quote", video: "Video", qr: "QR code to the audience page"};
 const STOP = {name: "Stop", stop: true};
 // Each outline tag can carry a short id ([#2 Joke|k3f9]) so its talking points (d.notes[id]) stay with it when it moves or is renamed.
 const newId = () => Math.random().toString(36).slice(2, 7);
@@ -55,10 +55,14 @@ function build(P){ const t = P.t, S = []; let cur = null, stack = [], fresh = nu
     pos = x.end; pre = i });
   words(t.length); if (fresh) bare();
   return S }
-function slideHTML(s, d){ if (!s) return d && d.titleImage ? `<div class="slide">${T.imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d ? d.title : ""});
+// The audience page (people follow the talk on their phones) and the QR code slide that opens it.
+const audienceURL = () => new URL("audience.html", location.href.replace(/[?#].*$/, "")).href;
+function qrSVG(url){ try { const q = window.qrcode(0, "M"); q.addData(url); q.make(); return q.createSvgTag({scalable: true, margin: 2}) } catch (e) { return `<div class="qrno">QR code</div>` } }
+function qrSlide(s){ const u = audienceURL(); return `<div class="slide qrs"><div class="qrx"><div class="qrt">${E(s.slideTitle || "Follow along on your phone")}</div>${(s.slide || "").trim() ? `<div class="qrs2">${E(s.slide)}</div>` : ""}<div class="qru">${E(u.replace(/^https?:\/\//, ""))}</div></div><div class="qri">${qrSVG(u)}</div></div>` }
+function slideHTML(s, d){ if (s && s.type === "qr") return qrSlide(s); if (!s) return d && d.titleImage ? `<div class="slide">${T.imgTag(d.titleImage)}</div>` : slideBox({layout: "center", slideTitle: d ? d.title : ""});
   if (s.type === "verse") return verseSlide({ref: s.ref || s.name, text: s.text, version: s.version});
   return xsHTML(s.type && SLIDE_TYPES[s.type] ? s : {...s, type: "image"}) }
-const icon = s => s.stop ? "■" : s.type === "verse" ? "✝" : s.type === "video" ? "▶" : s.type === "quote" ? "❝" : /bullets/.test(s.type) ? "☰" : "▣";
+const icon = s => s.type === "qr" ? "⌗" : s.stop ? "■" : s.type === "verse" ? "✝" : s.type === "video" ? "▶" : s.type === "quote" ? "❝" : /bullets/.test(s.type) ? "☰" : "▣";
 
 async function load(fresh){
   if (fresh || token()) { try { const g = await GH.get(FILE); return {d: JSON.parse(g.text), sha: g.sha} } catch (e) { if (fresh) throw e } }
@@ -67,7 +71,7 @@ let bc = null; try { bc = new BroadcastChannel("talk2-" + FOLDER) } catch (e) {}
 const relay = d => C.relay + "/" + d.relayTopic;
 function topBar(d, active){ return `<div class="top"><h1>${E(d.title)} <span class="v2">new version</span></h1><div class="mode">
   <a class="btn${active === "edit" ? " on" : ""}" href="edit2.html">Edit</a><a class="btn${active === "present" ? " on" : ""}" href="present2.html">Stage</a>
-  <a class="btn" href="slides2.html" target="_blank" rel="noopener">Slides</a><a class="btn" href="edit.html" title="The version you used before">Old version</a></div></div>` }
+  <a class="btn" href="slides2.html" target="_blank" rel="noopener">Slides</a><a class="btn" href="audience.html" target="_blank" rel="noopener" title="The page the audience follows on their phones">Audience</a><a class="btn" href="edit.html" title="The version you used before">Old version</a></div></div>` }
 
 // =====================================================================
 // SLIDES (monitor): follows the presenter; arrows step through the slides here, and it snaps back when the presenter moves.
@@ -233,8 +237,9 @@ async function edit(){
       <span class="note">Type <b>/</b> for a point, a slide or a reading cue. Drag slides in from the right.</span></div>
       <div class="ftext" id="ftext"></div></main><div class="gut" data-g="c3" title="Drag to resize; double-click to reset"></div>
     <aside class="side side2"><div class="stop2"><div class="scr"></div><div class="cap" id="cap"></div><div class="stepbar"><button type="button" class="btn small" id="eb">&larr; Back</button><span id="epos"></span><button type="button" class="btn small pri" id="en">Next &rarr;</button></div></div><div class="gut h" data-g="h1" title="Drag to resize; double-click to reset"></div>
-      <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><button type="button" data-tab="lib">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd" hidden>+ New slide</button></div><div class="tabbody">
+      <div class="sbot"><div class="ptabs"><button type="button" data-tab="tp" class="on">Talking points</button><button type="button" data-tab="au">Audience notes</button><button type="button" data-tab="lib">Slides</button><button type="button" data-tab="run">In order of use</button><button type="button" class="btn small" id="sadd" hidden>+ New slide</button></div><div class="tabbody">
       <div class="tp" id="tpbox"><div class="tph"><b id="tpt">Talking points</b><span class="tpb"><button type="button" data-c="bold" title="Bold"><b>B</b></button><button type="button" data-c="underline" title="Underline"><u>U</u></button><button type="button" data-c="italic" title="Italic"><i>I</i></button><button type="button" data-c="insertUnorderedList" title="Bullets">•</button><button type="button" data-c="insertOrderedList" title="Numbers">1.</button><button type="button" data-c="outdent" title="Less indent">⇤</button><button type="button" data-c="indent" title="More indent">⇥</button></span><button type="button" class="btn small aib" id="tpai" title="The AI drafts short talking points from this part's text">✨ Draft</button></div>
+        <div class="aubar" id="aubar" hidden></div>
         <div class="tpe" id="tpe" contenteditable="true" spellcheck="true" data-ph="What you glance at while you talk: a few short lines. Bold, underline and bullets work."></div></div>
       <div class="plist" id="plist" hidden></div></div></div></aside></div>
     <dialog class="sdlg v2d" id="sdlg"></dialog><dialog class="verse ved" id="ndlg"></dialog><dialog class="sdlg pdlg" id="pdlg"></dialog>`;
@@ -244,13 +249,13 @@ async function edit(){
   function changed(snap){ if (snap !== false) { hist.push(snap); if (hist.length > 100) hist.shift(); $("#undo").disabled = false }
     P = parse(d); S = build(P); SH = S.map(x => x.slide); if (k >= S.length) k = Math.max(0, S.length - 1); dirty = true; setSave("Saving…"); clearTimeout(timer); timer = setTimeout(flush, 900); redraw() }
   const changed0 = s => changed(s), slideEdit0 = (i, f) => slideEdit(i, f);
-  const snapshot = () => JSON.stringify({text: d.text, slides: d.slides, notes: d.notes || {}});
+  const snapshot = () => JSON.stringify({text: d.text, slides: d.slides, notes: d.notes || {}, audNotes: d.audNotes || {}, languages: d.languages || []});
   async function flush(){ if (saving || !dirty) return; saving = true; dirty = false; const body = JSON.stringify(d, null, 1) + "\n";
     try { SHA = await GH.put(FILE, b64e(body), SHA, "Edit " + d.title + " (new version)"); setSave(dirty ? "Saving…" : "Saved. The live pages update in about a minute.") }
     catch (e) { if (e.status === 409 || e.status === 422) { try { SHA = (await GH.get(FILE)).sha; dirty = true } catch (_) {} } else { dirty = true; setSave("Not saved (" + (e.detail || e.message) + "). Retrying…", true) } setTimeout(flush, e.status === 409 || e.status === 422 ? 200 : 5000) }
     saving = false; if (dirty) flush() }
   window.addEventListener("beforeunload", e => { if (dirty || saving) { e.preventDefault(); e.returnValue = "" } });
-  $("#undo").onclick = () => { const s = hist.pop(); if (!s) return; const o = JSON.parse(s); d.text = o.text; d.slides = o.slides; d.notes = o.notes || {}; $("#undo").disabled = !hist.length; changed(false); drawText() };
+  $("#undo").onclick = () => { const s = hist.pop(); if (!s) return; const o = JSON.parse(s); d.text = o.text; d.slides = o.slides; d.notes = o.notes || {}; d.audNotes = o.audNotes || {}; d.languages = o.languages || []; $("#undo").disabled = !hist.length; changed(false); drawText() };
 
   // ---- the text box ----
   const box = () => $("#ftext .rich.big");
@@ -317,14 +322,14 @@ async function edit(){
     try { dl.showModal() } catch (e) { dl.setAttribute("open", "") } $("#nx").focus() }
   // ---- slides: library, editor ----
   const usesOf = nm => P.toks.filter(x => x.k === "slide" && x.slide.name === nm).length;
-  function plist(){ const el = $("#plist"); if (panel === "tp") return; if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null);
+  function plist(){ const el = $("#plist"); if (panel === "tp" || panel === "au") return; if (panel === "run") { const L = P.toks.filter(x => x.k === "slide" && !x.slide.stop && x.step != null);
       el.innerHTML = L.length ? L.map(x => { const i = x.step; return `<div class="pi run${SH[k] === x.slide && i <= k ? " cur" : ""}" data-step="${i}"><div class="th">${slideHTML(x.slide, d)}</div><div class="pn"><b>${E(x.slide.name)}</b><span>${x.node ? E(x.node.full + " " + x.node.text) : "Opening"}</span></div></div>` }).join("") : `<p class="note">No slides in the text yet.</p>`; return }
     el.innerHTML = d.slides.map((s, i) => { const u = usesOf(s.name); return `<div class="pi${u ? "" : " unused"}${SH[k] === s ? " cur" : ""}" draggable="true" data-si="${i}"><div class="th">${slideHTML(s, d)}</div><div class="pn"><b>${icon(s)} ${E(s.name)}</b><span>${E(TYPES[s.type] || "Slide")}${u > 1 ? ` · used ${u}×` : u ? "" : " · not in the text"}</span></div></div>` }).join("") || `<p class="note">No slides yet. Press + New slide.</p>` }
   function slideNew(done){ const m = document.createElement("div"); m.className = "vmenu"; m.innerHTML = `<div class="vmh">New slide</div>` + Object.entries(TYPES).map(([t, n]) => `<button type="button" data-t="${t}">${E(n)}</button>`).join("");
     document.body.appendChild(m); const r = ($("#sadd") || document.body).getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 260)) + "px"; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
     const off = e => { if (!m.contains(e.target)) { m.remove(); removeEventListener("mousedown", off) } }; setTimeout(() => addEventListener("mousedown", off), 0);
     m.onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; m.remove(); removeEventListener("mousedown", off); const t = b.dataset.t; let n = d.slides.length + 1, nm; do { nm = (t === "verse" ? "Verse " : "Slide ") + n++ } while (d.slides.some(s => s.name === nm));
-      const s = snapshot(), o = {name: nm, type: t}; if (t === "verse") Object.assign(o, {ref: "", text: "", version: "ESV"}); else if (t === "quote") Object.assign(o, {quote: "", by: ""}); else if (t === "video") Object.assign(o, {url: "", video: "", autoNext: true}); else Object.assign(o, {slideTitle: "", slide: "", eyebrow: "", layout: "center", image: "", bullets: ""});
+      const s = snapshot(), o = {name: nm, type: t}; if (t === "qr") Object.assign(o, {name: "QR code", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}); else if (t === "verse") Object.assign(o, {ref: "", text: "", version: "ESV"}); else if (t === "quote") Object.assign(o, {quote: "", by: ""}); else if (t === "video") Object.assign(o, {url: "", video: "", autoNext: true}); else Object.assign(o, {slideTitle: "", slide: "", eyebrow: "", layout: "center", image: "", bullets: ""});
       draft = o; slideEdit(-1, done) } }      // a new slide is only a draft until Save
   // The / menu's "Slide…": every slide as a small picture with its name; pick one to put it in the text.
   function slidePick(done){ const dl = $("#pdlg");
@@ -346,6 +351,7 @@ async function edit(){
     if (ty === "verse") h += `<div class="row"><label style="flex:1 1 220px">Reference (or some words from the verse)<input data-f="ref" value="${E(o.ref)}" placeholder="John 15:5, or words you remember"></label><label style="flex:0 1 140px">Version<input data-f="version" value="${E(o.version)}" placeholder="ESV, NIV, NLT…"></label></div>` + fld("text", "Text (**bold**, __underline__)", true) + (o.aiText ? `<p class="note">✨ This text came from the AI. Check it against your Bible, then edit it if needed.</p>` : "");
     else if (ty === "quote") h += fld("quote", "Quote", true) + fld("by", "Who said it");
     else if (ty === "video") h += fld("url", "Link (YouTube or a video file)", false, "https://…") + `<label class="chk"><input type="checkbox" ${A("autoNext")}${o.autoNext !== false ? " checked" : ""}> When it ends, go to the next step</label>`;
+    else if (ty === "qr") h += fld("slideTitle", "Title", true) + fld("slide", "Text under it", true) + `<p class="note">The code opens ${E(audienceURL())}</p>`;
     else if (/bullets/.test(ty)) h += fld("slideTitle", "Title", true) + fld("bullets", "Bullets (one per line)", true);
     else h += fld("eyebrow", "Small line on top") + fld("slideTitle", "Title", true) + fld("slide", "Subtitle", true) + `<label>Style<select ${A("layout")}><option value="left"${o.layout !== "center" ? " selected" : ""}>Gold title, white subtitle (left)</option><option value="center"${o.layout === "center" ? " selected" : ""}>White title, gold subtitle (centered)</option></select></label>`;
     if (ty === "image" || ty === "bulletsimg") h += `<div class="row"><span class="tag">Picture (no words in it)</span><label class="btn small">${o.image ? "Replace" : "Add"} picture<input type="file" accept="image/*" id="simg" hidden></label>${o.image ? '<button type="button" class="btn small" id="sdelimg">Remove picture</button>' : ""}<span class="note" id="smsg"></span></div>`;
@@ -400,18 +406,55 @@ async function edit(){
   let tpKey = null, tpT = null; const keyOf = n => n ? (n.id || "@" + n.at) : "";
   let tpPick = null;      // an outline tag picked in the outline on the left: its talking points show, even if Next lands inside a point under it
   function tpNode(){ if (tpPick) { const n = P.nodes.find(x => keyOf(x) === tpPick); if (n) return n } const st = S[k]; return st && st.node || null }
+  // The same editor holds the talking points (tpMode "tp") or the audience notes ("au"; auLang "" = the original, else one translation).
+  let tpMode = "tp", auLang = "";
+  const AU = id => { d.audNotes = d.audNotes || {}; return d.audNotes[id] || (d.audNotes[id] = {html: "", tr: {}, src: {}}) };
+  const getNote = n => !n || !n.id ? "" : tpMode === "tp" ? (d.notes || {})[n.id] || "" : (d.audNotes || {})[n.id] ? (auLang ? (d.audNotes[n.id].tr || {})[auLang] || "" : d.audNotes[n.id].html || "") : "";
   function drawTP(force){ const n = tpNode(), e = $("#tpe"); if (!e) return; if (!force && (keyOf(n) === tpKey || document.activeElement === e)) return; tpKey = keyOf(n);
-    $("#tpt").textContent = n ? "Talking points · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text : "Talking points (step into a point first)"; e.contentEditable = n ? "true" : "false";
-    e.innerHTML = n && n.id && d.notes && d.notes[n.id] ? cleanHTML(d.notes[n.id]) : "" }
+    const what = tpMode === "tp" ? "Talking points" : "Audience notes" + (auLang ? " (" + auLang + ")" : "");
+    $("#tpt").textContent = n ? what + " · " + (n.lvl === 1 ? "Section " : "") + n.full + " " + n.text : what + " (step into a point first)"; e.contentEditable = n ? "true" : "false";
+    e.dataset.ph = tpMode === "tp" ? "What you glance at while you talk: a few short lines. Bold, underline and bullets work." : auLang ? "No " + auLang + " yet. Write the notes in the original, then press ✨ Translate this. You can change the translation here by hand." : "What the audience sees on their phones for this part: the main idea, a verse, a question to think about…";
+    e.innerHTML = cleanHTML(getNote(n)); drawAU(n) }
   function saveTP(){ clearTimeout(tpT); const e = $("#tpe"); if (!e) return; let n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const h = cleanHTML(e.innerHTML), has = !!noteText(h);
-    if ((n.id && (d.notes || {})[n.id] || "") === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
+    if (getNote(n) === (has ? h : "")) return; const s = snapshot(); d.notes = d.notes || {};
     if (!n.id) { if (!has) return; const id = newId(); d.text = d.text.slice(0, n.end - 1) + "|" + id + d.text.slice(n.end - 1); n.id = id; tpKey = id; var redrawText = true }
-    if (has) d.notes[n.id] = h; else delete d.notes[n.id]; changed(s); if (redrawText) drawText() }
+    if (tpMode === "tp") { if (has) d.notes[n.id] = h; else delete d.notes[n.id] }
+    else { const a = AU(n.id); if (auLang) { a.tr[auLang] = has ? h : ""; a.ed = a.ed || {}; a.ed[auLang] = true; if (a.src[auLang] == null) a.src[auLang] = a.html } else a.html = has ? h : "" }
+    changed(s); if (redrawText) drawText(); drawAU(n) }
+  // ---- languages and translations of the audience notes ----
+  const trBusy = new Set();
+  const stale = (id, L) => { const a = (d.audNotes || {})[id]; return !!(a && noteText(a.html) && (a.src || {})[L] !== a.html) };
+  function drawAU(n){ const bar = $("#aubar"); if (!bar) return; bar.hidden = tpMode !== "au"; if (bar.hidden) return; const L = d.languages || [];
+    const st = lg => !n || !n.id || !noteText(((d.audNotes || {})[n.id] || {}).html) ? "" : trBusy.has(n.id + "|" + lg) ? " …" : stale(n.id, lg) ? " ○" : (((d.audNotes || {})[n.id] || {}).ed || {})[lg] ? " ✎" : " ✓";
+    bar.innerHTML = `<div class="row"><span class="note">Show:</span><button type="button" class="lgb${auLang ? "" : " on"}" data-lg="">Original</button>${L.map(lg => `<button type="button" class="lgb${auLang === lg ? " on" : ""}" data-lg="${E(lg)}" title="${{"✓": "Translated", "○": "The original changed: needs translating", "✎": "Translated and changed by hand", "…": "Translating…"}[st(lg).trim()] || ""}">${E(lg)}${st(lg)}</button>`).join("")}</div>
+      <div class="row"><span class="note">Languages:</span>${L.map(lg => `<span class="lgc">${E(lg)}<i data-rmlg="${E(lg)}" title="Remove this language">×</i></span>`).join("") || '<span class="note">none yet</span>'}<button type="button" class="btn small" id="addlg">+ Add a language</button>${L.length ? `<button type="button" class="btn small aib" id="trone" title="Translate this note into ${E(auLang || "every language")}">✨ Translate this</button><button type="button" class="btn small aib" id="trall" title="Translate every audience note that is new or changed">✨ Translate all that changed</button>` : ""}<button type="button" class="btn small" id="addqr" title="A slide with a QR code that opens the audience page">+ QR code slide</button><a class="btn small" href="audience.html" target="_blank" rel="noopener">Open the audience page</a></div>` }
+  async function translateNotes(ids, langs, force){ saveTP(); const L = langs || d.languages || []; if (!L.length) { K().toast("Add a language first."); return } const jobs = [];
+    for (const id of ids) for (const lg of L) { const a = (d.audNotes || {})[id]; if (a && noteText(a.html) && (force || stale(id, lg)) && !trBusy.has(id + "|" + lg)) jobs.push([id, lg]) }
+    if (!jobs.length) { K().toast("Everything is translated already ✓"); return }
+    const edited = jobs.filter(([id, lg]) => { const a = d.audNotes[id]; return a.ed && a.ed[lg] && noteText((a.tr || {})[lg]) }).length, had = jobs.filter(([id, lg]) => noteText((d.audNotes[id].tr || {})[lg])).length;
+    if (had && !confirm(`${had === 1 ? "There is already a translation" : "There are already " + had + " translations"} here${edited ? ` (${edited} changed by hand)` : ""}. They'll be replaced by a new translation of the current notes, keeping your hand-made changes wherever they still fit. Go ahead?`)) return;
+    jobs.forEach(([id, lg]) => trBusy.add(id + "|" + lg)); drawAU(tpNode()); let i = 0, err = null;
+    await Promise.all(Array.from({length: Math.min(4, jobs.length)}, async () => { while (i < jobs.length) { const [id, lg] = jobs[i++], a = AU(id), src = a.html;
+        const prev = noteText((a.tr || {})[lg]) ? a.tr[lg] : "", was = (a.src || {})[lg] || "";
+        try { const sys = `Translate notes for an audience into ${lg}. Keep every HTML tag exactly as it is and translate only the words. Use the Bible book names and wording usual in ${lg}. Natural, simple and warm, not word for word. Return JSON {"html": "..."}.`;
+          const j = prev ? await K().chat(sys + `\nThere is already a ${lg} translation, and a local speaker may have improved it by hand. Update it to match the NEW original: keep the wording, word choices and style of the existing translation wherever they still fit, change only what the changes to the original need, and translate any new parts in the same style.`,
+              `ORIGINAL BEFORE (what the existing translation was made from):\n${was || "(unknown)"}\n\nEXISTING ${lg.toUpperCase()} TRANSLATION (keep its changes):\n${prev}\n\nNEW ORIGINAL (translate this):\n${src}`, {effort: "medium"})
+            : await K().chat(sys, src, {effort: "low"});
+          if (j.html && a.html === src) { const s = snapshot(); a.tr = a.tr || {}; a.src = a.src || {}; a.tr[lg] = cleanHTML(String(j.html)); a.src[lg] = src; if (a.ed) delete a.ed[lg]; changed(s) } } catch (e) { err = e } finally { trBusy.delete(id + "|" + lg) } } }));
+    if (err) aiFail(err); const n = tpNode(); drawAU(n); if (auLang && n && ids.includes(n.id) && document.activeElement !== $("#tpe")) $("#tpe").innerHTML = cleanHTML(getNote(n)) }
+  document.addEventListener("click", e => { const t = e.target; if (!t.closest || !t.closest("#aubar")) return;
+    const lb = t.closest("[data-lg]"); if (lb) { saveTP(); auLang = lb.dataset.lg; drawTP(true); return }
+    const rm = t.closest("[data-rmlg]"); if (rm) { const lg = rm.dataset.rmlg; if (!confirm(`Remove ${lg}? Its translations are deleted too.`)) return; const s = snapshot(); d.languages = (d.languages || []).filter(x => x !== lg); Object.values(d.audNotes || {}).forEach(a => { if (a.tr) delete a.tr[lg]; if (a.src) delete a.src[lg] }); if (auLang === lg) auLang = ""; changed(s); drawTP(true); return }
+    if (t.closest("#addlg")) { const lg = (prompt("Which language? (for example Tagalog, Cebuano, Spanish, Korean)") || "").replace(/[<>"]/g, "").trim(); if (!lg) return; const nm = lg[0].toUpperCase() + lg.slice(1);
+      if ((d.languages || []).some(x => x.toLowerCase() === nm.toLowerCase())) return; const s = snapshot(); d.languages = [...(d.languages || []), nm]; changed(s); drawAU(tpNode()); K().toast(nm + " added. Press ✨ Translate all that changed when the notes are ready."); return }
+    if (t.closest("#trall")) { translateNotes(Object.keys(d.audNotes || {})); return }
+    if (t.closest("#trone")) { saveTP(); const n = tpNode(); if (!n || !n.id) { K().toast("Write the notes for this part first."); return } translateNotes([n.id], auLang ? [auLang] : null, true); return }
+    if (t.closest("#addqr")) { let nm = "QR code", q = 2; while (d.slides.some(x => x.name === nm)) nm = "QR code " + q++; draft = {name: nm, type: "qr", slideTitle: "Follow along on your phone", slide: "Scan for the slides and notes in your language"}; slideEdit(-1); return } });
   document.addEventListener("input", e => { if (e.target.id === "tpe") { clearTimeout(tpT); tpT = setTimeout(saveTP, 700) } });
   document.addEventListener("focusout", e => { if (e.target.id === "tpe") saveTP() });
   document.addEventListener("keydown", e => { if (e.target.id !== "tpe" || e.key !== "Tab") return; e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent") });
   document.addEventListener("mousedown", e => { const b = e.target.closest(".tpb [data-c]"); if (!b) return; e.preventDefault(); const t = $("#tpe"); if (document.activeElement !== t) t.focus(); document.execCommand(b.dataset.c); clearTimeout(tpT); tpT = setTimeout(saveTP, 400) });
-  $("#tpai").onclick = async () => { const n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own (only what's under it), so there's nothing to draft from.`); return }
+  $("#tpai").onclick = async () => { const n = P.nodes.find(x => keyOf(x) === tpKey); if (!n) return; if (tpMode === "au") { auDraft(n); return } const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own (only what's under it), so there's nothing to draft from.`); return }
     const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the talking points that are there now?")) return; const stop = busy("Drafting the talking points…");
     try { const j = await K().chat(`You turn part of a talk into the speaker's talking points: memory triggers he glances at on a screen while he speaks from memory. Each line is a short catch phrase of 1 to 4 words (never more than 5), like a heading, never a sentence: no full clauses, no explanation, no quotes from the text. Name the story, image or idea so it triggers his memory ("MC's Face", "CCS Talk"), in Title Case, in the order he says them. Usually 3 to 7 lines. Indent a line (level 2) under the one before when it is clearly a part of it. Only mark bold the one line that matters most, if any.
 Example. Text about: his friend Art first set the conference topic as "Nothing", he once gave a talk about nothing at a CCS graduation and walked off stage, the MC's terrified face, how "nothing" relates to Character, Calling and Conviction, and what Jesus meant by "apart from me you can do nothing".
@@ -422,6 +465,10 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
       const L = (j.points || []).filter(x => x && x.text); let h = "<ul>", open2 = false;
       for (const x of L) { const li = `<li>${x.bold ? "<b>" + E(x.text) + "</b>" : E(x.text)}`; if (+x.level === 2) { h += (open2 ? "</li>" : "<ul>") + li; open2 = true } else { h += (open2 ? "</li></ul></li>" : h === "<ul>" ? "" : "</li>") + li; open2 = false } }
       h += (open2 ? "</li></ul></li>" : "</li>") + "</ul>"; e.innerHTML = cleanHTML(h); tpKey = keyOf(n); saveTP() } catch (err) { aiFail(err) } finally { stop() } };
+  async function auDraft(n){ if (auLang) { K().toast("Switch to Original to draft; the translations follow."); return } const seg = d.text.slice(n.end, n.stop); if (words(seg) < 5) { K().toast(`${n.full} ${n.text} has no text of its own, so there's nothing to draft from.`); return }
+    const e = $("#tpe"); if (noteText(e.innerHTML) && !confirm("Replace the audience notes that are there now?")) return; const stop = busy("Drafting the audience notes…");
+    try { const j = await K().chat(`You write the notes people in the audience see on their phones while a Christian ministry leader speaks. For this part of the talk: 2 to 5 short lines: the main idea in plain words, any Bible verse he reads (reference and its key words), and if it fits one question to think about. Friendly and clear, no jargon, no retelling of the whole story. Return JSON {"lines": [{"text": "...", "bold": false}]}.`, `${brief()}\n\nThis part: ${n.full} ${n.text}\n\n${plain(seg)}`, {effort: "low"});
+      const L = (j.lines || []).filter(x => x && x.text); e.innerHTML = cleanHTML("<ul>" + L.map(x => `<li>${x.bold ? "<b>" + E(x.text) + "</b>" : E(x.text)}</li>`).join("") + "</ul>"); tpKey = keyOf(n); saveTP() } catch (err) { aiFail(err) } finally { stop() } }
   function side(){ drawTP(); const s = peek ? d.slides.find(x => x.name === peek) : SH[k]; setSlide($(".side .scr"), slideHTML(s, d)); const st = S[k];
     $("#cap").innerHTML = peek ? `Showing ${E(peek)} · Next or Back goes back` : st ? `${st.node ? E(st.node.full + " " + st.node.text) : "Opening"}${s ? ` · ${E(s.name)} <button type="button" class="linkbtn" data-edit="${E(s.name)}">Edit</button>` : ""}` : "";
     $("#epos").textContent = S.length ? (k + 1) + " / " + S.length : "" }
@@ -438,7 +485,7 @@ Return JSON {"points": [{"text": "...", "level": 1, "bold": false}]}.`,
     const pe = tg.closest("[data-edit]"); if (pe) { const i = d.slides.findIndex(x => x.name === pe.dataset.edit); if (i >= 0) slideEdit(i); return }
     const pi = tg.closest(".pi[data-si]"); if (pi) { slideEdit(+pi.dataset.si); return }
     const pr = tg.closest(".pi[data-step]"); if (pr) { step(+pr.dataset.step); return }
-    const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); $("#tpbox").hidden = panel !== "tp"; $("#plist").hidden = panel === "tp"; $("#sadd").hidden = panel === "tp"; plist(); return } });
+    const tb = tg.closest(".ptabs [data-tab]"); if (tb) { panel = tb.dataset.tab; document.querySelectorAll(".ptabs [data-tab]").forEach(x => x.classList.toggle("on", x === tb)); const tpm = panel === "tp" || panel === "au"; $("#tpbox").hidden = !tpm; $("#plist").hidden = tpm; $("#sadd").hidden = tpm; if (tpm) { saveTP(); tpMode = panel; drawTP(true) } plist(); return } });
   $("#sadd").onclick = () => slideNew();
   $("#aisp").onclick = () => spellAll().catch(aiFail); $("#lis").onclick = () => listen();
   $("#det").onclick = () => { const dl = $("#ndlg"); const f = (k2, lb, ta) => ta ? `<label>${lb}<textarea data-k="${k2}">${E(d[k2])}</textarea></label>` : `<label>${lb}<input data-k="${k2}" value="${E(d[k2])}"></label>`;
@@ -690,5 +737,29 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   layout($("#lay"), () => hl(true)); $("#m").addEventListener("scroll", () => { const el = $("#selai"); if (el && !el.dataset.open) el.remove() });
   drawText(); redraw(); hl(true)
 }
-({edit2: edit, present2: present, slides2: slides}[MODE] || (() => {}))();
+// =====================================================================
+// AUDIENCE (phones): follows the presenter: the slide on top and that part's audience notes, in the language you pick.
+// =====================================================================
+async function audience(){
+  document.body.innerHTML = `<div class="au"><div class="auh"><b id="aut">Loading…</b><select id="aul" aria-label="Language"></select></div><div class="aus" id="aus"></div><div class="aun" id="aun"></div>
+    <div class="aubtm"><button type="button" id="aub">&larr;</button><span id="aust">Connecting…</span><button type="button" id="aun2">&rarr;</button><button type="button" id="aulive" hidden>Back to live</button></div></div>`;
+  let d; try { d = (await load(false)).d } catch (e) { $("#aut").textContent = "Couldn't load the talk."; return }
+  document.title = d.title; $("#aut").textContent = d.title; T.preload(d.slides || [], d);
+  const P = parse(d), S = build(P), SH = S.map(x => x.slide), L = d.languages || [];
+  let lang = ""; try { lang = localStorage.getItem("au-lang") || "" } catch (e) {}
+  if (!localStorage.getItem("au-lang")) { const nav = (navigator.language || "").toLowerCase(), names = {tl: "Tagalog", fil: "Tagalog", ceb: "Cebuano", es: "Spanish", ko: "Korean", zh: "Chinese", ja: "Japanese", fr: "French", de: "German", pt: "Portuguese", id: "Indonesian", vi: "Vietnamese", th: "Thai"}; const g = names[nav.split("-")[0]]; if (g && L.includes(g)) lang = g }
+  if (lang && !L.includes(lang)) lang = "";
+  $("#aul").innerHTML = `<option value="">English</option>` + L.map(x => `<option${x === lang ? " selected" : ""}>${E(x)}</option>`).join(""); $("#aul").hidden = !L.length;
+  let pres = 0, local = null, end = false, lastAt = 0, on = false;
+  const noteAt = i => { const st = S[i]; for (let p = st && st.node; p; p = p.parent) { const a = p.id && (d.audNotes || {})[p.id]; if (!a) continue; const h = lang && a.tr && noteText(a.tr[lang]) ? a.tr[lang] : a.html; if (noteText(h)) return h } return "" };
+  const show = () => { const i = local == null ? pres : local; setSlide($("#aus"), end && local == null ? '<div class="slide blank"></div>' : slideHTML(SH[i], d)); const h = noteAt(i); $("#aun").innerHTML = h ? cleanHTML(h) : "";
+    $("#aulive").hidden = local == null; $("#aust").textContent = local != null ? "Looking back" : on ? "Live" : "Waiting for the speaker…"; $("#aust").className = local == null && on ? "on" : "" };
+  const from = m => { if (!m || m.v !== 2) return; if (m.at && m.at <= lastAt) return; lastAt = m.at || Date.now(); on = true; end = !!m.end; pres = Math.max(0, Math.min(S.length - 1, +m.step || 0)); show() };
+  const stepL = dd => { let i = local == null ? pres : local; const cur = noteAt(i) + "|" + (SH[i] && SH[i].name); do { i += dd } while (i > 0 && i < pres && noteAt(i) + "|" + (SH[i] && SH[i].name) === cur); i = Math.max(0, Math.min(pres, i)); local = i >= pres ? null : i; show() };
+  $("#aub").onclick = () => stepL(-1); $("#aun2").onclick = () => stepL(1); $("#aulive").onclick = () => { local = null; show() };
+  $("#aul").onchange = e => { lang = e.target.value; try { localStorage.setItem("au-lang", lang) } catch (_) {} show() };
+  try { const es = new EventSource(relay(d) + "/sse"); es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.event === "message") from(JSON.parse(m.message)) } catch (_) {} } } catch (e) {}
+  try { const t = await (await fetch(relay(d) + "/json?poll=1&since=12h", {cache: "no-store"})).text(); const Q = t.trim().split("\n").filter(Boolean).map(x => { try { return JSON.parse(JSON.parse(x).message) } catch (e) { return null } }).filter(x => x && x.v === 2); if (Q.length) from(Q[Q.length - 1]) } catch (e) {}
+  show() }
+({edit2: edit, present2: present, slides2: slides, audience2: audience}[MODE] || (() => {}))();
 })();
