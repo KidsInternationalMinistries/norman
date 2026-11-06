@@ -364,7 +364,16 @@
    "type": "verse",
    "ref": "2 Corinthians 12:9–10",
    "text": "But he said to me, \"My grace is sufficient for you, for my power is made perfect in weakness.\" Therefore I will boast all the more gladly about my weaknesses, so that Christ's power may rest on me. That is why, for Christ's sake, I delight in weaknesses, in insults, in hardships, in persecutions, in difficulties. For when I am weak, then I am strong.",
-   "version": "NIV"
+   "version": "NIV",
+   "tr": {
+    "Tagalog": {
+     "ref": "2 Corinto 12:9–10",
+     "text": "At sinabi niya sa akin, Ang aking biyaya ay sapat sa iyo: sapagka't ang aking kapangyarihan ay nagiging sakdal sa kahinaan. Kaya nga lubos na magmamalaki ako sa aking mga kahinaan, upang ang kapangyarihan ni Cristo ay lumagay sa akin. Kaya nga ako'y nalulugod sa mga kahinaan, sa mga pag-alimura, sa mga pangangailangan, sa mga pag-uusig, sa mga hirap na dahil kay Cristo: sapagka't pagka ako'y mahina, kung gayo'y ako'y malakas."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"ref\":\"2 Corinthians 12:9–10\",\"text\":\"But he said to me, \\\"My grace is sufficient for you, for my power is made perfect in weakness.\\\" Therefore I will boast all the more gladly about my weaknesses, so that Christ's power may rest on me. That is why, for Christ's sake, I delight in weaknesses, in insults, in hardships, in persecutions, in difficulties. For when I am weak, then I am strong.\"}"
+   }
   },
   {
    "name": "Mark 14:29–31",
