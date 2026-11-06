@@ -873,40 +873,63 @@ Return JSON {"name": "2-4 word unique name", "type": "image|quote|bullets|verse"
   // The narrated version: every step read in the AI voice and saved (voice/*.mp3 + narration2.json); slides2.html?play plays it for anyone with the link.
   const share = () => new URL("slides2.html?play", location.href.replace(/[?#].*$/, "")).href;
   function narrate(){ const k0 = K(), dl = k0.dlg("narr2", `<div class="ed"><div class="pgh"><b>🔊 Narrated version (share link)</b><button type="button" class="btn small" data-x>Close</button></div>
-      <p class="note">This reads the whole talk in the AI voice, with your reading cues, and saves it with the talk. Anyone with the link then watches the slides while the voice reads and moves them on. Only the parts that changed since last time use ElevenLabs credits.</p>
+      <p class="note">This reads the whole talk in the AI voice, with your reading cues, and saves it with the talk. Anyone with the link then watches the slides while the voice reads and moves them on. Parts you already heard with ▶ Listen, or that haven't changed since last time, are reused, so only new or changed words use ElevenLabs credits. A different voice reads everything fresh.</p>
       <p class="aimsg" id="nm"></p><div class="row"><button type="button" class="btn pri" id="ngo">Make the narrated version</button></div>
       <div id="nl" hidden><p class="note">Share this link (it updates about a minute after it's made):</p><div class="row"><input id="nu" readonly value="${E(share())}" style="flex:1"><button type="button" class="btn small" id="nc">Copy</button><a class="btn small" href="${E(share())}" target="_blank" rel="noopener">Open</a></div></div></div>`);
     dl.querySelector("[data-x]").onclick = () => dl.close(); k0.show(dl);
     $("#nc").onclick = () => { $("#nu").select(); try { navigator.clipboard.writeText(share()) } catch (e) { document.execCommand("copy") } k0.toast("Link copied") };
     GH.get(PATH + "/narration2.json").then(g => { const n = JSON.parse(g.text); $("#nm").textContent = "Last made " + new Date(n.made).toLocaleString() + ". Make it again after you change the talk."; $("#nl").hidden = false }).catch(() => {});
     $("#ngo").onclick = async () => { const b = $("#ngo"), m = $("#nm"); b.disabled = true; saveText();
-      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); const voice = await k0.voiceNow(), model = d.voiceModel === "v3" ? (d.v3Feel === "natural" ? "v3" : "v3s") : "v2"; k0.setV3(d.v3Feel);
+      try { if (!token()) throw new Error("Saving needs the GitHub sign-in on this page first."); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel); const voice = await k0.voiceNow(), model = voiceModel(), saved = await voiceHave();
         let old = {}, osha = null; try { const g = await GH.get(PATH + "/narration2.json"); old = JSON.parse(g.text); osha = g.sha } catch (e) {}
-        const have = new Set(); (old.steps || []).forEach(x => (x.items || []).forEach(y => y.say && have.add(y.say)));
+        const have = new Set(saved); (old.steps || []).forEach(x => (x.items || []).forEach(y => y.say && have.add(y.say)));
         const steps = [], jobs = [];
         for (let i = 0; i < S.length; i++) { const st = S[i], items = [];
           if (st.a == null) items.push({pause: 2.5});
           else { const parts = partsOf(st, null);
             for (let q = 0; q < parts.length; q++) { const p = parts[q]; if (p.pause) { items.push({pause: p.pause}); continue } if (!p.say) continue;
-              const file = "voice/" + (await k0.sha(voice + "|" + model + "|" + JSON.stringify(p.vs || {}) + "|" + p.say)).slice(0, 16) + ".mp3"; items.push({say: file, text: p.say});
+              const file = await pieceFile(k0, voice, p); items.push({say: file, text: p.say});
               if (!have.has(file) && !jobs.some(j => j.file === file)) jobs.push({file, p, prev: parts.slice(0, q).map(x => x.say || "").join(" ").slice(-500), next: parts.slice(q + 1).map(x => x.say || "").join(" ").slice(0, 300)}) } }
           steps.push({slide: st.slide ? st.slide.name : null, label: st.node ? st.node.full + " " + st.node.text : "", items}) }
         for (let q = 0; q < jobs.length; q++) { const j = jobs[q]; m.textContent = `Reading part ${q + 1} of ${jobs.length}…`;
           const a = j.p.v3 ? await k0.ttsV3(j.p.say) : await k0.tts(j.p.say, j.p.vs, {prev: j.prev, next: j.next}), data = a.b64 || await k0.blobB64(a.blob);
-          try { await GH.put(PATH + "/" + j.file, data, null, "Narration voice") } catch (e) { if (e.status !== 422) throw e } }
+          try { await GH.put(PATH + "/" + j.file, data, null, "Narration voice") } catch (e) { if (e.status !== 422) throw e } saved.add(j.file) }
         m.textContent = "Saving…"; const N = {format: "narration/2", voice, model, made: new Date().toISOString(), steps};
         for (let a = 0; a < 3; a++) { try { await GH.put(PATH + "/narration2.json", b64e(JSON.stringify(N, null, 1) + "\n"), osha, "Narrated version"); break } catch (e) { if (a === 2 || (e.status !== 409 && e.status !== 422)) throw e; try { osha = (await GH.get(PATH + "/narration2.json")).sha } catch (_) { osha = null } } }
         m.textContent = `Done. ${jobs.length ? jobs.length + " new part" + (jobs.length > 1 ? "s" : "") + " read" : "Nothing had changed, so no new reading was needed"}.`; $("#nl").hidden = false }
       catch (e) { m.textContent = ""; aiFail(e) } b.disabled = false } }
+  // Saved voice pieces: every piece read for Listen or the narrated version is kept in the talk's voice/ folder, named by a hash of
+  // the voice, the voice style and the words, so the same words in the same voice are never read (and paid for) twice. Change the voice and everything is read fresh.
+  const voiceModel = () => d.voiceModel === "v3" ? (d.v3Feel === "natural" ? "v3" : "v3s") : "v2";
+  const pieceFile = async (k0, voice, p) => "voice/" + (await k0.sha(voice + "|" + voiceModel() + "|" + JSON.stringify(p.vs || {}) + "|" + p.say)).slice(0, 16) + ".mp3";
+  let VOICES_HAVE = null;      // the files in voice/ (loaded when Listen or the narrated version starts)
+  async function voiceHave(){ try { const r = await fetch(`https://api.github.com/repos/${C.owner}/${C.repo}/contents/${PATH}/voice?ref=${C.branch}&t=${Date.now()}`, {headers: token() ? {Authorization: "Bearer " + token()} : {}, cache: "no-store"});
+      VOICES_HAVE = new Set(r.ok ? (await r.json()).map(x => "voice/" + x.name) : []) } catch (e) { VOICES_HAVE = VOICES_HAVE || new Set() } return VOICES_HAVE }
+  // play a saved piece: the site copy, or GitHub's copy until the site has it
+  const savedPiece = f => new Promise(ok => { const au = new Audio(); let alt = false; au.preload = "auto"; au.oncanplaythrough = () => ok({url: au.src, starts: null, au}); au.onerror = () => { if (alt) return ok(null); alt = true; au.src = RAW + PATH + "/" + f }; au.src = f });
+  // new pieces are saved to GitHub one at a time in the background
+  const upQ = []; let upBusy = false;
+  async function upload(file, data){ upQ.push({file, data}); if (upBusy) return; upBusy = true;
+    while (upQ.length) { const j = upQ.shift(); try { await GH.put(PATH + "/" + j.file, j.data, null, "Voice for Listen") } catch (e) {} if (VOICES_HAVE) VOICES_HAVE.add(j.file) } upBusy = false }
   async function listen(from){ if (LS.on) { stopListen(); return } saveText();
     if (from == null && caretPos && caretPos.node.isConnected) { try { from = offsetOf(caretPos.node, caretPos.off) } catch (e) {} }
     let i0 = k; if (from != null) { const j = S.findIndex(st => st.a != null && from < st.b); if (j >= 0) { i0 = j; if (from < S[j].a) from = null } } const k0 = K(); k0.setVoice(d.voice || ""); k0.setV3(d.v3Feel); LS.on = true; LS.paused = false; const run = ++LS.run;
     const ctxOf = (i, dir) => { const L = []; for (let q = i + dir; q >= 0 && q < S.length && L.join(" ").length < 400; q += dir) if (S[q].a != null) L[dir < 0 ? "unshift" : "push"](plain(d.text.slice(S[q].a, S[q].b))); return L.join("\n") };
-    try { for (let i = i0; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { await wait(1800); continue }
-        const parts = partsOf(st, i === i0 ? from : null), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
-        const jobs = parts.map((p, q) => p.v3 ? k0.ttsV3(p.say) : p.say ? k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)}) : null);
-        for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue }
-          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = new Audio(r.url); LS.au = au; au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok; wordLight(p, au, r.starts); if (!LS.paused) au.play().catch(ok) }) } }
+    const voice = await k0.voiceNow(), have = await voiceHave(), PREP = new Map();
+    // get (or start getting) every piece of step i: a saved file if there is one, else ElevenLabs (then saved for next time). Whole steps only are saved.
+    const prep = i => { if (PREP.has(i)) return PREP.get(i); const st = S[i]; if (!st || st.a == null) { PREP.set(i, null); return null }
+      const part = i === i0 && from != null, parts = partsOf(st, part ? from : null), prev = ctxOf(i, -1).slice(-500), next = ctxOf(i, 1).slice(0, 300);
+      const jobs = parts.map((p, q) => !p.say ? null : (async () => { const f = await pieceFile(k0, voice, p);
+        if (!part && have.has(f)) { const r = await savedPiece(f); if (r) return r }
+        const r = p.v3 ? await k0.ttsV3(p.say) : await k0.tts(p.say, p.vs, {prev: (prev + "\n" + parts.slice(0, q).map(x => x.say || "").join(" ")).slice(-500), next: (parts.slice(q + 1).map(x => x.say || "").join(" ") + "\n" + next).slice(0, 300)});
+        if (!part && !have.has(f)) { have.add(f); (r.b64 ? Promise.resolve(r.b64) : k0.blobB64(r.blob)).then(b => upload(f, b)).catch(() => {}) } return r })());
+      jobs.forEach(j => j && j.catch(() => {})); const v = {parts, jobs}; PREP.set(i, v); return v };
+    try { for (let i = i0; i < S.length && LS.run === run; i++) { stepTo(i); lbar(); const st = S[i]; if (st.a == null) { prep(i + 1); await wait(1800); continue }
+        const {parts, jobs} = prep(i); prep(i + 1);      // the next step is read while this one plays, so there's no gap
+        for (let q = 0; q < parts.length && LS.run === run; q++) { const p = parts[q]; if (p.pause) { await wait(p.pause * 1000); continue } if (!jobs[q]) continue;
+          const r = await jobs[q]; if (LS.run !== run) return; await new Promise(ok => { const au = r.au || new Audio(r.url); r.au = null; LS.au = au; au.currentTime = 0; au.playbackRate = LS.rate || 1; au.onended = ok; au.onerror = ok;
+            let starts = r.starts; if (!starts && p.say) { const mk = () => { const T = au.duration; if (T > 0 && isFinite(T)) { starts = [...p.say].map((_, c) => c / p.say.length * T); wordLight(p, au, starts) } }; if (au.readyState >= 1) mk(); else au.addEventListener("loadedmetadata", mk, {once: true}) } else wordLight(p, au, starts);
+            if (!LS.paused) au.play().catch(ok) }) } }
       if (LS.run === run) stopListen() } catch (e) { stopListen(); aiFail(e) } }
   // ---- ✨ on selected text: grammar, spelling, tighten, listen, and the voice for those words ----
   const VOICES = ["excited", "exclaim", "calm", "gentle", "slow", "fast"];
