@@ -39,7 +39,7 @@
    "ttSize": 117,
    "tr": {
     "Tagalog": {
-     "slideTitle": "Pagkatao, Tawag at Paninindigan"
+     "slideTitle": "Pagkatao, Tawag at Paninindigan."
     }
    },
    "trSrc": {
@@ -1219,5 +1219,8 @@
  "wpm": "120",
  "imageStyle": "",
  "voiceModel": "v4",
- "v3Feel": ""
+ "v3Feel": "",
+ "reviewsDone": [
+  "mw4u5mmuqrm6"
+ ]
 }
