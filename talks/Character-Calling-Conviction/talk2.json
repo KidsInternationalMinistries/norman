@@ -387,7 +387,15 @@
    "slideTitle": "",
    "slide": "We spend our whole lives striving to be strong, when God is calling us to be weak.",
    "layout": "left",
-   "image": "slides/bg/p3d.jpg"
+   "image": "slides/bg/p3d.jpg",
+   "tr": {
+    "Tagalog": {
+     "slide": "Ginugugol natin ang buong buhay natin sa pagsisikap na maging malakas, samantalang tinatawag tayo ng Diyos na maging mahina."
+    }
+   },
+   "trSrc": {
+    "Tagalog": "{\"slide\":\"We spend our whole lives striving to be strong, when God is calling us to be weak.\"}"
+   }
   },
   {
    "name": "1 Corinthians 3:6–7",
