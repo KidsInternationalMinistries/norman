@@ -15,14 +15,14 @@ Follow the apps `CLAUDE.md` for everything about how to build (branches, migrati
 - **Access is by module rights only.** No per-talk sharing table. Suggested rights: `talk-prep.view` (open and present), `talk-prep.editor` (edit, use AI), `talk-prep.admin` (delete, settings).
 - **The one finished talk must carry over completely:** "Character, Calling & Conviction" (folder `talks/Character-Calling-Conviction`). See section 5.
 - Norman's direction from before (still true): get the UI and the AI features working; one shared key per service is fine; use ESV for verses; AI changes are reviewed in an accept/reject dialog with "Accept all"; a section rewrite creates a "(draft)" copy instead of overwriting.
-- Still open, ask Norman: move only the v2 version (talk2.json pages) and keep v1 `talk.json` as an archive only? (Recommended: yes.)
+- **Only v2 moves.** Port the v2 pages (edit2, present2, slides2, audience, review, practice) and import `talk2.json` only. The v1 pages and `talk.json` are not ported or imported; they stay in the norman repo as the archive.
 
 ## 2. Where each part goes
 
 | Part | Today (norman repo) | In apps |
 | --- | --- | --- |
 | Talk content | `talks/<Folder>/talk2.json` (format `talk/2`), saved through the GitHub contents API | `module_tools_talk_prep_talks`: id, slug (old folder name), title, `content` JSONB = talk2.json as-is, `updated_at`, `updated_by` |
-| Old v1 content | `talk.json` | Store once in the versions table (or a `content_v1` column) as an archive |
+| Old v1 content | `talk.json` and the v1 pages | Not moved (Norman: only v2); stays in the norman repo |
 | Backups | `backups/` folder | `module_tools_talk_prep_versions`: snapshot on every save; restore from it |
 | Pictures, voice MP3s, PDFs | Files in the talk folder (CCC: 87 MB, mostly 126 voice MP3s) | Private Storage bucket `talk-prep`, path `<org>/<talkId>/<same relative path>`; served by signed URLs |
 | OpenAI, ElevenLabs, ESV keys | AES-encrypted in `talks/common/keys.json`, unlocked in the browser with the presenter password | Server env `OPENAI_API_KEY` (exists), add `ELEVENLABS_API_KEY`, `ESV_API_KEY` to `.env.production`, `.env.public`, `.env.example`. Browser never sees a key; presenter password goes away |
@@ -95,7 +95,7 @@ Source: `KidsInternationalMinistries/norman`, branch `main`, folder `talks/Chara
 | What | Size | Where it goes |
 | --- | --- | --- |
 | `talk2.json` | 106 KB, 19,588-char text, 53 slides, 29 talking-point sets, 27 audience notes with Tagalog | `content` of a new talks row, slug `Character-Calling-Conviction` |
-| `talk.json` (v1) | 54 KB | archive version row |
+| `talk.json` (v1) | 54 KB | not imported (only v2) |
 | `slides/bg/*.jpg` (20) + `slides/*.jpg` (3) | 3.5 MB | bucket, same relative paths |
 | `voice/*.mp3` (126) + `narration2.json` | 82 MB | bucket, same names; narration in `content` or its own column |
 | `pdf/audience.pdf` | 1.9 MB | bucket (optional, phones make it now) |
